@@ -63,7 +63,7 @@ void setup() {
 
 Hand input_hand() {
 	if (x_pos > 800) return GU;
-	else (x_pos < 300) return PA;
+	else if (x_pos < 300) return PA;
 	else return TYO;
 }
 
@@ -83,7 +83,7 @@ void loop() {
 			pl_hand = input_hand();
 			do {
 				cp_hand = random(1, 1000) % 3;
-			} while (pl_hand != cp_hand);
+			} while (pl_hand == cp_hand);
 
 			disp(hand7seg[pl_hand], hand7seg[cp_hand]);
 		}
