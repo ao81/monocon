@@ -1,47 +1,54 @@
 #define USE_TIMER3_ISR
 #include "mono_con.h"
 
-int sw = HIGH, presw = HIGH;
-int cd = -1, in = 0;
+volatile int cdMs = 0;
+volatile int sw = HIGH;
+int prevSw = HIGH;
 
 ISR(TIMER3_COMPA_vect) {
-	if (++in > 5) {
-		in = 0;
-		sw = digitalRead(18);
+	if (cdMs > 0) cdMs--;
+
+	static int cnt = 0;
+	if (++cnt >= 5) {
+		cnt = 0;
+		sw = digitalRead(_USER_CON_3PIN);
 	}
-	if (cd > 0) cd--;
 }
 
-void startCd(int s) {
-	cd = s * 1000;
+void startCd(int sec) {
+	cdMs = sec * 1000;
 }
 
-void updateCd() {
-	static int prevDisp = -1;
-	int currDisp = (cd + 999) / 1000;
-	if (currDisp != prevDisp) {
-		disp(num[currDisp], num[10]);
-		prevDisp = currDisp;
-	}
+void updateDisp() {
+	static int prev = -1;
+	int sec = (cdMs + 999) / 1000;
+	if (sec == prev) return;
+	prev = sec;
+	disp(num[sec], num[10]);
 }
 
 void setup() {
 	config_init();
 	serial_init();
 	lm.color.GBR = B000;
+	led_stepmotor(lm.b8);
+	disp(num[0], num[10]);
 }
 
 void loop() {
-	if (sw == LOW && presw == HIGH) {
+	static int prevSw = HIGH;
+
+	if (sw == LOW && prevSw == HIGH) {
 		startCd(5);
 		lm.color.GBR = B110;
-	} else if (cd == 0) {
+	}
+
+	if (cdMs == 0) {
 		lm.color.GBR = B000;
 	}
 
 	led_stepmotor(lm.b8);
+	updateDisp();
 
-	updateCd();
-
-	presw = sw;
+	prevSw = sw;
 }
