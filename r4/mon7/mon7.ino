@@ -17,9 +17,9 @@ const int ptn2[5][2] = {
 	{ 0x00, 0x00 },
 };
 
-volatile int tsw, sw1, sw2;
+int tsw, sw1, sw2;
 int pretsw, presw1, presw2;
-volatile bool sw1ps = false, sw2ps = false;
+bool sw1ps = false, sw2ps = false;
 
 word in, spm;
 

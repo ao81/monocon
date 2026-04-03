@@ -1,8 +1,8 @@
 #define USE_TIMER3_ISR
 #include "mono_con.h"
 
-volatile int cdMs = 0;
-volatile int sw = HIGH;
+int cdMs = 0;
+int sw = HIGH;
 int prevSw = HIGH;
 
 ISR(TIMER3_COMPA_vect) {
