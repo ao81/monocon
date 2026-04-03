@@ -3,7 +3,7 @@
 
 const int ledParam[3] = { B001, B100, B000 };
 
-volatile int TSW;
+int TSW;
 int prevTSW;
 
 bool blinking = false;

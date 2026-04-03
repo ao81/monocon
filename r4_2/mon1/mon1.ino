@@ -4,7 +4,7 @@
 const int color[3] = { B100, B001, B000 };
 const int delayms = 300;
 
-volatile int tsw;
+int tsw;
 int pretsw;
 
 word in;
