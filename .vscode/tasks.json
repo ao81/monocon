@@ -1,0 +1,30 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Arduino: Build",
+			"type": "shell",
+			"command": "arduino-cli compile --fqbn arduino:avr:megaADK ${fileDirname}",
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Arduino: Upload",
+			"type": "shell",
+			"command": "arduino-cli compile --fqbn arduino:avr:megaADK ${fileDirname} && arduino-cli upload -p COM3 --fqbn arduino:avr:megaADK ${fileDirname}",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		}
+	]
+}
