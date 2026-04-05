@@ -16,6 +16,7 @@
 			"label": "Arduino: Upload",
 			"type": "shell",
 			"command": "arduino-cli compile --fqbn arduino:avr:megaADK ${fileDirname} && arduino-cli upload -p COM3 --fqbn arduino:avr:megaADK ${fileDirname}",
+			// COM3 の部分を適宜変更する
 			"group": {
 				"kind": "build",
 				"isDefault": true
