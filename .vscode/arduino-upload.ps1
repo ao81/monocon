@@ -4,6 +4,8 @@ param(
     [string]$Port = 'COM3'
 )
 
+Write-Host ">>> Uploading to Arduino...`n" -ForegroundColor Cyan
+
 # path resolution
 $avrdudeRoot = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avrdude"
 $dirs = [System.IO.Directory]::GetDirectories($avrdudeRoot)
@@ -18,7 +20,7 @@ $hexFile     = "$BuildPath\$sketchName.ino.hex"
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
 # build
-arduino-cli compile -q -b arduino:avr:megaADK -j 0 --build-path $BuildPath $SketchDir
+arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path $BuildPath $SketchDir
 $buildTime = $sw.Elapsed.TotalSeconds
 
 # write
@@ -28,4 +30,4 @@ $uploadTime = $sw.Elapsed.TotalSeconds
 
 # output
 $totalTime = $buildTime + $uploadTime
-[Console]::WriteLine( ("`nBuild: {0:F2}s  Upload: {1:F2}s  Total: {2:F2}s" -f $buildTime, $uploadTime, $totalTime) )
+[Console]::WriteLine( ("`nBuild: {0:F2}s  Upload: {1:F2}s  Total: {2:F2}s`n" -f $buildTime, $uploadTime, $totalTime) )
