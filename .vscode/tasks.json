@@ -13,11 +13,9 @@
 				"-File",
 				"${workspaceFolder}/.vscode/arduino-upload.ps1",
 				"-BuildPath",
-				"${workspaceFolder}/.arduino-build",
+				"${workspaceFolder}/.arduino-build/${relativeFileDirname}",
 				"-SketchDir",
-				"${fileDirname}",
-				"-Port",
-				"COM6"
+				"${fileDirname}"
 			],
 			"group": { "kind": "build", "isDefault": true },
 			"presentation": {
