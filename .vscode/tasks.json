@@ -17,7 +17,7 @@
 				"-SketchDir",
 				"${fileDirname}",
 				"-Port",
-				"COM3"
+				"COM6"
 			],
 			"group": { "kind": "build", "isDefault": true },
 			"presentation": {
