@@ -117,8 +117,14 @@ if ($needCompile) {
 		# 差分ビルド: スケッチ1ファイルのみ avr-g++ → リンク → objcopy
 		# -------------------------------------------------------
 
-		# .ino → .cpp はarduino-cliが生成済みのものをそのまま使う
-		# （#include <Arduino.h>等のプリプロセスはcppファイルに既に展開済み）
+		# Step0: .ino → .cpp を再生成
+		# .ino ファイルの内容が変わっているため、必ず .cpp を書き直す。
+		# arduino-cli が付加する #include <Arduino.h> をヘッダとして先頭に追加する。
+		# （関数プロトタイプの自動挿入は avr-g++ の -fpermissive で吸収できる）
+		$inoContent = [System.IO.File]::ReadAllText($inoFile, [System.Text.Encoding]::UTF8)
+		$cppContent = "#include <Arduino.h>`r`n" + $inoContent
+		if (-not (Test-Path $sketchBuild)) { New-Item -ItemType Directory -Force -Path $sketchBuild | Out-Null }
+		[System.IO.File]::WriteAllText($cppFile, $cppContent, [System.Text.Encoding]::UTF8)
 
 		# Step1: コンパイル
 		$compileArgs = @(
@@ -133,8 +139,9 @@ if ($needCompile) {
 			"-I$coresInc", "-I$variantsInc",
 			$cppFile, "-o", $objFile
 		)
-		$null = & $avrGpp @compileArgs 2>&1
+		$compileOut = & $avrGpp @compileArgs 2>&1
 		if ($LASTEXITCODE -ne 0) {
+			$compileOut | ForEach-Object { Write-Host $_ -ForegroundColor Red }
 			Write-Host "`n>>> Compile failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
 
@@ -147,8 +154,9 @@ if ($needCompile) {
 			$objFile, $coreA,
 			"-L$BuildPath", "-lm"
 		)
-		$null = & $avrGcc @linkArgs 2>&1
+		$linkOut = & $avrGcc @linkArgs 2>&1
 		if ($LASTEXITCODE -ne 0) {
+			$linkOut | ForEach-Object { Write-Host $_ -ForegroundColor Red }
 			Write-Host "`n>>> Link failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
 
@@ -159,8 +167,9 @@ if ($needCompile) {
 			$elfFile $eepFile 2>&1
 
 		# Step4: hex生成
-		$null = & $avrObjcopy -O ihex -R .eeprom $elfFile $hexFile 2>&1
+		$objcopyOut = & $avrObjcopy -O ihex -R .eeprom $elfFile $hexFile 2>&1
 		if ($LASTEXITCODE -ne 0) {
+			$objcopyOut | ForEach-Object { Write-Host $_ -ForegroundColor Red }
 			Write-Host "`n>>> Objcopy failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
 
