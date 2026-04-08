@@ -87,8 +87,10 @@ $hashCacheFile = "$BuildPath\$sketchName.ino.sha256"
 $inoInfo     = [System.IO.FileInfo]::new($inoFile)
 $needCompile = $true
 
+$allSrcFiles = @($inoFile) + @([System.IO.Directory]::GetFiles($SketchDir, "*.h"))
+$currentHash = ($allSrcFiles | ForEach-Object { ([System.IO.FileInfo]::new($_)).LastWriteTime.Ticks }) -join ","
+
 if ($inoInfo.Exists -and [System.IO.File]::Exists($hashCacheFile) -and [System.IO.File]::Exists($hexFile)) {
-	$currentHash = $inoInfo.LastWriteTime.Ticks.ToString()
 	$cachedHash  = [System.IO.File]::ReadAllText($hashCacheFile).Trim()
 	if ($currentHash -eq $cachedHash) { $needCompile = $false }
 }
@@ -100,8 +102,6 @@ Write-Host "Cache check: $($sw.Elapsed.TotalMilliseconds)ms"
 $buildTime = 0.0
 $sw.Restart()
 if ($needCompile) {
-	$currentHash = $inoInfo.LastWriteTime.Ticks.ToString()
-
 	# core.aが存在しない場合はarduino-cliで一度だけフルビルド（初回のみ）
 	if (-not (Test-Path $coreA)) {
 		Write-Host "First build: generating core.a via arduino-cli..." -ForegroundColor Yellow
