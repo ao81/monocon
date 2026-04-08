@@ -1,7 +1,7 @@
 Param(
 	[string]$BuildPath,
 	[string]$SketchDir,
-	[string]$Port = 'COM3'
+	[string]$Port = 'COM6'
 )
 Write-Host ">>> Uploading to Arduino...`n" -ForegroundColor Cyan
 
