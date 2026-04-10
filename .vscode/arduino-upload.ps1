@@ -12,14 +12,15 @@ $sw = [System.Diagnostics.Stopwatch]::StartNew()
 # 共通定数（環境に依存する部分）
 # ---------------------------------------------------------
 $globalCacheDir = "$env:LOCALAPPDATA\ArduinoCLI_Cache"
-$portCacheFile  = "$globalCacheDir\port_cache.txt"
+$portCacheFile = "$globalCacheDir\port_cache.txt"
 
 $avrGccCacheFile = "$globalCacheDir\avr_gcc_path_cache.txt"
 $avrGccRoot = ""
 try {
 	$avrGccRoot = [System.IO.File]::ReadAllText($avrGccCacheFile).Trim()
 	if (-not (Test-Path $avrGccRoot)) { $avrGccRoot = "" }
-} catch {}
+}
+catch {}
 
 if ($avrGccRoot -eq "") {
 	$avrGccBase = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avr-gcc"
@@ -31,8 +32,8 @@ if ($avrGccRoot -eq "") {
 	[System.IO.File]::WriteAllText($avrGccCacheFile, $avrGccRoot)
 }
 
-$avrGpp     = "$avrGccRoot\avr-g++.exe"
-$avrGcc     = "$avrGccRoot\avr-gcc.exe"
+$avrGpp = "$avrGccRoot\avr-g++.exe"
+$avrGcc = "$avrGccRoot\avr-gcc.exe"
 $avrObjcopy = "$avrGccRoot\avr-objcopy.exe"
 
 $hwCacheFile = "$globalCacheDir\hw_path_cache.txt"
@@ -40,7 +41,8 @@ $hwRoot = ""
 try {
 	$hwRoot = [System.IO.File]::ReadAllText($hwCacheFile).Trim()
 	if (-not (Test-Path $hwRoot)) { $hwRoot = "" }
-} catch {}
+}
+catch {}
 
 if ($hwRoot -eq "") {
 	$hwBase = "$env:LOCALAPPDATA\Arduino15\packages\arduino\hardware\avr"
@@ -52,7 +54,7 @@ if ($hwRoot -eq "") {
 	[System.IO.File]::WriteAllText($hwCacheFile, $hwRoot)
 }
 
-$coresInc    = "$hwRoot\cores\arduino"
+$coresInc = "$hwRoot\cores\arduino"
 $variantsInc = "$hwRoot\variants\mega"
 
 # ---------------------------------------------------------
@@ -67,7 +69,8 @@ if ($TargetPort -eq "") {
 		$pnpDevices = Get-CimInstance Win32_PnPEntity -Filter "Name LIKE '%(COM%)'" -ErrorAction Stop
 		$target = $pnpDevices | Where-Object { $_.Caption -match 'Arduino|Mega|USB Serial|CH340|CP210' } | Select-Object -First 1
 		if ($target -and $target.Caption -match '\((COM\d+)\)') { $TargetPort = $matches[1] }
-	} catch {}
+	}
+ catch {}
 
 	if ($TargetPort -eq "") {
 		$availablePorts = [System.IO.Ports.SerialPort]::GetPortNames()
@@ -93,7 +96,8 @@ try {
 	if ((Test-Path $lines[0]) -and (Test-Path $lines[1])) {
 		$avrdude = $lines[0]; $avrdudeConf = $lines[1]
 	}
-} catch {}
+}
+catch {}
 
 if ($avrdude -eq "") {
 	$avrdudeRoot = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avrdude"
@@ -101,8 +105,8 @@ if ($avrdude -eq "") {
 	if ($avrdudeDirs.Count -eq 0) {
 		Write-Host ">>> Error: avrdude not found under $avrdudeRoot" -ForegroundColor Red; exit 1
 	}
-	$avrdudeDir  = $avrdudeDirs[-1]
-	$avrdude     = "$avrdudeDir\bin\avrdude.exe"
+	$avrdudeDir = $avrdudeDirs[-1]
+	$avrdude = "$avrdudeDir\bin\avrdude.exe"
 	$avrdudeConf = "$avrdudeDir\etc\avrdude.conf"
 	[System.IO.File]::WriteAllLines($avrdudeCacheFile, [string[]]@($avrdude, $avrdudeConf))
 }
@@ -112,25 +116,25 @@ Write-Host "Avrdude path resolve: $($sw.Elapsed.TotalMilliseconds)ms"
 # 3. パス構築
 # ---------------------------------------------------------
 $sw.Restart()
-$sketchName  = [System.IO.Path]::GetFileName($SketchDir)
-$inoFile     = "$SketchDir\$sketchName.ino"
+$sketchName = [System.IO.Path]::GetFileName($SketchDir)
+$inoFile = "$SketchDir\$sketchName.ino"
 $sketchBuild = "$BuildPath\sketch"
-$cppFile     = "$sketchBuild\$sketchName.ino.cpp"
-$objFile     = "$sketchBuild\$sketchName.ino.cpp.o"
-$elfFile     = "$BuildPath\$sketchName.ino.elf"
-$hexFile     = "$BuildPath\$sketchName.ino.hex"
-$eepFile     = "$BuildPath\$sketchName.ino.eep"
-$coreA       = "$BuildPath\core\core.a"
+$cppFile = "$sketchBuild\$sketchName.ino.cpp"
+$objFile = "$sketchBuild\$sketchName.ino.cpp.o"
+$elfFile = "$BuildPath\$sketchName.ino.elf"
+$hexFile = "$BuildPath\$sketchName.ino.hex"
+$eepFile = "$BuildPath\$sketchName.ino.eep"
+$coreA = "$BuildPath\core\core.a"
 $hashCacheFile = "$BuildPath\$sketchName.ino.sha256"
 
-$inoInfo     = [System.IO.FileInfo]::new($inoFile)
+$inoInfo = [System.IO.FileInfo]::new($inoFile)
 $needCompile = $true
 
 $allSrcFiles = @($inoFile) + @([System.IO.Directory]::GetFiles($SketchDir, "*.h"))
 $currentHash = ($allSrcFiles | ForEach-Object { ([System.IO.FileInfo]::new($_)).LastWriteTime.Ticks }) -join ","
 
 if ($inoInfo.Exists -and [System.IO.File]::Exists($hashCacheFile) -and [System.IO.File]::Exists($hexFile)) {
-	$cachedHash  = [System.IO.File]::ReadAllText($hashCacheFile).Trim()
+	$cachedHash = [System.IO.File]::ReadAllText($hashCacheFile).Trim()
 	if ($currentHash -eq $cachedHash) { $needCompile = $false }
 }
 Write-Host "Cache check: $($sw.Elapsed.TotalMilliseconds)ms"
@@ -144,14 +148,16 @@ if ($needCompile) {
 	# core.aが存在しない場合はarduino-cliで一度だけフルビルド（初回のみ）
 	if (-not (Test-Path $coreA)) {
 		Write-Host "First build: generating core.a via arduino-cli..." -ForegroundColor Yellow
-		$null = & arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path $BuildPath --warnings none --quiet $SketchDir 2>&1
+		$buildOut = & arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path $BuildPath --warnings none $SketchDir 2>&1
 		if ($LASTEXITCODE -ne 0) {
+			$buildOut | ForEach-Object { Write-Host $_ -ForegroundColor Red }
 			Write-Host "`n>>> Build failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
 		[System.IO.File]::WriteAllText($hashCacheFile, $currentHash)
 		$buildTime = $sw.Elapsed.TotalSeconds
 		Write-Host "Compile (full): $($buildTime)s"
-	} else {
+	}
+ else {
 		# -------------------------------------------------------
 		# 差分ビルド: スケッチ1ファイルのみ avr-g++ → リンク → objcopy
 		# -------------------------------------------------------
@@ -201,7 +207,7 @@ if ($needCompile) {
 
 		# Step3: eep生成
 		$null = & $avrObjcopy -O ihex -j .eeprom `
-			--set-section-flags=.eeprom=alloc,load `
+			--set-section-flags=.eeprom=alloc, load `
 			--no-change-warnings --change-section-lma .eeprom=0 `
 			$elfFile $eepFile 2>&1
 
@@ -216,7 +222,8 @@ if ($needCompile) {
 		$buildTime = $sw.Elapsed.TotalSeconds
 		Write-Host "Compile (incremental): $($buildTime)s"
 	}
-} else {
+}
+else {
 	Write-Host "Compile: skipped (no changes)"
 }
 
