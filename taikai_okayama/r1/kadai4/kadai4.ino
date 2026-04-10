@@ -81,13 +81,13 @@ void loop() {
 			spm = 0;
 			lm.color.SM = stepm_init(phase);
 			led_stepmotor(lm.b8);
-			if (isspmcw) { if (++phase > 3) phase = 0; }
+			if (!isspmcw) { if (++phase > 3) phase = 0; }
 			else { if (--phase < 0) phase = 3; }
 		}
 	}
 
 	if (isdm) {
-		if (isdmcw) DMcw();
+		if (!isdmcw) DMcw();
 		else DMccw();
 	} else DMstop();
 }
