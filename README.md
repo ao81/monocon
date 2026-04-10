@@ -24,7 +24,7 @@ void loop() {
 </details>
 
 <details>
-<summary><h4>arduino-cliのセットアップ手順</summary>
+<summary><h4><s>arduino-cliのセットアップ手順</s></h4></summary>
 
 - .arduino-cliディレクトリをコピーし、環境変数に登録する。
 - ```arduino-cli config init```
