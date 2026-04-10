@@ -6,20 +6,19 @@ const int highEdge = 1023 - 200;
 
 int ypos, preypos;
 int ph, preph;
-bool phps = false, swps= false;
+bool phps = false, swps = false;
 
-int segIdx = 0;
-int dmIdx = 0;
-bool isccw = false;
+int idx = 0, preidx = 0;
+bool iscw = false, isccw = false;
 
 word in, wait;
 
-void DMcw(int speed) {
+void DMcw(int speed = 80) {
 	analogWrite(FIN_PIN, speed);
 	digitalWrite(RIN_PIN, LOW);
 }
 
-void DMccw(int speed) {
+void DMccw(int speed = 80) {
 	digitalWrite(FIN_PIN, LOW);
 	analogWrite(RIN_PIN, speed);
 }
@@ -46,8 +45,11 @@ ISR(TIMER3_COMPA_vect) {
 	if (wait > 0) {
 		wait--;
 		DMstop();
+	} else if (iscw) {
+		DMcw();
+		iscw = false;
 	} else if (isccw) {
-		DMccw(80);
+		DMccw();
 		isccw = false;
 	}
 }
@@ -59,22 +61,35 @@ void setup() {
 	ypos = preypos = analogRead(A2);
 	ph = preph = digitalRead(_USER_CON_3PIN);
 
-	DMcw(80);
+	DMcw();
 	disp(0x00, segptn[0]);
 }
 
 void loop() {
 	if (phps) {
 		phps = false;
-		if (++segIdx > 2) segIdx = 0;
-		disp(0x00, segptn[segIdx]);
+		if (++idx > 2) idx = 0;
+		disp(0x00, segptn[idx]);
 	}
 
 	if (swps) {
 		swps = false;
-		if (++dmIdx > 2) dmIdx = 0;
-		if (dmIdx == 0) DMcw(80);
-		else if (dmIdx == 1) { wait = 300; isccw = true; }
-		else DMstop();
+
+		if (idx == 0) {
+			if (preidx == 1) {
+				wait = 150;
+				iscw = true;
+			} else {
+				DMcw();
+			}
+		} else if (idx == 1) {
+			if (preidx == 0) {
+				wait = 150;
+				isccw = true;
+			} else {
+				DMccw();
+			}
+		} else DMstop();
+		preidx = idx;
 	}
 }
