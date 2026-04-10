@@ -11,16 +11,49 @@ $sw = [System.Diagnostics.Stopwatch]::StartNew()
 # ---------------------------------------------------------
 # 共通定数（環境に依存する部分）
 # ---------------------------------------------------------
-$avrGccRoot  = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\bin"
-$avrGpp      = "$avrGccRoot\avr-g++.exe"
-$avrGcc      = "$avrGccRoot\avr-gcc.exe"
-$avrObjcopy  = "$avrGccRoot\avr-objcopy.exe"
-$hwRoot      = "$env:LOCALAPPDATA\Arduino15\packages\arduino\hardware\avr\1.8.7"
-$coresInc    = "$hwRoot\cores\arduino"
-$variantsInc = "$hwRoot\variants\mega"
-
 $globalCacheDir = "$env:LOCALAPPDATA\ArduinoCLI_Cache"
 $portCacheFile  = "$globalCacheDir\port_cache.txt"
+
+$avrGccCacheFile = "$globalCacheDir\avr_gcc_path_cache.txt"
+$avrGccRoot = ""
+try {
+	$avrGccRoot = [System.IO.File]::ReadAllText($avrGccCacheFile).Trim()
+	if (-not (Test-Path $avrGccRoot)) { $avrGccRoot = "" }
+} catch {}
+
+if ($avrGccRoot -eq "") {
+	$avrGccBase = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avr-gcc"
+	$avrGccDirs = [System.IO.Directory]::GetDirectories($avrGccBase)
+	if ($avrGccDirs.Count -eq 0) {
+		Write-Host ">>> Error: avr-gcc not found under $avrGccBase" -ForegroundColor Red; exit 1
+	}
+	$avrGccRoot = "$($avrGccDirs[-1])\bin"
+	[System.IO.File]::WriteAllText($avrGccCacheFile, $avrGccRoot)
+}
+
+$avrGpp     = "$avrGccRoot\avr-g++.exe"
+$avrGcc     = "$avrGccRoot\avr-gcc.exe"
+$avrObjcopy = "$avrGccRoot\avr-objcopy.exe"
+
+$hwCacheFile = "$globalCacheDir\hw_path_cache.txt"
+$hwRoot = ""
+try {
+	$hwRoot = [System.IO.File]::ReadAllText($hwCacheFile).Trim()
+	if (-not (Test-Path $hwRoot)) { $hwRoot = "" }
+} catch {}
+
+if ($hwRoot -eq "") {
+	$hwBase = "$env:LOCALAPPDATA\Arduino15\packages\arduino\hardware\avr"
+	$hwDirs = [System.IO.Directory]::GetDirectories($hwBase)
+	if ($hwDirs.Count -eq 0) {
+		Write-Host ">>> Error: arduino hardware not found under $hwBase" -ForegroundColor Red; exit 1
+	}
+	$hwRoot = $hwDirs[-1]
+	[System.IO.File]::WriteAllText($hwCacheFile, $hwRoot)
+}
+
+$coresInc    = "$hwRoot\cores\arduino"
+$variantsInc = "$hwRoot\variants\mega"
 
 # ---------------------------------------------------------
 # 1. ポート検出
@@ -57,12 +90,18 @@ $avrdudeCacheFile = "$globalCacheDir\avrdude_path_cache.txt"
 $avrdude = ""; $avrdudeConf = ""
 try {
 	$lines = [System.IO.File]::ReadAllLines($avrdudeCacheFile)
-	$avrdude = $lines[0]; $avrdudeConf = $lines[1]
+	if ((Test-Path $lines[0]) -and (Test-Path $lines[1])) {
+		$avrdude = $lines[0]; $avrdudeConf = $lines[1]
+	}
 } catch {}
 
 if ($avrdude -eq "") {
 	$avrdudeRoot = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avrdude"
-	$avrdudeDir  = [System.IO.Directory]::GetDirectories($avrdudeRoot)[-1]
+	$avrdudeDirs = [System.IO.Directory]::GetDirectories($avrdudeRoot)
+	if ($avrdudeDirs.Count -eq 0) {
+		Write-Host ">>> Error: avrdude not found under $avrdudeRoot" -ForegroundColor Red; exit 1
+	}
+	$avrdudeDir  = $avrdudeDirs[-1]
 	$avrdude     = "$avrdudeDir\bin\avrdude.exe"
 	$avrdudeConf = "$avrdudeDir\etc\avrdude.conf"
 	[System.IO.File]::WriteAllLines($avrdudeCacheFile, [string[]]@($avrdude, $avrdudeConf))
