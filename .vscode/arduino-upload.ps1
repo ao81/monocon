@@ -125,7 +125,7 @@ $elfFile = "$BuildPath\$sketchName.ino.elf"
 $hexFile = "$BuildPath\$sketchName.ino.hex"
 $eepFile = "$BuildPath\$sketchName.ino.eep"
 $coreA = "$BuildPath\core\core.a"
-$hashCacheFile = "$BuildPath\$sketchName.ino.sha256"
+$hashCacheFile = "$BuildPath\$sketchName.ino.hash"
 
 $inoInfo = [System.IO.FileInfo]::new($inoFile)
 $needCompile = $true
