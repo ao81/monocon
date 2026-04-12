@@ -3,84 +3,167 @@ Param(
 	[string]$SketchDir,
 	[string]$Port = ''
 )
+
+$utf8EncodingNoBom = [System.Text.UTF8Encoding]::new($false)
+
 Write-Host ">>> Uploading to Arduino...`n"
 
 $totalSw = [System.Diagnostics.Stopwatch]::StartNew()
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-# ---------------------------------------------------------
-# 共通定数（環境に依存する部分）
-# ---------------------------------------------------------
-$globalCacheDir = "$env:LOCALAPPDATA\ArduinoCLI_Cache"
-$portCacheFile = "$globalCacheDir\port_cache.txt"
-
-$avrGccCacheFile = "$globalCacheDir\avr_gcc_path_cache.txt"
-$avrGccRoot = ""
-try {
-	$avrGccRoot = [System.IO.File]::ReadAllText($avrGccCacheFile).Trim()
-	if (-not (Test-Path $avrGccRoot)) { $avrGccRoot = "" }
+function Exit-Error {
+	param(
+		[string]$Message,
+		[int]$Code = 1
+	)
+	Write-Host ">>> Error: $Message" -ForegroundColor Red
+	exit $Code
 }
-catch {}
 
-if ($avrGccRoot -eq "") {
-	$avrGccBase = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avr-gcc"
-	$avrGccDirs = [System.IO.Directory]::GetDirectories($avrGccBase)
-	if ($avrGccDirs.Count -eq 0) {
-		Write-Host ">>> Error: avr-gcc not found under $avrGccBase" -ForegroundColor Red; exit 1
+function Get-SubdirectoryWithLatestWriteTime {
+	param([string]$BaseDir)
+	if (-not [System.IO.Directory]::Exists($BaseDir)) { return "" }
+
+	$dirs = [System.IO.Directory]::GetDirectories($BaseDir)
+	if ($dirs.Count -eq 0) { return "" }
+
+	$latestDir = $dirs[0]
+	$latestTicks = [System.IO.Directory]::GetLastWriteTimeUtc($latestDir).Ticks
+	for ($i = 1; $i -lt $dirs.Count; $i++) {
+		$ticks = [System.IO.Directory]::GetLastWriteTimeUtc($dirs[$i]).Ticks
+		if ($ticks -gt $latestTicks) {
+			$latestTicks = $ticks
+			$latestDir = $dirs[$i]
+		}
 	}
-	$avrGccRoot = "$($avrGccDirs[-1])\bin"
-	[System.IO.File]::WriteAllText($avrGccCacheFile, $avrGccRoot)
+	return $latestDir
 }
 
-$avrGpp = "$avrGccRoot\avr-g++.exe"
-$avrGcc = "$avrGccRoot\avr-gcc.exe"
-$avrObjcopy = "$avrGccRoot\avr-objcopy.exe"
+function Resolve-CachedDirectory {
+	param(
+		[string]$CacheFile,
+		[string]$BaseDir,
+		[string]$ErrorMessage,
+		[string]$Suffix = ''
+	)
 
-$hwCacheFile = "$globalCacheDir\hw_path_cache.txt"
-$hwRoot = ""
-try {
-	$hwRoot = [System.IO.File]::ReadAllText($hwCacheFile).Trim()
-	if (-not (Test-Path $hwRoot)) { $hwRoot = "" }
+	$cached = ''
+	try { $cached = [System.IO.File]::ReadAllText($CacheFile).Trim() } catch {}
+	if ($cached -and [System.IO.Directory]::Exists($cached)) { return $cached }
+
+	$latest = Get-SubdirectoryWithLatestWriteTime -BaseDir $BaseDir
+	if (-not $latest) { Exit-Error $ErrorMessage }
+
+	$result = "$latest$Suffix"
+	[System.IO.File]::WriteAllText($CacheFile, $result, $utf8EncodingNoBom)
+	return $result
 }
-catch {}
 
-if ($hwRoot -eq "") {
-	$hwBase = "$env:LOCALAPPDATA\Arduino15\packages\arduino\hardware\avr"
-	$hwDirs = [System.IO.Directory]::GetDirectories($hwBase)
-	if ($hwDirs.Count -eq 0) {
-		Write-Host ">>> Error: arduino hardware not found under $hwBase" -ForegroundColor Red; exit 1
+function Resolve-AvrdudePaths {
+	param(
+		[string]$CacheFile,
+		[string]$RootDir
+	)
+
+	try {
+		$lines = [System.IO.File]::ReadAllLines($CacheFile)
+		if ($lines.Count -ge 2 -and [System.IO.File]::Exists($lines[0]) -and [System.IO.File]::Exists($lines[1])) {
+			return [string[]]@($lines[0], $lines[1])
+		}
 	}
-	$hwRoot = $hwDirs[-1]
-	[System.IO.File]::WriteAllText($hwCacheFile, $hwRoot)
+	catch {}
+
+	$latest = Get-SubdirectoryWithLatestWriteTime -BaseDir $RootDir
+	if (-not $latest) { Exit-Error "avrdude not found under $RootDir" }
+
+	$exe = [System.IO.Path]::Combine($latest, 'bin', 'avrdude.exe')
+	$conf = [System.IO.Path]::Combine($latest, 'etc', 'avrdude.conf')
+	if (-not [System.IO.File]::Exists($exe) -or -not [System.IO.File]::Exists($conf)) {
+		Exit-Error "avrdude files not found under $latest"
+	}
+
+	[System.IO.File]::WriteAllLines($CacheFile, [string[]]@($exe, $conf), $utf8EncodingNoBom)
+	return [string[]]@($exe, $conf)
 }
 
-$coresInc = "$hwRoot\cores\arduino"
-$variantsInc = "$hwRoot\variants\mega"
+function Resolve-Port {
+	param(
+		[string]$ProvidedPort,
+		[string]$CacheFile
+	)
 
-# ---------------------------------------------------------
-# 1. ポート検出
-# ---------------------------------------------------------
-$TargetPort = ""
-try { $TargetPort = [System.IO.File]::ReadAllText($portCacheFile).Trim() } catch {}
+	if ($ProvidedPort) { return $ProvidedPort }
 
-if ($TargetPort -eq "") {
+	try {
+		$cached = [System.IO.File]::ReadAllText($CacheFile).Trim()
+		if ($cached) { return $cached }
+	}
+	catch {}
+
 	Write-Host "Port cache miss, scanning..." -ForegroundColor Yellow
+
+	$ports = [System.IO.Ports.SerialPort]::GetPortNames()
+	if ($ports -and $ports.Count -gt 0) {
+		$resolved = $ports[-1]
+		[System.IO.File]::WriteAllText($CacheFile, $resolved, $utf8EncodingNoBom)
+		return $resolved
+	}
+
 	try {
 		$pnpDevices = Get-CimInstance Win32_PnPEntity -Filter "Name LIKE '%(COM%)'" -ErrorAction Stop
-		$target = $pnpDevices | Where-Object { $_.Caption -match 'Arduino|Mega|USB Serial|CH340|CP210' } | Select-Object -First 1
-		if ($target -and $target.Caption -match '\((COM\d+)\)') { $TargetPort = $matches[1] }
+		$devicePattern = 'Arduino|Mega|USB Serial|CH340|CP210'
+		for ($i = 0; $i -lt $pnpDevices.Count; $i++) {
+			$caption = $pnpDevices[$i].Caption
+			if ($caption -and $caption -match $devicePattern -and $caption -match '\((COM\d+)\)') {
+				$resolved = $matches[1]
+				[System.IO.File]::WriteAllText($CacheFile, $resolved, $utf8EncodingNoBom)
+				return $resolved
+			}
+		}
 	}
- catch {}
+	catch {}
 
-	if ($TargetPort -eq "") {
-		$availablePorts = [System.IO.Ports.SerialPort]::GetPortNames()
-		if ($availablePorts.Count -gt 0) { $TargetPort = $availablePorts[-1] }
-		else { Write-Host ">>> Error: No COM port found." -ForegroundColor Red; exit 1 }
-	}
-
-	if (-not (Test-Path $globalCacheDir)) { New-Item -ItemType Directory -Force -Path $globalCacheDir | Out-Null }
-	[System.IO.File]::WriteAllText($portCacheFile, $TargetPort)
+	Exit-Error 'No COM port found.'
 }
+
+function Get-SourceHash {
+	param([string[]]$Files)
+
+	$initialCapacity = 256
+	$sb = [System.Text.StringBuilder]::new($initialCapacity)
+	for ($i = 0; $i -lt $Files.Count; $i++) {
+		if ($i -gt 0) { [void]$sb.Append(';') }
+		[void]$sb.Append([System.IO.File]::GetLastWriteTimeUtc($Files[$i]).Ticks)
+	}
+	return $sb.ToString()
+}
+
+$globalCacheDir = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'ArduinoCLI_Cache')
+[System.IO.Directory]::CreateDirectory($globalCacheDir) | Out-Null
+
+$portCacheFile = [System.IO.Path]::Combine($globalCacheDir, 'port_cache.txt')
+$avrGccCacheFile = [System.IO.Path]::Combine($globalCacheDir, 'avr_gcc_path_cache.txt')
+$hwCacheFile = [System.IO.Path]::Combine($globalCacheDir, 'hw_path_cache.txt')
+$avrdudeCacheFile = [System.IO.Path]::Combine($globalCacheDir, 'avrdude_path_cache.txt')
+
+$avrGccRoot = Resolve-CachedDirectory `
+	-CacheFile $avrGccCacheFile `
+	-BaseDir ([System.IO.Path]::Combine($env:LOCALAPPDATA, 'Arduino15\packages\arduino\tools\avr-gcc')) `
+	-ErrorMessage "avr-gcc not found under $env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avr-gcc" `
+	-Suffix '\bin'
+
+$avrGpp = [System.IO.Path]::Combine($avrGccRoot, 'avr-g++.exe')
+$avrGcc = [System.IO.Path]::Combine($avrGccRoot, 'avr-gcc.exe')
+$avrObjcopy = [System.IO.Path]::Combine($avrGccRoot, 'avr-objcopy.exe')
+
+$hwRoot = Resolve-CachedDirectory `
+	-CacheFile $hwCacheFile `
+	-BaseDir ([System.IO.Path]::Combine($env:LOCALAPPDATA, 'Arduino15\packages\arduino\hardware\avr')) `
+	-ErrorMessage "arduino hardware not found under $env:LOCALAPPDATA\Arduino15\packages\arduino\hardware\avr"
+
+$coresInc = [System.IO.Path]::Combine($hwRoot, 'cores\arduino')
+$variantsInc = [System.IO.Path]::Combine($hwRoot, 'variants\mega')
+$TargetPort = Resolve-Port -ProvidedPort $Port -CacheFile $portCacheFile
 
 Write-Host "Using Port: $TargetPort`n"
 Write-Host "Find port: $($sw.Elapsed.TotalMilliseconds)ms"
@@ -89,27 +172,11 @@ Write-Host "Find port: $($sw.Elapsed.TotalMilliseconds)ms"
 # 2. avrdudeのパス解決
 # ---------------------------------------------------------
 $sw.Restart()
-$avrdudeCacheFile = "$globalCacheDir\avrdude_path_cache.txt"
-$avrdude = ""; $avrdudeConf = ""
-try {
-	$lines = [System.IO.File]::ReadAllLines($avrdudeCacheFile)
-	if ((Test-Path $lines[0]) -and (Test-Path $lines[1])) {
-		$avrdude = $lines[0]; $avrdudeConf = $lines[1]
-	}
-}
-catch {}
-
-if ($avrdude -eq "") {
-	$avrdudeRoot = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avrdude"
-	$avrdudeDirs = [System.IO.Directory]::GetDirectories($avrdudeRoot)
-	if ($avrdudeDirs.Count -eq 0) {
-		Write-Host ">>> Error: avrdude not found under $avrdudeRoot" -ForegroundColor Red; exit 1
-	}
-	$avrdudeDir = $avrdudeDirs[-1]
-	$avrdude = "$avrdudeDir\bin\avrdude.exe"
-	$avrdudeConf = "$avrdudeDir\etc\avrdude.conf"
-	[System.IO.File]::WriteAllLines($avrdudeCacheFile, [string[]]@($avrdude, $avrdudeConf))
-}
+$avrdudePaths = Resolve-AvrdudePaths `
+	-CacheFile $avrdudeCacheFile `
+	-RootDir ([System.IO.Path]::Combine($env:LOCALAPPDATA, 'Arduino15\packages\arduino\tools\avrdude'))
+$avrdude = $avrdudePaths[0]
+$avrdudeConf = $avrdudePaths[1]
 Write-Host "Avrdude path resolve: $($sw.Elapsed.TotalMilliseconds)ms"
 
 # ---------------------------------------------------------
@@ -117,74 +184,75 @@ Write-Host "Avrdude path resolve: $($sw.Elapsed.TotalMilliseconds)ms"
 # ---------------------------------------------------------
 $sw.Restart()
 $sketchName = [System.IO.Path]::GetFileName($SketchDir)
-$inoFile = "$SketchDir\$sketchName.ino"
-$sketchBuild = "$BuildPath\sketch"
-$cppFile = "$sketchBuild\$sketchName.ino.cpp"
-$objFile = "$sketchBuild\$sketchName.ino.cpp.o"
-$elfFile = "$BuildPath\$sketchName.ino.elf"
-$hexFile = "$BuildPath\$sketchName.ino.hex"
-$eepFile = "$BuildPath\$sketchName.ino.eep"
-$coreA = "$BuildPath\core\core.a"
-$hashCacheFile = "$BuildPath\$sketchName.ino.hash"
+$inoFile = [System.IO.Path]::Combine($SketchDir, "$sketchName.ino")
+$sketchBuild = [System.IO.Path]::Combine($BuildPath, 'sketch')
+$cppFile = [System.IO.Path]::Combine($sketchBuild, "$sketchName.ino.cpp")
+$objFile = [System.IO.Path]::Combine($sketchBuild, "$sketchName.ino.cpp.o")
+$elfFile = [System.IO.Path]::Combine($BuildPath, "$sketchName.ino.elf")
+$hexFile = [System.IO.Path]::Combine($BuildPath, "$sketchName.ino.hex")
+$coreA = [System.IO.Path]::Combine($BuildPath, 'core\core.a')
+$hashCacheFile = [System.IO.Path]::Combine($BuildPath, "$sketchName.ino.hash")
 
-$inoInfo = [System.IO.FileInfo]::new($inoFile)
+if (-not [System.IO.File]::Exists($inoFile)) { Exit-Error "Sketch file not found: $inoFile" }
+
+$headerFiles = [System.IO.Directory]::GetFiles($SketchDir, '*.h')
+$srcFiles = [string[]]@($inoFile) + $headerFiles
+$currentHash = Get-SourceHash -Files $srcFiles
+
 $needCompile = $true
-
-$allSrcFiles = @($inoFile) + @([System.IO.Directory]::GetFiles($SketchDir, "*.h"))
-$currentHash = ($allSrcFiles | ForEach-Object { ([System.IO.FileInfo]::new($_)).LastWriteTime.Ticks }) -join ","
-
-if ($inoInfo.Exists -and [System.IO.File]::Exists($hashCacheFile) -and [System.IO.File]::Exists($hexFile)) {
-	$cachedHash = [System.IO.File]::ReadAllText($hashCacheFile).Trim()
-	if ($currentHash -eq $cachedHash) { $needCompile = $false }
+if ([System.IO.File]::Exists($hashCacheFile) -and [System.IO.File]::Exists($hexFile)) {
+	try {
+		if ([System.IO.File]::ReadAllText($hashCacheFile).Trim() -eq $currentHash) {
+			$needCompile = $false
+		}
+	}
+	catch {}
 }
+
 Write-Host "Cache check: $($sw.Elapsed.TotalMilliseconds)ms"
 
 # ---------------------------------------------------------
-# 4. コンパイル（arduino-cliを完全バイパス）
+# 4. コンパイル
 # ---------------------------------------------------------
 $buildTime = 0.0
 $sw.Restart()
 if ($needCompile) {
-	# core.aが存在しない場合はarduino-cliで一度だけフルビルド（初回のみ）
-	if (-not (Test-Path $coreA)) {
+	if (-not [System.IO.File]::Exists($coreA)) {
 		Write-Host "First build: generating core.a via arduino-cli..." -ForegroundColor Yellow
 		$buildOut = & arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path $BuildPath --warnings none $SketchDir 2>&1
 		if ($LASTEXITCODE -ne 0) {
 			$buildOut | ForEach-Object { Write-Host $_ -ForegroundColor Red }
 			Write-Host "`n>>> Build failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
-		[System.IO.File]::WriteAllText($hashCacheFile, $currentHash)
+		[System.IO.File]::WriteAllText($hashCacheFile, $currentHash, $utf8EncodingNoBom)
 		$buildTime = $sw.Elapsed.TotalSeconds
 		Write-Host "Compile (full): $($buildTime)s"
 	}
- else {
-		# -------------------------------------------------------
-		# 差分ビルド: スケッチ1ファイルのみ avr-g++ → リンク → objcopy
-		# -------------------------------------------------------
+	else {
+		[System.IO.Directory]::CreateDirectory($sketchBuild) | Out-Null
+		$staleHeaders = [System.IO.Directory]::GetFiles($sketchBuild, '*.h')
+		for ($i = 0; $i -lt $staleHeaders.Count; $i++) {
+			try { [System.IO.File]::Delete($staleHeaders[$i]) }
+			catch {
+				Exit-Error "Failed to clean stale header: $($staleHeaders[$i]) ($($_.Exception.Message))"
+			}
+		}
 
-		# Step0: .ino → .cpp を再生成
 		$inoContent = [System.IO.File]::ReadAllText($inoFile, [System.Text.Encoding]::UTF8)
-		$cppContent = "#include <Arduino.h>`r`n" + $inoContent
-		if (-not (Test-Path $sketchBuild)) { New-Item -ItemType Directory -Force -Path $sketchBuild | Out-Null }
-		[System.IO.File]::WriteAllText($cppFile, $cppContent, [System.Text.Encoding]::UTF8)
+		$cppContent = "#include <Arduino.h>`r`n$inoContent"
+		[System.IO.File]::WriteAllText($cppFile, $cppContent, $utf8EncodingNoBom)
 
-		# 【追加】最新のヘッダファイルをビルドディレクトリに上書きコピーする
-		# ※古いキャッシュヘッダが読み込まれるのを防ぐため
-		Copy-Item -Path "$SketchDir\*.h" -Destination $sketchBuild -Force -ErrorAction SilentlyContinue
-
-		# Step1: コンパイル
 		$compileArgs = @(
-			"-c", "-g", "-Os", "-w",
-			"-std=gnu++11", "-fpermissive", "-fno-exceptions",
-			"-ffunction-sections", "-fdata-sections",
-			"-fno-threadsafe-statics", "-Wno-error=narrowing",
-			"-MMD", "-flto",
-			"-mmcu=atmega2560",
-			"-DF_CPU=16000000L", "-DARDUINO=10607",
-			"-DARDUINO_AVR_ADK", "-DARDUINO_ARCH_AVR",
-			"-I$coresInc", "-I$variantsInc",
-			"-I$SketchDir", # 【追加】スケッチディレクトリへのパスを明示的に指定
-			$cppFile, "-o", $objFile
+			'-c', '-g', '-Os', '-w',
+			'-std=gnu++11', '-fpermissive', '-fno-exceptions',
+			'-ffunction-sections', '-fdata-sections',
+			'-fno-threadsafe-statics', '-Wno-error=narrowing',
+			'-MMD', '-flto',
+			'-mmcu=atmega2560',
+			'-DF_CPU=16000000L', '-DARDUINO=10607',
+			'-DARDUINO_AVR_ADK', '-DARDUINO_ARCH_AVR',
+			"-I$coresInc", "-I$variantsInc", "-I$SketchDir",
+			$cppFile, '-o', $objFile
 		)
 		$compileOut = & $avrGpp @compileArgs 2>&1
 		if ($LASTEXITCODE -ne 0) {
@@ -192,14 +260,13 @@ if ($needCompile) {
 			Write-Host "`n>>> Compile failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
 
-		# Step2: リンク
 		$linkArgs = @(
-			"-w", "-Os", "-g", "-flto", "-fuse-linker-plugin",
-			"-Wl,--gc-sections",
-			"-mmcu=atmega2560",
-			"-o", $elfFile,
+			'-w', '-Os', '-g', '-flto', '-fuse-linker-plugin',
+			'-Wl,--gc-sections',
+			'-mmcu=atmega2560',
+			'-o', $elfFile,
 			$objFile, $coreA,
-			"-L$BuildPath", "-lm"
+			"-L$BuildPath", '-lm'
 		)
 		$linkOut = & $avrGcc @linkArgs 2>&1
 		if ($LASTEXITCODE -ne 0) {
@@ -207,20 +274,13 @@ if ($needCompile) {
 			Write-Host "`n>>> Link failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
 
-		# Step3: eep生成
-		$null = & $avrObjcopy -O ihex -j .eeprom `
-			--set-section-flags=.eeprom=alloc, load `
-			--no-change-warnings --change-section-lma .eeprom=0 `
-			$elfFile $eepFile 2>&1
-
-		# Step4: hex生成
 		$objcopyOut = & $avrObjcopy -O ihex -R .eeprom $elfFile $hexFile 2>&1
 		if ($LASTEXITCODE -ne 0) {
 			$objcopyOut | ForEach-Object { Write-Host $_ -ForegroundColor Red }
 			Write-Host "`n>>> Objcopy failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
 		}
 
-		[System.IO.File]::WriteAllText($hashCacheFile, $currentHash)
+		[System.IO.File]::WriteAllText($hashCacheFile, $currentHash, $utf8EncodingNoBom)
 		$buildTime = $sw.Elapsed.TotalSeconds
 		Write-Host "Compile (incremental): $($buildTime)s"
 	}
@@ -233,7 +293,18 @@ else {
 # 5. 書き込み
 # ---------------------------------------------------------
 $sw.Restart()
-$avrdudeArgs = @("-C", $avrdudeConf, "-q", "-q", "-V", "-p", "m2560", "-c", "wiring", "-P", $TargetPort, "-b", "115200", "-D", "-U", "flash:w:${hexFile}:i")
+$avrdudeArgs = @(
+	'-C', $avrdudeConf,
+	'-q', '-q',
+	'-V',
+	'-p', 'm2560',
+	'-c', 'wiring',
+	'-P', $TargetPort,
+	'-b', '115200',
+	'-D',
+	"-U", "flash:w:${hexFile}:i"
+)
+
 $null = & $avrdude @avrdudeArgs 2>&1
 $avrdudeExit = $LASTEXITCODE
 
@@ -241,7 +312,7 @@ $uploadTime = $sw.Elapsed.TotalSeconds
 Write-Host "Upload: $($uploadTime)s"
 
 if ($avrdudeExit -ne 0) {
-	[System.IO.File]::Delete($portCacheFile)
+	try { [System.IO.File]::Delete($portCacheFile) } catch {}
 	Write-Host "`n>>> Upload failed. Port cache cleared.`n" -ForegroundColor Red
 	exit $avrdudeExit
 }
