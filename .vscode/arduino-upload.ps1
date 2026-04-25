@@ -297,7 +297,7 @@ else {
 $sw.Restart()
 $uploadCacheKey = "$currentHash|$TargetPort"
 $skipUpload = $false
-if (-not $ForceUpload -and -not $needCompile -and [System.IO.File]::Exists($uploadHashCacheFile)) {
+if (-not $ForceUpload -and [System.IO.File]::Exists($uploadHashCacheFile)) {
 	try {
 		$lastUploaded = [System.IO.File]::ReadAllText($uploadHashCacheFile).Trim()
 		if ($lastUploaded -eq $uploadCacheKey) { $skipUpload = $true }
@@ -306,8 +306,9 @@ if (-not $ForceUpload -and -not $needCompile -and [System.IO.File]::Exists($uplo
 }
 
 $uploadTime = 0.0
+$uploadDisplay = 'skipped'
 if ($skipUpload) {
-	Write-Host 'Upload: skipped (already uploaded to this port)'
+	Write-Host 'Upload: skipped (no changes detected since last upload; use -ForceUpload to override)'
 }
 else {
 	$avrdudeArgs = @(
@@ -326,6 +327,7 @@ else {
 	$avrdudeExit = $LASTEXITCODE
 
 	$uploadTime = $sw.Elapsed.TotalSeconds
+	$uploadDisplay = "{0:F2}s" -f $uploadTime
 	Write-Host "Upload: $($uploadTime)s"
 
 	if ($avrdudeExit -ne 0) {
@@ -334,13 +336,18 @@ else {
 		exit $avrdudeExit
 	}
 
-	[System.IO.File]::WriteAllText($uploadHashCacheFile, $uploadCacheKey, $utf8EncodingNoBom)
+	try {
+		[System.IO.File]::WriteAllText($uploadHashCacheFile, $uploadCacheKey, $utf8EncodingNoBom)
+	}
+	catch {
+		Write-Host "Warning: failed to update upload cache: $($_.Exception.Message)" -ForegroundColor Yellow
+	}
 }
 
 # ---------------------------------------------------------
 # 6. トータルタイム表示
 # ---------------------------------------------------------
 $totalTime = $totalSw.Elapsed.TotalSeconds
-$line = "`nBuild: {0:F2}s  Upload: {1:F2}s  Total: {2:F2}s`n" -f $buildTime, $uploadTime, $totalTime
+$line = "`nBuild: {0:F2}s  Upload: {1}  Total: {2:F2}s`n" -f $buildTime, $uploadDisplay, $totalTime
 [Console]::WriteLine($line)
 exit 0
