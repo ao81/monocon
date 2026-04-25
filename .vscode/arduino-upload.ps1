@@ -1,7 +1,8 @@
 Param(
 	[string]$BuildPath,
 	[string]$SketchDir,
-	[string]$Port = ''
+	[string]$Port = '',
+	[switch]$ForceUpload
 )
 
 $utf8EncodingNoBom = [System.Text.UTF8Encoding]::new($false)
@@ -192,6 +193,7 @@ $elfFile = [System.IO.Path]::Combine($BuildPath, "$sketchName.ino.elf")
 $hexFile = [System.IO.Path]::Combine($BuildPath, "$sketchName.ino.hex")
 $coreA = [System.IO.Path]::Combine($BuildPath, 'core\core.a')
 $hashCacheFile = [System.IO.Path]::Combine($BuildPath, "$sketchName.ino.hash")
+$uploadHashCacheFile = [System.IO.Path]::Combine($BuildPath, "$sketchName.ino.uploaded.hash")
 
 if (-not [System.IO.File]::Exists($inoFile)) { Exit-Error "Sketch file not found: $inoFile" }
 
@@ -293,28 +295,46 @@ else {
 # 5. 書き込み
 # ---------------------------------------------------------
 $sw.Restart()
-$avrdudeArgs = @(
-	'-C', $avrdudeConf,
-	'-q', '-q',
-	'-V',
-	'-p', 'm2560',
-	'-c', 'wiring',
-	'-P', $TargetPort,
-	'-b', '115200',
-	'-D',
-	"-U", "flash:w:${hexFile}:i"
-)
+$uploadCacheKey = "$currentHash|$TargetPort"
+$skipUpload = $false
+if (-not $ForceUpload -and -not $needCompile -and [System.IO.File]::Exists($uploadHashCacheFile)) {
+	try {
+		$lastUploaded = [System.IO.File]::ReadAllText($uploadHashCacheFile).Trim()
+		if ($lastUploaded -eq $uploadCacheKey) { $skipUpload = $true }
+	}
+	catch {}
+}
 
-$null = & $avrdude @avrdudeArgs 2>&1
-$avrdudeExit = $LASTEXITCODE
+$uploadTime = 0.0
+if ($skipUpload) {
+	Write-Host 'Upload: skipped (already uploaded to this port)'
+}
+else {
+	$avrdudeArgs = @(
+		'-C', $avrdudeConf,
+		'-q', '-q',
+		'-V',
+		'-p', 'm2560',
+		'-c', 'wiring',
+		'-P', $TargetPort,
+		'-b', '115200',
+		'-D',
+		"-U", "flash:w:${hexFile}:i"
+	)
 
-$uploadTime = $sw.Elapsed.TotalSeconds
-Write-Host "Upload: $($uploadTime)s"
+	$null = & $avrdude @avrdudeArgs 2>&1
+	$avrdudeExit = $LASTEXITCODE
 
-if ($avrdudeExit -ne 0) {
-	try { [System.IO.File]::Delete($portCacheFile) } catch {}
-	Write-Host "`n>>> Upload failed. Port cache cleared.`n" -ForegroundColor Red
-	exit $avrdudeExit
+	$uploadTime = $sw.Elapsed.TotalSeconds
+	Write-Host "Upload: $($uploadTime)s"
+
+	if ($avrdudeExit -ne 0) {
+		try { [System.IO.File]::Delete($portCacheFile) } catch {}
+		Write-Host "`n>>> Upload failed. Port cache cleared.`n" -ForegroundColor Red
+		exit $avrdudeExit
+	}
+
+	[System.IO.File]::WriteAllText($uploadHashCacheFile, $uploadCacheKey, $utf8EncodingNoBom)
 }
 
 # ---------------------------------------------------------

@@ -31,6 +31,7 @@ void loop() {
 - ```arduino-cli core update-index```
 - ```arduino-cli core install arduino:avr```
 - ```arduino-cli board list```
+- `.vscode/arduino-upload.ps1` は同一ソース・同一ポートへの再書き込みをキャッシュで自動スキップします（毎回強制書き込みしたい場合は `-ForceUpload` を付けて実行）。
 
 </details>
 
