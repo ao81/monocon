@@ -34,4 +34,12 @@ void loop() {
 
 </details>
 
+<details>
+<summary><h4>vim</h4></summary>
+
+- `"yp` レジスタpに選択位置をヤンク
+- `"pp` レジスタpの内容を貼り付け
+
+</details>
+
 [mono_con.h](./mono_con.h)
