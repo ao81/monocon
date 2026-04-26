@@ -29,11 +29,10 @@
 		{
             "label": "Arduino: Build",
             "type": "shell",
-            "command": "${workspaceFolder}/ArduinoUploader.exe",
+            "command": "${workspaceFolder}/.vscode/ArduinoUploader/build/bin/ArduinoUploader.exe",
             "args": [
                 "build",
-                "${fileDirname}",
-                "COM3"
+                "${fileDirname}"
             ],
             "group": {
                 "kind": "build",

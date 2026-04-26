@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 // -----------------------------------------------------------------------------
 // COM 補助: MSVC は comutil.h の _bstr_t、MinGW は自前ラッパで代用
@@ -72,8 +73,13 @@ namespace {
 	};
 
 	// COM ポート照会の WMI クエリ
+	// Win32_PnPEntity の Name には "Arduino Mega 2560 (COM3)" のような形式で
+	// ポート番号が含まれるデバイスがある。WHERE は緩めにして、判定は C++ 側で行う。
 	constexpr const wchar_t* kWmiQuery =
-		L"SELECT Caption FROM Win32_PnPEntity WHERE Caption LIKE '%(COM%'";
+		L"SELECT Name FROM Win32_PnPEntity WHERE Name LIKE '%(COM%'";
+
+	// 前方宣言: uploadToBoard() より前に必要(実装はファイル下方の COM 用 namespace 内)
+	bool comPortIsOpenable(const std::string& port);
 
 } // namespace
 
@@ -434,22 +440,89 @@ bool Uploader::incrementalCompile() {
 }
 
 bool Uploader::uploadToBoard() {
-	try {
+	// 指定されたポートに対して avrdude を 1 回実行するヘルパ
+	auto runAvrdude = [&](const std::string& port) -> ProcessResult {
 		std::ostringstream args;
 		args << "-C \"" << pImpl->avrdudeConf << "\" -q -q -V "
 			<< "-p " << kAvrdudeMcu
 			<< " -c " << kAvrdudeProg
-			<< " -P " << pImpl->targetPort
+			<< " -P " << port
 			<< " -b " << kAvrdudeBaud
 			<< " -D -U flash:w:\"" << pImpl->hexFile << "\":i";
+		return runProcess(pImpl->avrdude, args.str(), pImpl->buildPath);
+		};
 
-		auto result = runProcess(pImpl->avrdude, args.str(), pImpl->buildPath);
-		if (result.exitCode != 0) {
-			// 失敗時はポートキャッシュを破棄(別のポートに繋ぎ直された可能性)
-			Utils::deleteFile(pImpl->portCacheFile);
-			pImpl->lastError = "Upload failed:\n" + result.error;
+	// ポートが開けない場合の擬似結果(avrdude を呼ばずに失敗扱いにするため)
+	auto makeNotOpenableResult = [](const std::string& port) {
+		ProcessResult r;
+		r.exitCode = -1;
+		r.error = "Port " + port + " is not openable (device disconnected?)\n";
+		return r;
+		};
+
+	try {
+		// --- 1 回目: 現在の targetPort で書き込み ---
+		ProcessResult result;
+		if (!comPortIsOpenable(pImpl->targetPort)) {
+			// ポートが存在しない/開けない場合は avrdude を呼ばずに即失敗
+			// (avrdude は失敗時に約 7 秒の stk500 sync リトライを行うので回避する)
+			result = makeNotOpenableResult(pImpl->targetPort);
+		} else {
+			result = runAvrdude(pImpl->targetPort);
+		}
+
+		if (result.exitCode == 0) {
+			Utils::writeFileIfChanged(pImpl->portCacheFile, pImpl->targetPort);
+			return true;
+		}
+
+		// --- 失敗時の対応 ---
+		// ユーザーが明示指定したポートで失敗した場合は、勝手に他のポートを
+		// 試さずにそのままエラー終了する(ユーザーの意思を尊重)。
+		if (!pImpl->requestedPort.empty()) {
+			pImpl->lastError = "Upload failed on port " + pImpl->targetPort + ":\n" + result.error;
 			return false;
 		}
+
+		// 自動探索モード: キャッシュ済みのポートが動かなくなった可能性があるので、
+		// 再探索して別のポートを試す。
+		std::cout << "Upload failed on " << pImpl->targetPort
+			<< ", searching for another COM port...\n";
+
+		std::string newPort = findArduinoPort();
+		if (newPort.empty()) {
+			// ポートが見つからない: キャッシュは破棄して終了
+			Utils::deleteFile(pImpl->portCacheFile);
+			pImpl->lastError = "Upload failed and no other COM port found:\n" + result.error;
+			return false;
+		}
+
+		if (newPort == pImpl->targetPort) {
+			// 同じポートしか見つからない -> リトライしても無駄なので失敗扱い
+			// (キャッシュは正しいので残す)
+			pImpl->lastError = "Upload failed on port " + pImpl->targetPort
+				+ " (no alternative port available):\n" + result.error;
+			return false;
+		}
+
+		// --- 2 回目: 新しく見つかったポートで再試行(同じく事前チェック付き) ---
+		std::cout << "Retrying with port " << newPort << "...\n";
+		pImpl->targetPort = newPort;
+
+		ProcessResult retry;
+		if (!comPortIsOpenable(newPort)) {
+			retry = makeNotOpenableResult(newPort);
+		} else {
+			retry = runAvrdude(newPort);
+		}
+
+		if (retry.exitCode != 0) {
+			Utils::deleteFile(pImpl->portCacheFile);
+			pImpl->lastError = "Upload failed on port " + newPort + ":\n" + retry.error;
+			return false;
+		}
+
+		Utils::writeFileIfChanged(pImpl->portCacheFile, newPort);
 		return true;
 	} catch (const std::exception& e) {
 		pImpl->lastError = std::string("Upload error: ") + e.what();
@@ -533,14 +606,24 @@ bool Uploader::resolveAvrdudePaths() {
 // =============================================================================
 namespace {
 
-	// RAII で COM 終了処理
+	// RAII で COM 終了処理。
+	// COINIT_MULTITHREADED で初期化を試み、別スレッドやシェル系 API などで
+	// 既に APARTMENTTHREADED で初期化されている場合(RPC_E_CHANGED_MODE)は
+	// それに合わせて再初期化する。S_FALSE(既に同じモードで初期化済み)も成功扱い。
 	class ComScope {
 	public:
-		ComScope() : ok_(SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED))) {}
+		ComScope() {
+			HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+			if (hr == RPC_E_CHANGED_MODE) {
+				hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+			}
+			ok_ = SUCCEEDED(hr);  // S_OK と S_FALSE はどちらも成功
+			// どちらの結果でも、対応する CoUninitialize を呼ぶ必要がある
+		}
 		~ComScope() { if (ok_) CoUninitialize(); }
 		bool initialized() const { return ok_; }
 	private:
-		bool ok_;
+		bool ok_ = false;
 	};
 
 	// WBSTR -> std::string (UTF-8 変換)
@@ -569,72 +652,208 @@ namespace {
 		return false;
 	}
 
+	// WMI が失敗した場合のフォールバック:
+	// レジストリ HKLM\HARDWARE\DEVICEMAP\SERIALCOMM から接続中の COM ポートを列挙する。
+	// Windows が認識しているすべてのシリアルポートが入っているので、
+	// Arduino が刺さっていれば必ずここに現れる(ドライバ名は分からないが COM 番号は分かる)。
+	std::vector<std::string> enumComPortsFromRegistry() {
+		std::vector<std::string> ports;
+		HKEY hKey = nullptr;
+		if (RegOpenKeyExA(HKEY_LOCAL_MACHINE,
+			"HARDWARE\\DEVICEMAP\\SERIALCOMM",
+			0, KEY_READ, &hKey) != ERROR_SUCCESS) {
+			return ports;
+		}
+
+		DWORD index = 0;
+		char valueName[256];
+		BYTE  valueData[256];
+		while (true) {
+			DWORD nameLen = sizeof(valueName);
+			DWORD dataLen = sizeof(valueData);
+			DWORD type = 0;
+			LONG  result = RegEnumValueA(hKey, index, valueName, &nameLen, nullptr,
+				&type, valueData, &dataLen);
+			if (result == ERROR_NO_MORE_ITEMS) break;
+			if (result != ERROR_SUCCESS) break;
+
+			if (type == REG_SZ && dataLen > 0) {
+				// valueData は \0 終端の COM 名("COM3" 等)
+				ports.emplace_back(reinterpret_cast<const char*>(valueData));
+			}
+			++index;
+		}
+		RegCloseKey(hKey);
+		return ports;
+	}
+
+	// 指定された COM ポートが現在 OS で開けるかを即座に確認する。
+	// avrdude を呼ぶ前にこれで弾けば、失敗時の長い stk500 タイムアウト
+	// (約 7 秒)を完全に回避できる。
+	bool comPortIsOpenable(const std::string& port) {
+		// "\\.\COM10" のような形式にしないと 2 桁以上の COM 番号が開けない
+		std::string path = "\\\\.\\" + port;
+		HANDLE h = CreateFileA(path.c_str(),
+			GENERIC_READ | GENERIC_WRITE,
+			0,            // 排他アクセス
+			nullptr,
+			OPEN_EXISTING,
+			0,
+			nullptr);
+		if (h == INVALID_HANDLE_VALUE) {
+			return false;
+		}
+		CloseHandle(h);
+		return true;
+	}
+
+	// WMI 経由で COM ポートを探す。失敗/見つからなかった場合は空文字を返す。
+	// allCandidates には(成功したかに関わらず)WMI が列挙した COM デバイス名が入る。
+	std::string findArduinoPortViaWmi(std::vector<std::string>& allCandidates) {
+		auto hexHr = [](HRESULT h) {
+			std::ostringstream o;
+			o << "0x" << std::hex << std::uppercase
+				<< static_cast<unsigned long>(static_cast<unsigned int>(h));
+			return o.str();
+			};
+
+		ComScope com;
+		if (!com.initialized()) {
+			// std::cout << "[port-search] CoInitializeEx failed\n";
+			return "";
+		}
+
+		// セキュリティレベル(失敗しても続行可能なケースがあるので結果を見ない)
+		CoInitializeSecurity(nullptr, -1, nullptr, nullptr,
+			RPC_C_AUTHN_LEVEL_DEFAULT,
+			RPC_C_IMP_LEVEL_IMPERSONATE,
+			nullptr, EOAC_NONE, nullptr);
+
+		IWbemLocator* pLoc = nullptr;
+		HRESULT hr = CoCreateInstance(CLSID_WbemLocator, nullptr,
+			CLSCTX_INPROC_SERVER, IID_IWbemLocator,
+			reinterpret_cast<LPVOID*>(&pLoc));
+		if (FAILED(hr)) {
+			// std::cout << "[port-search] CoCreateInstance(WbemLocator) failed: " << hexHr(hr) << "\n";
+			return "";
+		}
+
+		IWbemServices* pSvc = nullptr;
+		hr = pLoc->ConnectServer(ComBStr(L"ROOT\\CIMV2"),
+			nullptr, nullptr, nullptr, 0, nullptr, nullptr, &pSvc);
+		if (FAILED(hr)) {
+			// std::cout << "[port-search] ConnectServer(ROOT\\CIMV2) failed: " << hexHr(hr) << "\n";
+			pLoc->Release();
+			return "";
+		}
+
+		hr = CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr,
+			RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE,
+			nullptr, EOAC_NONE);
+		if (FAILED(hr)) {
+			// std::cout << "[port-search] CoSetProxyBlanket failed: " << hexHr(hr) << "\n";
+			pSvc->Release(); pLoc->Release();
+			return "";
+		}
+
+		IEnumWbemClassObject* pEnum = nullptr;
+		hr = pSvc->ExecQuery(ComBStr(L"WQL"),
+			ComBStr(kWmiQuery),
+			WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+			nullptr, &pEnum);
+		if (FAILED(hr)) {
+			// std::cout << "[port-search] ExecQuery failed: " << hexHr(hr) << "\n";
+			pSvc->Release(); pLoc->Release();
+			return "";
+		}
+
+		std::string foundPort;
+		while (pEnum) {
+			IWbemClassObject* pObj = nullptr;
+			ULONG returned = 0;
+			if (FAILED(pEnum->Next(WBEM_INFINITE, 1, &pObj, &returned)) || returned == 0) {
+				break;
+			}
+
+			VARIANT vt; VariantInit(&vt);
+			if (SUCCEEDED(pObj->Get(L"Name", 0, &vt, nullptr, nullptr)) && vt.vt == VT_BSTR) {
+				std::string name = bstrToUtf8(vt.bstrVal);
+				allCandidates.push_back(name);
+				if (foundPort.empty() && matchesAnyPattern(name, kSerialDevicePatterns)) {
+					foundPort = extractComPort(name);
+				}
+			}
+			VariantClear(&vt);
+			pObj->Release();
+			// 早期 break しない: 全候補を集める
+		}
+
+		// 候補が 1 つだけなら(パターン一致しなくても)それを使う
+		if (foundPort.empty() && allCandidates.size() == 1) {
+			foundPort = extractComPort(allCandidates[0]);
+		}
+
+		pEnum->Release();
+		pSvc->Release();
+		pLoc->Release();
+		return foundPort;
+	}
+
 } // namespace
 
 std::string Uploader::findArduinoPort() {
-	ComScope com;
-	if (!com.initialized()) return "";
-
-	// セキュリティレベル(失敗しても続行可能なケースがあるので結果を見ない)
-	CoInitializeSecurity(nullptr, -1, nullptr, nullptr,
-		RPC_C_AUTHN_LEVEL_DEFAULT,
-		RPC_C_IMP_LEVEL_IMPERSONATE,
-		nullptr, EOAC_NONE, nullptr);
-
-	IWbemLocator* pLoc = nullptr;
-	if (FAILED(CoCreateInstance(CLSID_WbemLocator, nullptr,
-		CLSCTX_INPROC_SERVER, IID_IWbemLocator,
-		reinterpret_cast<LPVOID*>(&pLoc)))) {
-		return "";
+	// ステップ 1: WMI で検索
+	std::vector<std::string> wmiCandidates;
+	std::string foundPort = findArduinoPortViaWmi(wmiCandidates);
+	if (!foundPort.empty()) {
+		return foundPort;
 	}
 
-	IWbemServices* pSvc = nullptr;
-	HRESULT hr = pLoc->ConnectServer(ComBStr(L"ROOT\\CIMV2"),
-		nullptr, nullptr, nullptr, 0, nullptr, nullptr, &pSvc);
-	if (FAILED(hr)) {
-		pLoc->Release();
-		return "";
-	}
-
-	if (FAILED(CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr,
-		RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE,
-		nullptr, EOAC_NONE))) {
-		pSvc->Release(); pLoc->Release();
-		return "";
-	}
-
-	IEnumWbemClassObject* pEnum = nullptr;
-	hr = pSvc->ExecQuery(ComBStr(L"WQL"),
-		ComBStr(kWmiQuery),
-		WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
-		nullptr, &pEnum);
-	if (FAILED(hr)) {
-		pSvc->Release(); pLoc->Release();
-		return "";
-	}
-
-	std::string foundPort;
-	while (pEnum) {
-		IWbemClassObject* pObj = nullptr;
-		ULONG returned = 0;
-		if (FAILED(pEnum->Next(WBEM_INFINITE, 1, &pObj, &returned)) || returned == 0) {
-			break;
-		}
-
-		VARIANT vt; VariantInit(&vt);
-		if (SUCCEEDED(pObj->Get(L"Caption", 0, &vt, nullptr, nullptr)) && vt.vt == VT_BSTR) {
-			std::string caption = bstrToUtf8(vt.bstrVal);
-			if (matchesAnyPattern(caption, kSerialDevicePatterns)) {
-				foundPort = extractComPort(caption);
+	// ステップ 2: レジストリ HKLM\HARDWARE\DEVICEMAP\SERIALCOMM をフォールバック
+	auto regPorts = enumComPortsFromRegistry();
+	if (regPorts.empty()) {
+		if (wmiCandidates.empty()) {
+			std::cout << "(WMI and registry both returned no COM devices)\n";
+		} else {
+			std::cout << "WMI listed COM devices but none matched, "
+				"and registry returned nothing:\n";
+			for (const auto& c : wmiCandidates) {
+				std::cout << "  - " << c << "\n";
 			}
 		}
-		VariantClear(&vt);
-		pObj->Release();
-		if (!foundPort.empty()) break;
+		return "";
 	}
 
-	pEnum->Release();
-	pSvc->Release();
-	pLoc->Release();
-	return foundPort;
+	// COM1 / COM2 は通常 PC 内蔵のシリアル(BIOS, RS-232, Bluetooth 等)であり、
+	// Arduino である可能性は事実上ない。これらに書き込みを試行すると stk500 の
+	// タイムアウトで数秒待たされるので、自動探索からは完全に除外する。
+	// (本当に COM1/COM2 を使いたい場合は tasks.json の args で明示指定する。)
+	auto isLikelyBuiltin = [](const std::string& p) {
+		return p == "COM1" || p == "COM2";
+		};
+	regPorts.erase(
+		std::remove_if(regPorts.begin(), regPorts.end(), isLikelyBuiltin),
+		regPorts.end());
+
+	if (regPorts.empty()) {
+		// std::cout << "[port-search] Only built-in COM ports (COM1/COM2) are available; "
+			// "no Arduino-like port detected.\n";
+		return "";
+	}
+
+	// std::cout << "[port-search] Using registry-listed COM ports:\n";
+	for (const auto& p : regPorts) {
+		std::cout << "  - " << p << "\n";
+	}
+
+	// ステップ 2a: WMI の候補にドライバ名でマッチするものがあればそれを最優先
+	for (const auto& cand : wmiCandidates) {
+		if (matchesAnyPattern(cand, kSerialDevicePatterns)) {
+			std::string p = extractComPort(cand);
+			if (!p.empty() && !isLikelyBuiltin(p)) return p;
+		}
+	}
+
+	// ステップ 2b: 残ったポートの先頭を使う
+	return regPorts.front();
 }
