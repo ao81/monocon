@@ -1,30 +1,49 @@
 {
 	"version": "2.0.0",
 	"tasks": [
+		// {
+		// 	"label": "Arduino: Build & Upload",
+		// 	"type": "shell",
+		// 	"command": "powershell",
+		// 	"args": [
+		// 		"-NoProfile",
+		// 		"-NonInteractive",
+		// 		"-ExecutionPolicy",
+		// 		"Bypass",
+		// 		"-File",
+		// 		"${workspaceFolder}/.vscode/arduino-upload.ps1",
+		// 		"-BuildPath",
+		// 		"${workspaceFolder}/.vscode/.arduino-build/${relativeFileDirname}",
+		// 		"-SketchDir",
+		// 		"${fileDirname}"
+		// 	],
+		// 	"group": { "kind": "build", "isDefault": true },
+		// 	"presentation": {
+		// 		"reveal": "always",
+		// 		"panel": "shared",
+		// 		"echo": false,
+		// 		"clear": true
+		// 	},
+		// 	"problemMatcher": []
+		// },
 		{
-			"label": "Arduino: Build & Upload",
-			"type": "shell",
-			"command": "powershell",
-			"args": [
-				"-NoProfile",
-				"-NonInteractive",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}/.vscode/arduino-upload.ps1",
-				"-BuildPath",
-				"${workspaceFolder}/.arduino-build/${relativeFileDirname}",
-				"-SketchDir",
-				"${fileDirname}"
-			],
-			"group": { "kind": "build", "isDefault": true },
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared",
-				"echo": false,
-				"clear": true
-			},
-			"problemMatcher": []
-		}
+            "label": "Arduino: Build",
+            "type": "shell",
+            "command": "${workspaceFolder}/ArduinoUploader.exe",
+            "args": [
+                "build",
+                "${fileDirname}",
+                "COM3"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
 	]
 }
