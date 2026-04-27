@@ -15,16 +15,16 @@ word in, tc;
 
 int getjsidx(int* x_, int* y_) {
 	if (*x_ < edge[0]) {
-		if (*y_ < edge[0]) return 6;
-		else if (*y_ > edge[1]) return 0;
-		else return 3;
-	} else if (*x_ > edge[1]) {
-		if (*y_ < edge[0]) return 8;
-		else if (*y_ > edge[1]) return 2;
+		if (*y_ < edge[0]) return 2;
+		else if (*y_ > edge[1]) return 8;
 		else return 5;
+	} else if (*x_ > edge[1]) {
+		if (*y_ < edge[0]) return 0;
+		else if (*y_ > edge[1]) return 6;
+		else return 3;
 	} else { // 中
-		if (*y_ < edge[0]) return 7;
-		else if (*y_ > edge[1]) return 1;
+		if (*y_ < edge[0]) return 1;
+		else if (*y_ > edge[1]) return 7;
 		else return 4;
 	}
 }
@@ -33,8 +33,8 @@ ISR(TIMER3_COMPA_vect) {
 	if (in++ > 5) {
 		in = 0;
 
-		x = analogRead(A2);
-		y = analogRead(A1);
+		x = analogRead(A1);
+		y = analogRead(A2);
 
 		jsidx = getjsidx(&x, &y);
 	}
@@ -50,8 +50,8 @@ void setup() {
 	config_init();
 	serial_init();
 
-	x = analogRead(A2);
-	y = analogRead(A1);
+	x = analogRead(A1);
+	y = analogRead(A2);
 
 	jsidx = getjsidx(&x, &y);
 }
