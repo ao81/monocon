@@ -12,10 +12,10 @@ word in;
 int getIdx(int n) {
 	for (int i = 0; i < 9; i++) {
 		if (n < edges[i]) {
-			return i;
+			return 9 - i;
 		}
 	}
-	return 9;
+	return 0;
 }
 
 void onedisp(int n, int m) {
@@ -52,5 +52,5 @@ void setup() {
 }
 
 void loop() {
-	onedisp(yval, xval);
+	onedisp(xval, yval);
 }
