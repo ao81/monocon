@@ -34,8 +34,8 @@ ISR(TIMER3_COMPA_vect) {
 	if (in++ > 5) {
 		in = 0;
 
-		x = analogRead(A2);
-		y = analogRead(A1);
+		x = analogRead(A1);
+		y = analogRead(A2);
 	}
 }
 
@@ -43,30 +43,30 @@ void setup() {
 	config_init();
 	serial_init();
 
-	x = analogRead(A2);
-	y = analogRead(A1);
+	x = analogRead(A1);
+	y = analogRead(A2);
 }
 
 void loop() {
 	int ptn[2] = { 0x00, 0x00 };
 
 	if (x > h) {
-		ptn[0] |= xptn[2][0];
-		ptn[1] |= xptn[2][1];
-	} else if (x < l) {
 		ptn[0] |= xptn[0][0];
 		ptn[1] |= xptn[0][1];
+	} else if (x < l) {
+		ptn[0] |= xptn[2][0];
+		ptn[1] |= xptn[2][1];
 	} else {
 		ptn[0] |= xptn[1][0];
 		ptn[1] |= xptn[1][1];
 	}
 
 	if (y > h) {
-		ptn[0] |= yptn[2][0];
-		ptn[1] |= yptn[2][1];
-	} else if (y < l) {
 		ptn[0] |= yptn[0][0];
 		ptn[1] |= yptn[0][1];
+	} else if (y < l) {
+		ptn[0] |= yptn[2][0];
+		ptn[1] |= yptn[2][1];
 	} else {
 		ptn[0] |= yptn[1][0];
 		ptn[1] |= yptn[1][1];
