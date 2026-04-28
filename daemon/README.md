@@ -1,3 +1,5 @@
+<!-- markdownlint-disable -->
+
 # arduino-build-daemon
 
 Arduino MEGA / ADK 向けの**常駐ビルドデーモン + 軽量クライアント**実装。
