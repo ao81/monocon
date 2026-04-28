@@ -1,0 +1,10 @@
+^C:\USERS\AO\DESKTOP\MONOKON\DAEMON\BUILD\CMAKEFILES\E9ADBD4B07FE238D5C77964489AE0285\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ao/Desktop/monokon/daemon -BC:/Users/ao/Desktop/monokon/daemon/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/ao/Desktop/monokon/daemon/build/ArduinoBuildDaemon.slnx
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
