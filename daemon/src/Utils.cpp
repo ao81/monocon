@@ -175,12 +175,25 @@ namespace Utils {
 
 	// ----- ハッシュ / タイムスタンプ -----
 	long long getFileLastWriteTime(const std::string& path) {
-		std::error_code ec;
-		auto ftime = fs::last_write_time(path, ec);
-		if (ec) return 0;
-		auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-			ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
-		return std::chrono::duration_cast<std::chrono::milliseconds>(sctp.time_since_epoch()).count();
+		HANDLE h = CreateFileA(
+			path.c_str(),
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+			nullptr,
+			OPEN_EXISTING,
+			FILE_FLAG_BACKUP_SEMANTICS,
+			nullptr);
+		if (h == INVALID_HANDLE_VALUE) return 0;
+
+		FILETIME ft{};
+		BOOL ok = GetFileTime(h, nullptr, nullptr, &ft);
+		CloseHandle(h);
+		if (!ok) return 0;
+
+		ULARGE_INTEGER uli;
+		uli.LowPart = ft.dwLowDateTime;
+		uli.HighPart = ft.dwHighDateTime;
+		return static_cast<long long>(uli.QuadPart);
 	}
 
 	std::string getSourceSignature(const std::vector<std::string>& files) {

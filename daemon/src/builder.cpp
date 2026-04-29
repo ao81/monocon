@@ -4,37 +4,132 @@
 #include "port_scanner.h"
 
 #include <windows.h>
-#include <sstream>
+
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <set>
+#include <sstream>
+
+namespace fs = std::filesystem;
+
+// =============================================================================
+// 全体の処理フロー (要約)
+//
+//   compile(req)
+//     ├ resolveSketch()     : .ino ファイルパス / ディレクトリパスを正規化
+//     ├ resolveWorkspace()  : .vscode/ を持つフォルダを上方向に探索
+//     ├ ensureCoreArchive() : core.a が無ければ arduino-cli で 1 回生成
+//     ├ collectSources()    : 全 .ino/.cpp/.c とそのスタンプを列挙
+//     ├ loadStamps()        : 前回の (mtime,size) を .stamps から読む
+//     ├ planRebuild()       : 変更ファイルを特定 (差分判定の核心)
+//     ├ runCompiles()       : 変更ファイルだけ avr-g++/avr-gcc を呼ぶ
+//     ├ runLink()           : 全 .o + core.a を avr-gcc でリンク
+//     ├ runObjcopy()        : .elf → .hex
+//     └ saveStamps()        : .stamps を更新
+//
+// 設計原則:
+//   - すべてのデータは「型」として明示する (ぼやっとした文字列は使わない)
+//   - 各フェーズは 1 つの関数として独立し、副作用を局所化する
+//   - キャッシュ判定は (size, mtime) のみ。ハッシュは取らない (高速優先)
+// =============================================================================
 
 namespace {
 
-	// ---------------------------------------------------------------------
-	// fqbn から MEGA/ADK の MCU 設定を引く
-	// ---------------------------------------------------------------------
+	// =============================================================================
+	// データ型
+	// =============================================================================
+
 	struct BoardConfig {
-		std::string mcu;     // "atmega2560"
-		std::string fcpu;    // "16000000L"
-		std::string variant; // "mega"
-		std::string programmer; // "wiring"
-		long uploadBaud;     // 115200
+		std::string mcu;          // "atmega2560"
+		std::string fcpu;         // "16000000L"
+		std::string variant;      // "mega"
+		std::string programmer;   // "wiring"
+		long uploadBaud = 115200;
 	};
+
+	struct FileEntry {
+		std::string srcPath;      // ソースのフルパス (.ino 統合の場合は build/<name>.ino.cpp)
+		std::string objPath;      // 出力 .o のフルパス
+		bool isCpp = true;        // false なら C コンパイラ
+		long long mtime = 0;
+		uintmax_t size = 0;
+	};
+
+	// =============================================================================
+	// パス/環境ユーティリティ
+	// =============================================================================
+
+	// .ino / フォルダ / 末尾スラッシュ を吸収して「.ino を含むディレクトリ」を返す
+	std::string resolveSketchDir(const std::string& raw) {
+		std::error_code ec;
+		fs::path p(raw);
+
+		if (p.extension() == ".ino") {
+			if (fs::is_regular_file(p, ec)) return p.parent_path().string();
+			return "";
+		}
+		if (fs::is_directory(p, ec)) {
+			for (const auto& entry : fs::directory_iterator(p, ec)) {
+				if (ec) break;
+				if (entry.path().extension() == ".ino") return p.string();
+			}
+			return p.string();   // .ino 無し: エラーは呼び出し元で
+		}
+		return "";
+	}
+
+	// hint があればそれ、なければ sketch から親方向に .vscode/ を探す
+	std::string resolveWorkspace(const std::string& sketchDir, const std::string& hint) {
+		std::error_code ec;
+		if (!hint.empty()) {
+			fs::path h = fs::absolute(hint, ec);
+			if (!ec && fs::is_directory(h, ec)) return h.string();
+		}
+		fs::path p = fs::absolute(sketchDir, ec);
+		if (ec) return sketchDir;
+		while (!p.empty()) {
+			std::error_code e2;
+			if (fs::is_directory(p / ".vscode", e2)) return p.string();
+			fs::path parent = p.parent_path();
+			if (parent == p) break;
+			p = parent;
+		}
+		return sketchDir;
+	}
+
+	// <workspace>/.vscode/build/<sketchDir からの相対パス>
+	std::string computeBuildDir(const std::string& workspace, const std::string& sketch) {
+		std::error_code ec;
+		fs::path ws = fs::absolute(workspace, ec);
+		fs::path sd = fs::absolute(sketch, ec);
+		fs::path rel = fs::relative(sd, ws, ec);
+		std::string r = rel.string();
+		bool inside = !ec && !r.empty() && r != "." && r.rfind("..", 0) != 0;
+
+		fs::path base = ws / ".vscode" / "build";
+		if (inside) return (base / rel).string();
+
+		std::string leaf = sd.filename().string();
+		if (leaf.empty()) leaf = "sketch";
+		return (base / leaf).string();
+	}
+
+	// =============================================================================
+	// ボード設定
+	// =============================================================================
 
 	BoardConfig resolveBoardConfig(const std::string& fqbn) {
 		BoardConfig c;
-		// デフォルトは MEGA 2560
 		c.mcu = "atmega2560";
 		c.fcpu = "16000000L";
 		c.variant = "mega";
 		c.programmer = "wiring";
 		c.uploadBaud = 115200;
 
-		// "arduino:avr:mega:cpu=atmega2560"   → MEGA 2560
-		// "arduino:avr:megaADK"               → MEGA ADK (atmega2560)
 		std::string lower = fqbn;
 		std::transform(lower.begin(), lower.end(), lower.begin(),
 			[](unsigned char ch) { return (char)std::tolower(ch); });
-
 		if (lower.find("cpu=atmega1280") != std::string::npos) {
 			c.mcu = "atmega1280";
 			c.programmer = "arduino";
@@ -43,10 +138,58 @@ namespace {
 		return c;
 	}
 
-	// ---------------------------------------------------------------------
-	// fqbn / flags から core.a のキャッシュキーを作る
-	// ---------------------------------------------------------------------
-	std::string buildCoreCacheKey(const BoardConfig& bc) {
+	// =============================================================================
+	// コンパイラフラグ生成
+	// =============================================================================
+
+	std::string commonDefines(const BoardConfig& bc) {
+		std::ostringstream f;
+		f << " -DF_CPU=" << bc.fcpu
+			<< " -DARDUINO=10819"
+			<< " -DARDUINO_AVR_MEGA2560"
+			<< " -DARDUINO_ARCH_AVR";
+		return f.str();
+	}
+
+	std::string includeFlags(const std::string& sketchDir, const std::string& buildDir) {
+		std::ostringstream f;
+		f << " -I\"" << g_state.toolchain.coreDir << "\"";
+		if (!g_state.toolchain.variantDir.empty()) {
+			f << " -I\"" << g_state.toolchain.variantDir << "\"";
+		}
+		f << " -I\"" << sketchDir << "\""
+			<< " -I\"" << buildDir << "\"";
+		return f.str();
+	}
+
+	std::string cppFlags(const BoardConfig& bc, const std::string& sketchDir,
+		const std::string& buildDir) {
+		std::ostringstream f;
+		f << "-c -g -Os -Wall -Wextra -std=gnu++17"
+			<< " -ffunction-sections -fdata-sections -fno-exceptions"
+			<< " -fno-threadsafe-statics -Wno-error=narrowing"
+			<< " -mmcu=" << bc.mcu
+			<< commonDefines(bc)
+			<< includeFlags(sketchDir, buildDir);
+		return f.str();
+	}
+
+	std::string cFlags(const BoardConfig& bc, const std::string& sketchDir,
+		const std::string& buildDir) {
+		std::ostringstream f;
+		f << "-c -g -Os -Wall -Wextra -std=gnu11"
+			<< " -ffunction-sections -fdata-sections"
+			<< " -mmcu=" << bc.mcu
+			<< commonDefines(bc)
+			<< includeFlags(sketchDir, buildDir);
+		return f.str();
+	}
+
+	// =============================================================================
+	// core.a キャッシュ
+	// =============================================================================
+
+	std::string coreCacheKey(const BoardConfig& bc) {
 		std::ostringstream oss;
 		oss << bc.mcu << "|" << bc.fcpu << "|" << bc.variant << "|"
 			<< g_state.toolchain.compilerVersion << "|"
@@ -60,43 +203,10 @@ namespace {
 		return Utils::joinPath(dir, "core.a");
 	}
 
-	// ---------------------------------------------------------------------
-	// スケッチディレクトリ正規化 (キーとして使うため)
-	// ---------------------------------------------------------------------
-	std::string normalizeDir(const std::string& dir) {
-		std::error_code ec;
-		auto abs = std::filesystem::absolute(dir, ec);
-		if (ec) return dir;
-		std::string s = abs.string();
-		std::transform(s.begin(), s.end(), s.begin(),
-			[](unsigned char ch) { return (char)std::tolower(ch); });
-		return s;
-	}
-
-	// ---------------------------------------------------------------------
-	// スケッチ + ライブラリの全 .ino/.cpp/.c/.h を列挙して signature を作る
-	// ---------------------------------------------------------------------
-	std::string computeSourceSignature(const std::string& sketchDir) {
-		std::vector<std::string> all;
-		for (const auto& ext : { ".ino", ".cpp", ".c", ".h", ".hpp" }) {
-			auto files = Utils::getFilesByExtension(sketchDir, ext);
-			all.insert(all.end(), files.begin(), files.end());
-		}
-		std::sort(all.begin(), all.end());
-		return Utils::getSourceSignature(all);
-	}
-
-	// ---------------------------------------------------------------------
-	// arduino-cli を探す (PATH または %LOCALAPPDATA%)
-	// ---------------------------------------------------------------------
 	std::string findArduinoCli() {
-		// 1) PATH
 		char buf[MAX_PATH * 2];
-		DWORD r = SearchPathA(nullptr, "arduino-cli.exe", nullptr,
-			sizeof(buf), buf, nullptr);
+		DWORD r = SearchPathA(nullptr, "arduino-cli.exe", nullptr, sizeof(buf), buf, nullptr);
 		if (r > 0 && r < sizeof(buf)) return std::string(buf, r);
-
-		// 2) よくある場所
 		std::vector<std::string> candidates = {
 			Utils::joinPath(Utils::getLocalAppDataPath(), "Programs\\arduino-cli\\arduino-cli.exe"),
 			"C:\\Program Files\\Arduino CLI\\arduino-cli.exe",
@@ -107,21 +217,17 @@ namespace {
 		return "";
 	}
 
-	// ---------------------------------------------------------------------
-	// arduino-cli compile を 1 回だけ走らせて core.a を取り出す
-	//   → core-cache に保存
-	// ---------------------------------------------------------------------
-	bool generateCoreArchive(const BoardConfig& bc,
-		const std::string& sketchDir,
-		const std::string& targetCoreA,
-		std::string& errorOut) {
+	// 初回のみ arduino-cli compile を呼んで core.a を取り出す
+	bool ensureCoreArchive(const BoardConfig& bc, const std::string& sketchDir,
+		const std::string& targetCoreA, std::string& errOut) {
+		if (Utils::fileExists(targetCoreA)) return true;
+
 		std::string cli = findArduinoCli();
 		if (cli.empty()) {
-			errorOut = "arduino-cli not found (cannot generate core.a)";
+			errOut = "arduino-cli not found (cannot generate core.a)";
 			return false;
 		}
 
-		// 一時ビルドディレクトリ
 		std::string tmpBuild = Utils::joinPath(Utils::getGlobalCacheDir(), "tmp-build");
 		Utils::createDirectory(tmpBuild);
 
@@ -136,454 +242,370 @@ namespace {
 
 		auto pr = runProcess(cli, args.str(), "", true);
 		if (pr.exitCode != 0) {
-			errorOut = "arduino-cli compile failed:\n" + pr.error + "\n" + pr.output;
+			errOut = "arduino-cli compile failed:\n" + pr.error + "\n" + pr.output;
 			return false;
 		}
 
-		// build-path/core/core.a を target にコピー
 		std::string srcCoreA = Utils::joinPath(tmpBuild, "core\\core.a");
 		if (!Utils::fileExists(srcCoreA)) {
-			errorOut = "core.a not produced by arduino-cli at " + srcCoreA;
+			errOut = "core.a not produced by arduino-cli at " + srcCoreA;
 			return false;
 		}
+
 		std::error_code ec;
-		std::filesystem::copy_file(srcCoreA, targetCoreA,
-			std::filesystem::copy_options::overwrite_existing, ec);
+		fs::copy_file(srcCoreA, targetCoreA, fs::copy_options::overwrite_existing, ec);
 		if (ec) {
-			errorOut = "Failed to copy core.a: " + ec.message();
+			errOut = "Failed to copy core.a: " + ec.message();
 			return false;
 		}
 		return true;
 	}
 
-	// ---------------------------------------------------------------------
-	// 共通の avr-g++ / avr-gcc コンパイルフラグ
-	// ---------------------------------------------------------------------
-	std::string commonDefines(const BoardConfig& bc) {
-		std::ostringstream f;
-		f << " -DF_CPU=" << bc.fcpu;
-		f << " -DARDUINO=10819";
-		f << " -DARDUINO_AVR_MEGA2560";
-		f << " -DARDUINO_ARCH_AVR";
-		return f.str();
-	}
+	// =============================================================================
+	// .ino → .cpp 変換
+	// =============================================================================
 
-	std::string includeFlags(const std::string& sketchDir,
-		const std::string& buildDir = "") {
-		std::ostringstream f;
-		// コアヘッダ
-		f << " -I\"" << g_state.toolchain.coreDir << "\"";
-		// ボードバリアント (mega 等)
-		if (!g_state.toolchain.variantDir.empty()) {
-			f << " -I\"" << g_state.toolchain.variantDir << "\"";
-		}
-		// スケッチディレクトリ自身 (mono_con.h など同階層のヘッダを解決)
-		if (!sketchDir.empty()) {
-			f << " -I\"" << sketchDir << "\"";
-		}
-		// ビルドディレクトリ (.ino を .cpp に変換したファイルのヘッダ解決)
-		if (!buildDir.empty()) {
-			f << " -I\"" << buildDir << "\"";
-		}
-		return f.str();
-	}
-
-	std::string cppFlags(const BoardConfig& bc,
+	// 全 .ino を 1 つの .cpp に結合してファイルに書き出す
+	//   内容が前回と同じなら mtime を変えないので、差分判定が誤動作しない
+	std::string mergeInoFiles(const std::vector<std::string>& inos,
 		const std::string& sketchDir,
-		const std::string& buildDir = "") {
-		std::ostringstream f;
-		f << "-c -g -Os -Wall -Wextra -std=gnu++17"
-			<< " -ffunction-sections -fdata-sections -fno-exceptions"
-			<< " -fno-threadsafe-statics -Wno-error=narrowing"
-			<< " -mmcu=" << bc.mcu
-			<< commonDefines(bc)
-			<< includeFlags(sketchDir, buildDir);
-		return f.str();
-	}
+		const std::string& buildDir) {
+		std::string sketchName = Utils::getFileName(sketchDir);
+		std::string outPath = Utils::joinPath(buildDir, sketchName + ".ino.cpp");
 
-	std::string cFlags(const BoardConfig& bc,
-		const std::string& sketchDir,
-		const std::string& buildDir = "") {
-		std::ostringstream f;
-		f << "-c -g -Os -Wall -Wextra -std=gnu11"
-			<< " -ffunction-sections -fdata-sections"
-			<< " -mmcu=" << bc.mcu
-			<< commonDefines(bc)
-			<< includeFlags(sketchDir, buildDir);
-		return f.str();
-	}
-
-	// ---------------------------------------------------------------------
-	// .ino を .cpp に「ラップ」する: 先頭で Arduino.h を include して
-	// プロトタイプ宣言を補う。本格的なプリプロセスは arduino-cli に任せ、
-	// インクリメンタル用の簡易版だけ実装する。
-	// ---------------------------------------------------------------------
-	std::string wrapInoToCpp(const std::string& inoPath) {
-		std::string content = Utils::readFile(inoPath);
 		std::ostringstream out;
-		out << "// Auto-generated by arduino-build-daemon\n";
-		out << "#include <Arduino.h>\n";
-		out << "#line 1 \"" << Utils::getFileName(inoPath) << "\"\n";
-		out << content;
-		return out.str();
+		out << "// Auto-generated by arduino-build-daemon\n"
+			<< "#include <Arduino.h>\n";
+		for (size_t i = 0; i < inos.size(); ++i) {
+			out << "#line 1 \"" << Utils::getFileName(inos[i]) << "\"\n"
+				<< Utils::readFile(inos[i]) << "\n";
+		}
+		std::string content = out.str();
+		Utils::writeFileIfChanged(outPath, content);
+		return outPath;
 	}
 
-	// ---------------------------------------------------------------------
-	// インクリメンタルコンパイル本体
-	// ---------------------------------------------------------------------
-	bool incrementalCompile(const Builder::CompileRequest& req,
-		const BoardConfig& bc,
-		const std::string& coreA,
-		Builder::CompileResult& out,
-		SketchBuildState& s) {
-		Stopwatch sw;
+	// =============================================================================
+	// ソース列挙とプラン作成
+	// =============================================================================
 
-		std::string sketchName = Utils::getFileName(s.sketchDir);
-		// buildDir は呼び出し元 (compile()) で既に s.buildDir に設定済み
-		const std::string& buildDir = s.buildDir;
-		Utils::createDirectory(buildDir);
+	FileEntry makeEntry(const std::string& src, const std::string& obj, bool isCpp) {
+		FileEntry e;
+		e.srcPath = src;
+		e.objPath = obj;
+		e.isCpp = isCpp;
+		e.mtime = Utils::getFileLastWriteTime(src);
+		std::error_code ec;
+		e.size = fs::file_size(src, ec);
+		if (ec) e.size = 0;
+		return e;
+	}
 
-		// 1) .ino を 1 つの .cpp に統合 (簡易: 最初の .ino だけ)
-		auto inos = Utils::getFilesByExtension(s.sketchDir, ".ino");
-		std::vector<std::string> objects;
+	// すべてのコンパイル単位を列挙
+	std::vector<FileEntry> collectSources(const std::string& sketchDir,
+		const std::string& buildDir) {
+		std::vector<FileEntry> entries;
 
-		auto compileOne = [&](const std::string& src, const std::string& obj,
-			bool isCpp) -> bool {
-				// sketchDir と buildDir を両方 -I に加える
-				std::string flags = isCpp
-					? cppFlags(bc, s.sketchDir, buildDir)
-					: cFlags(bc, s.sketchDir, buildDir);
-				std::string args = flags + " \"" + src + "\" -o \"" + obj + "\"";
-				std::string compiler = isCpp ? g_state.toolchain.avrGpp : g_state.toolchain.avrGcc;
-				auto pr = runProcess(compiler, args, "", true);
-				if (pr.exitCode != 0) {
-					out.compilerOutput += pr.error + pr.output;
-					return false;
-				}
-				out.compilerOutput += pr.output;
-				return true;
-			};
-
-		// .ino を結合して main.cpp として 1 つコンパイル
+		// 1) .ino を結合した 1 ファイル
+		auto inos = Utils::getFilesByExtension(sketchDir, ".ino");
+		std::sort(inos.begin(), inos.end());
 		if (!inos.empty()) {
-			std::string mergedSrc = Utils::joinPath(buildDir, sketchName + ".ino.cpp");
-			std::string merged;
-			for (size_t i = 0; i < inos.size(); ++i) {
-				if (i == 0) merged += wrapInoToCpp(inos[i]);
-				else merged += "\n#line 1 \"" + Utils::getFileName(inos[i]) + "\"\n"
-					+ Utils::readFile(inos[i]);
+			std::string merged = mergeInoFiles(inos, sketchDir, buildDir);
+			FileEntry e;
+			e.srcPath = merged;
+			e.objPath = merged + ".o";
+			e.isCpp = true;
+			e.mtime = 0;
+			e.size = 0;
+			for (const auto& ino : inos) {
+				long long t = Utils::getFileLastWriteTime(ino);
+				if (t > e.mtime) e.mtime = t;
+				std::error_code ec;
+				auto s = fs::file_size(ino, ec);
+				if (!ec) e.size += s;
 			}
-			Utils::writeFile(mergedSrc, merged);
-			std::string obj = mergedSrc + ".o";
-			if (!compileOne(mergedSrc, obj, true)) {
-				out.errorMessage = "Compile failed: " + Utils::getFileName(inos[0]);
-				return false;
+			entries.push_back(e);
+		}
+		// 2) .cpp
+		for (const auto& src : Utils::getFilesByExtension(sketchDir, ".cpp")) {
+			std::string obj = Utils::joinPath(buildDir, Utils::getFileStem(src) + ".cpp.o");
+			entries.push_back(makeEntry(src, obj, true));
+		}
+		// 3) .c
+		for (const auto& src : Utils::getFilesByExtension(sketchDir, ".c")) {
+			std::string obj = Utils::joinPath(buildDir, Utils::getFileStem(src) + ".c.o");
+			entries.push_back(makeEntry(src, obj, false));
+		}
+		return entries;
+	}
+
+	// =============================================================================
+	// .stamps ファイル: ファイル単位の (mtime,size) 永続化
+	// フォーマット: 各行 "<mtime> <size> <srcPath>"
+	// =============================================================================
+
+	struct Stamp { long long mtime; uintmax_t size; };
+	using StampMap = std::unordered_map<std::string, Stamp>;
+
+	StampMap loadStamps(const std::string& buildDir) {
+		StampMap m;
+		std::string path = Utils::joinPath(buildDir, ".stamps");
+		if (!Utils::fileExists(path)) return m;
+
+		for (const auto& line : Utils::readLines(path)) {
+			if (line.empty()) continue;
+			std::istringstream iss(line);
+			Stamp s{};
+			std::string srcPath;
+			if (iss >> s.mtime >> s.size) {
+				std::getline(iss >> std::ws, srcPath);
+
+				if (!srcPath.empty() && srcPath.back() == '\r') {
+					srcPath.pop_back();
+				}
+
+				if (!srcPath.empty()) m[srcPath] = s;
 			}
-			objects.push_back(obj);
 		}
+		return m;
+	}
 
-		// 2) 追加の .cpp / .c
-		for (const auto& src : Utils::getFilesByExtension(s.sketchDir, ".cpp")) {
-			std::string obj = Utils::joinPath(buildDir,
-				Utils::getFileStem(src) + ".cpp.o");
-			if (!compileOne(src, obj, true)) {
-				out.errorMessage = "Compile failed: " + Utils::getFileName(src);
-				return false;
-			}
-			objects.push_back(obj);
+	void saveStamps(const std::string& buildDir, const std::vector<FileEntry>& entries) {
+		std::ostringstream oss;
+		for (const auto& e : entries) {
+			oss << e.mtime << " " << e.size << " " << e.srcPath << "\n";
 		}
-		for (const auto& src : Utils::getFilesByExtension(s.sketchDir, ".c")) {
-			std::string obj = Utils::joinPath(buildDir,
-				Utils::getFileStem(src) + ".c.o");
-			if (!compileOne(src, obj, false)) {
-				out.errorMessage = "Compile failed: " + Utils::getFileName(src);
-				return false;
-			}
-			objects.push_back(obj);
+		Utils::writeFile(Utils::joinPath(buildDir, ".stamps"), oss.str());
+	}
+
+	// =============================================================================
+	// 差分判定: どのファイルを再コンパイルすべきか
+	// =============================================================================
+
+	// 「セット同一性」判定: 前回保存したファイル一覧と今回のリストが完全一致するか
+	bool sameFileSet(const StampMap& saved, const std::vector<FileEntry>& current) {
+		if (saved.size() != current.size()) return false;
+		for (const auto& e : current) {
+			if (saved.find(e.srcPath) == saved.end()) return false;
 		}
-
-		// 3) リンク (avr-gcc 経由)
-		std::string elfFile = Utils::joinPath(buildDir, sketchName + ".elf");
-		std::ostringstream linkArgs;
-		linkArgs << "-w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections"
-			<< " -mmcu=" << bc.mcu
-			<< " -o \"" << elfFile << "\"";
-		for (const auto& o : objects) linkArgs << " \"" << o << "\"";
-		linkArgs << " \"" << coreA << "\" -lm";
-
-		auto linkRes = runProcess(g_state.toolchain.avrGcc, linkArgs.str(), "", true);
-		if (linkRes.exitCode != 0) {
-			out.compilerOutput += linkRes.error + linkRes.output;
-			out.errorMessage = "Link failed";
-			return false;
-		}
-
-		// 4) objcopy で .hex 生成
-		std::string hexFile = Utils::joinPath(buildDir, sketchName + ".hex");
-		std::string objArgs = "-O ihex -R .eeprom \"" + elfFile + "\" \"" + hexFile + "\"";
-		auto objRes = runProcess(g_state.toolchain.avrObjcopy, objArgs, "", true);
-		if (objRes.exitCode != 0) {
-			out.compilerOutput += objRes.error + objRes.output;
-			out.errorMessage = "objcopy failed";
-			return false;
-		}
-
-		out.elfFile = elfFile;
-		out.hexFile = hexFile;
-		out.buildTimeMs = sw.elapsedMilliseconds();
-		out.success = true;
-		s.elfFile = elfFile;
-		s.hexFile = hexFile;
-		s.hasValidBuild = true;
-		s.lastBuildAt = std::chrono::steady_clock::now();
 		return true;
 	}
 
-} // namespace
-
-namespace {
-
-	// ---------------------------------------------------------------------
-	// スケッチディレクトリを正規化する
-	//
-	// 受け取るパスは以下のいずれかの形式になりうる:
-	//   (a) "C:\projects\MySketch"           ← ディレクトリ直指定
-	//   (b) "C:\projects\MySketch\MySketch.ino" ← .ino ファイル直指定
-	//   (c) "C:\projects\MySketch\"          ← 末尾スラッシュ付き
-	//
-	// → いずれも「.ino を含むディレクトリ」のパスを返す。
-	// 解決できなければ空文字を返す。
-	// ---------------------------------------------------------------------
-	std::string resolveSketchDir(const std::string& raw) {
-		namespace fs = std::filesystem;
-		std::error_code ec;
-
-		fs::path p = fs::path(raw);
-
-		// (b) .ino ファイルが直接渡された場合 → 親ディレクトリを使う
-		if (p.extension() == ".ino") {
-			if (fs::is_regular_file(p, ec)) {
-				return p.parent_path().string();
-			}
-			// .ino パスだが存在しない → エラー
-			return "";
+	// 各エントリについて、再コンパイルが必要か判定
+	std::vector<size_t> planRebuild(const std::vector<FileEntry>& entries,
+		const StampMap& saved, bool forceFullBuild) {
+		std::vector<size_t> result;
+		if (forceFullBuild || !sameFileSet(saved, entries)) {
+			// ファイルが追加/削除された場合は全再コンパイル
+			result.reserve(entries.size());
+			for (size_t i = 0; i < entries.size(); ++i) result.push_back(i);
+			return result;
 		}
-
-		// (a)(c) ディレクトリが渡された場合
-		if (fs::is_directory(p, ec)) {
-			// ディレクトリ内に .ino が存在するか確認
-			for (const auto& entry : fs::directory_iterator(p, ec)) {
-				if (ec) break;
-				if (entry.path().extension() == ".ino") {
-					return p.string();
-				}
-			}
-			// .ino が見つからない → そのまま返す (エラーは呼び出し元で検出)
-			return p.string();
+		for (size_t i = 0; i < entries.size(); ++i) {
+			const auto& e = entries[i];
+			auto it = saved.find(e.srcPath);
+			bool dirty = (it == saved.end())
+				|| it->second.mtime != e.mtime
+				|| it->second.size != e.size
+				|| !Utils::fileExists(e.objPath);
+			if (dirty) result.push_back(i);
 		}
-
-		return "";
+		return result;
 	}
 
-	// ---------------------------------------------------------------------
-	// ワークスペースルート解決
-	//
-	// hint が指定されていればそれを使う。
-	// 未指定なら sketchDir から親ディレクトリを辿って .vscode/ を探す。
-	// 見つからなければ sketchDir 自身を返す (フォールバック)。
-	// ---------------------------------------------------------------------
-	std::string resolveWorkspaceRoot(const std::string& sketchDir,
-		const std::string& hint) {
-		namespace fs = std::filesystem;
-		std::error_code ec;
+	// =============================================================================
+	// 実コンパイル/リンク/objcopy
+	// =============================================================================
 
-		// 1) ヒントが妥当ならそれを使う
-		if (!hint.empty()) {
-			fs::path h = fs::absolute(hint, ec);
-			if (!ec && fs::is_directory(h, ec)) {
-				return h.string();
-			}
+	bool compileOne(const FileEntry& e, const BoardConfig& bc,
+		const std::string& sketchDir, const std::string& buildDir,
+		std::string& outputLog) {
+		std::string flags = e.isCpp
+			? cppFlags(bc, sketchDir, buildDir)
+			: cFlags(bc, sketchDir, buildDir);
+		std::string args = flags + " \"" + e.srcPath + "\" -o \"" + e.objPath + "\"";
+		std::string compiler = e.isCpp ? g_state.toolchain.avrGpp : g_state.toolchain.avrGcc;
+
+		auto pr = runProcess(compiler, args, "", true);
+		outputLog += pr.output;
+		if (pr.exitCode != 0) {
+			outputLog += pr.error;
+			return false;
 		}
-
-		// 2) sketchDir から上方向に .vscode/ を探す
-		fs::path p = fs::absolute(sketchDir, ec);
-		if (ec) return sketchDir;
-		while (!p.empty()) {
-			std::error_code ec2;
-			if (fs::is_directory(p / ".vscode", ec2)) {
-				return p.string();
-			}
-			fs::path parent = p.parent_path();
-			if (parent == p) break;  // ドライブルートに到達
-			p = parent;
-		}
-
-		// 3) フォールバック: sketchDir 自身をワークスペース扱い
-		return sketchDir;
+		return true;
 	}
 
-	// ---------------------------------------------------------------------
-	// ビルドディレクトリの計算
-	//
-	//   <workspace>/.vscode/build/<workspace からの相対パス>
-	//
-	// 例:
-	//   workspace = C:\projects\foo
-	//   sketchDir = C:\projects\foo\practice\1
-	//   → C:\projects\foo\.vscode\build\practice\1
-	//
-	// sketch が workspace 外なら、sketch のフォルダ名でフォールバック。
-	// ---------------------------------------------------------------------
-	std::string computeBuildDir(const std::string& workspaceDir,
-		const std::string& sketchDir) {
-		namespace fs = std::filesystem;
-		std::error_code ec;
-		fs::path ws = fs::absolute(workspaceDir, ec);
-		fs::path sd = fs::absolute(sketchDir, ec);
+	bool runLink(const std::vector<FileEntry>& all, const BoardConfig& bc,
+		const std::string& coreA, const std::string& elfPath, std::string& outputLog) {
+		std::ostringstream args;
+		args << "-w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections"
+			<< " -mmcu=" << bc.mcu
+			<< " -o \"" << elfPath << "\"";
+		for (const auto& e : all) args << " \"" << e.objPath << "\"";
+		args << " \"" << coreA << "\" -lm";
 
-		fs::path rel = fs::relative(sd, ws, ec);
-		std::string relStr = rel.string();
-
-		// 同一 (rel == ".") か、workspace 内 (".." で始まらない) の場合
-		bool insideWorkspace = !ec
-			&& !relStr.empty()
-			&& relStr != "."
-			&& relStr.rfind("..", 0) != 0;
-
-		fs::path buildBase = ws / ".vscode" / "build";
-		if (insideWorkspace) {
-			return (buildBase / rel).string();
-		}
-		// workspace 外 / 同一 → スケッチ名で
-		std::string leaf = sd.filename().string();
-		if (leaf.empty()) leaf = "sketch";
-		return (buildBase / leaf).string();
+		auto pr = runProcess(g_state.toolchain.avrGcc, args.str(), "", true);
+		outputLog += pr.output;
+		if (pr.exitCode != 0) { outputLog += pr.error; return false; }
+		return true;
 	}
 
-} // anonymous namespace (builder-local)
+	bool runObjcopy(const std::string& elfPath, const std::string& hexPath,
+		std::string& outputLog) {
+		std::string args = "-O ihex -R .eeprom \"" + elfPath + "\" \"" + hexPath + "\"";
+		auto pr = runProcess(g_state.toolchain.avrObjcopy, args, "", true);
+		outputLog += pr.output;
+		if (pr.exitCode != 0) { outputLog += pr.error; return false; }
+		return true;
+	}
+
+} // anonymous namespace
+
+// =============================================================================
+// public API
+// =============================================================================
 
 namespace Builder {
 
-	// ---------------------------------------------------------------------
-	// public: compile
-	// ---------------------------------------------------------------------
 	CompileResult compile(const CompileRequest& req) {
 		CompileResult out;
 		Stopwatch totalSw;
 
+		// --- 入口チェック ---
 		if (!g_state.toolchain.valid) {
 			out.errorMessage = "Toolchain not initialized: " + g_state.toolchain.errorMessage;
 			return out;
 		}
 
-		// --- スケッチディレクトリの正規化 ---
-		// .ino ファイルパス / ディレクトリパス / 末尾スラッシュ付き のいずれも吸収する
 		std::string sketchDir = resolveSketchDir(req.sketchDir);
-		if (sketchDir.empty()) {
-			out.errorMessage =
-				"Cannot resolve sketch directory from: \"" + req.sketchDir + "\"\n"
-				"  .ino ファイルのパス、またはそれを含むフォルダを指定してください。";
+		if (sketchDir.empty() || !Utils::directoryExists(sketchDir)) {
+			out.errorMessage = "Cannot resolve sketch directory: \"" + req.sketchDir + "\"";
 			return out;
 		}
-		if (!Utils::directoryExists(sketchDir)) {
-			out.errorMessage = "Sketch directory does not exist: " + sketchDir;
-			return out;
-		}
-		// .ino が存在するか
-		auto inos = Utils::getFilesByExtension(sketchDir, ".ino");
-		if (inos.empty()) {
-			out.errorMessage =
-				"No .ino file found in: " + sketchDir + "\n"
-				"  tasks.json の args を ${fileDirname} に設定してください。";
+		if (Utils::getFilesByExtension(sketchDir, ".ino").empty()) {
+			out.errorMessage = "No .ino file found in: " + sketchDir;
 			return out;
 		}
 
-		// --- ワークスペースルートとビルドディレクトリの決定 ---
-		// 例:
-		//   sketchDir    = C:\projects\foo\practice\1
-		//   workspaceDir = C:\projects\foo
-		//   buildDir     = C:\projects\foo\.vscode\build\practice\1
-		std::string workspaceDir = resolveWorkspaceRoot(sketchDir, req.workspaceDir);
-		std::string buildDir = computeBuildDir(workspaceDir, sketchDir);
+		std::string workspace = resolveWorkspace(sketchDir, req.workspaceDir);
+		std::string buildDir = computeBuildDir(workspace, sketchDir);
 		Utils::createDirectory(buildDir);
 
 		BoardConfig bc = resolveBoardConfig(req.fqbn);
-		std::string key = buildCoreCacheKey(bc);
-		std::string coreA = coreArchivePath(key);
 
-		// 1) core.a 用意 (なければ arduino-cli で 1 回生成)
-		if (!Utils::fileExists(coreA) || req.forceFullBuild) {
-			std::string errBuf;
-			// arduino-cli には正規化済みのディレクトリパスを渡す
-			if (!generateCoreArchive(bc, sketchDir, coreA, errBuf)) {
-				out.errorMessage = errBuf;
+		// --- core.a の確保 (初回のみ) ---
+		std::string coreA = coreArchivePath(coreCacheKey(bc));
+		if (req.forceFullBuild) Utils::deleteFile(coreA);
+		{
+			std::string err;
+			if (!ensureCoreArchive(bc, sketchDir, coreA, err)) {
+				out.errorMessage = err;
 				return out;
 			}
 		}
 
-		// 2) スケッチ状態取得 (キーは正規化済みパス)
-		std::string sketchKey = normalizeDir(sketchDir);
-		SketchBuildState* s = nullptr;
-		{
-			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
-			s = &g_state.sketches[sketchKey];
-			s->sketchDir = sketchDir;
-			s->buildDir = buildDir;   // incrementalCompile に伝える
-		}
+		// --- ソース列挙 + 差分判定 ---
+		auto entries = collectSources(sketchDir, buildDir);
+		auto saved = loadStamps(buildDir);
+		auto plan = planRebuild(entries, saved, req.forceFullBuild);
 
-		// 3) インクリメンタルチェック
-		std::string newSig = computeSourceSignature(sketchDir);
-		if (!req.forceFullBuild
-			&& s->hasValidBuild
-			&& s->lastSignature == newSig
-			&& Utils::fileExists(s->hexFile)) {
+		std::string sketchName = Utils::getFileName(sketchDir);
+		std::string elfPath = Utils::joinPath(buildDir, sketchName + ".elf");
+		std::string hexPath = Utils::joinPath(buildDir, sketchName + ".hex");
+
+		out.totalFiles = (int)entries.size();
+		out.recompiledFiles = (int)plan.size();
+
+		// --- 完全キャッシュヒット: .hex と .elf があり、変更ゼロ ---
+		if (plan.empty() && Utils::fileExists(hexPath) && Utils::fileExists(elfPath)) {
 			out.success = true;
 			out.cached = true;
-			out.hexFile = s->hexFile;
-			out.elfFile = s->elfFile;
+			out.hexFile = hexPath;
+			out.elfFile = elfPath;
 			out.buildTimeMs = totalSw.elapsedMilliseconds();
+
+			// state にも反映 (upload で参照される)
+			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
+			auto& s = g_state.sketches[sketchDir];
+			s.sketchDir = sketchDir;
+			s.buildDir = buildDir;
+			s.hexFile = hexPath;
+			s.elfFile = elfPath;
+			s.hasValidBuild = true;
 			return out;
 		}
 
-		// 4) 実ビルド (正規化済み sketchDir を持つ request を使う)
-		CompileRequest normalizedReq = req;
-		normalizedReq.sketchDir = sketchDir;
-		if (!incrementalCompile(normalizedReq, bc, coreA, out, *s)) return out;
+		// --- コンパイル (差分のみ) ---
+		for (size_t idx : plan) {
+			if (!compileOne(entries[idx], bc, sketchDir, buildDir, out.compilerOutput)) {
+				out.errorMessage = "Compile failed: "
+					+ Utils::getFileName(entries[idx].srcPath);
+				return out;
+			}
+		}
 
-		s->lastSignature = newSig;
+		// --- 何か再コンパイルしたか、elf/hex が無いならリンク ---
+		bool needLink = !plan.empty()
+			|| !Utils::fileExists(elfPath)
+			|| !Utils::fileExists(hexPath);
+
+		if (needLink) {
+			if (!runLink(entries, bc, coreA, elfPath, out.compilerOutput)) {
+				out.errorMessage = "Link failed";
+				return out;
+			}
+			if (!runObjcopy(elfPath, hexPath, out.compilerOutput)) {
+				out.errorMessage = "objcopy failed";
+				return out;
+			}
+		}
+
+		// --- スタンプ更新 ---
+		saveStamps(buildDir, entries);
+
+		// --- state 更新 ---
+		{
+			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
+			auto& s = g_state.sketches[sketchDir];
+			s.sketchDir = sketchDir;
+			s.buildDir = buildDir;
+			s.hexFile = hexPath;
+			s.elfFile = elfPath;
+			s.hasValidBuild = true;
+			s.lastBuildAt = std::chrono::steady_clock::now();
+		}
+
+		out.success = true;
+		out.cached = false;
+		out.hexFile = hexPath;
+		out.elfFile = elfPath;
 		out.buildTimeMs = totalSw.elapsedMilliseconds();
 		return out;
 	}
 
-	// ---------------------------------------------------------------------
-	// public: upload
-	// ---------------------------------------------------------------------
 	UploadResult upload(const UploadRequest& req) {
 		UploadResult out;
 		Stopwatch sw;
 
-		// sketchDir を正規化 (compile() と同じルールで)
 		std::string sketchDir = resolveSketchDir(req.sketchDir);
 		if (sketchDir.empty()) {
-			out.errorMessage = "Cannot resolve sketch directory from: \"" + req.sketchDir + "\"";
+			out.errorMessage = "Cannot resolve sketch directory: \"" + req.sketchDir + "\"";
 			return out;
 		}
 
-		// 1) コンパイル (skipCompile が false なら必ず実行)
+		// --- コンパイル ---
 		if (!req.skipCompile) {
 			CompileRequest cr;
-			cr.sketchDir = sketchDir;          // 正規化済みを渡す
-			cr.workspaceDir = req.workspaceDir; // ワークスペースヒントを伝播
+			cr.sketchDir = sketchDir;
+			cr.workspaceDir = req.workspaceDir;
 			out.compile = compile(cr);
 			if (!out.compile.success) {
 				out.errorMessage = out.compile.errorMessage;
 				return out;
 			}
 		} else {
-			// スキップ時は最新ビルド結果を取得
-			std::string key = normalizeDir(sketchDir);
 			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
-			auto it = g_state.sketches.find(key);
+			auto it = g_state.sketches.find(sketchDir);
 			if (it == g_state.sketches.end() || !it->second.hasValidBuild) {
 				out.errorMessage = "No prior build to upload";
 				return out;
@@ -594,7 +616,7 @@ namespace Builder {
 			out.compile.elfFile = it->second.elfFile;
 		}
 
-		// 2) ポート決定
+		// --- ポート決定 ---
 		std::string port = req.port;
 		if (port.empty()) {
 			std::lock_guard<std::mutex> lk(g_state.portMtx);
@@ -609,7 +631,7 @@ namespace Builder {
 		}
 		out.port = port;
 
-		// 3) avrdude 実行
+		// --- avrdude ---
 		BoardConfig bc = resolveBoardConfig("");
 		std::ostringstream args;
 		args << "-C\"" << g_state.toolchain.avrdudeConf << "\""
@@ -632,13 +654,16 @@ namespace Builder {
 		return out;
 	}
 
-	// ---------------------------------------------------------------------
+	// =============================================================================
 	// JSON シリアライズ
-	// ---------------------------------------------------------------------
+	// =============================================================================
+
 	nlohmann::json toJson(const CompileResult& r) {
 		return {
 			{"success", r.success},
 			{"cached", r.cached},
+			{"recompiledFiles", r.recompiledFiles},
+			{"totalFiles", r.totalFiles},
 			{"hexFile", r.hexFile},
 			{"elfFile", r.elfFile},
 			{"buildTimeMs", r.buildTimeMs},
