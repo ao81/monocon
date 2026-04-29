@@ -32,6 +32,14 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(nlohmann_json)
 
+# ----- Windows 固有の設定 -----
+if(WIN32)
+	# windows.h の min/max マクロを無効化
+	# これがないと std::max/std::min が C2589 エラーになる
+	add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+	# add_compile_definitions(NOMINMAX)
+endif()
+
 # =============================================================================
 # 共通コード (静的ライブラリ化)
 # =============================================================================

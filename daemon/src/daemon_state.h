@@ -30,11 +30,11 @@ struct ToolchainPaths {
 	std::string errorMessage;
 };
 
+// スケッチ単位の最終ビルド結果メタデータ (差分判定はディスク上の .stamps で行う)
 struct SketchBuildState {
 	std::string sketchDir;
-	std::string buildDir;       // <sketchDir>\.vscode\build\<sketch>
-	std::string lastSignature;  // 全ソースの (mtime,name) シグネチャ
-	std::string hexFile;        // 最終 .hex のフルパス
+	std::string buildDir;
+	std::string hexFile;
 	std::string elfFile;
 	std::chrono::steady_clock::time_point lastBuildAt{};
 	bool hasValidBuild = false;
