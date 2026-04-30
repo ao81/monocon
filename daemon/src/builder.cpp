@@ -168,6 +168,7 @@ namespace {
 		f << "-c -g -Os -Wall -Wextra -std=gnu++17"
 			<< " -ffunction-sections -fdata-sections -fno-exceptions"
 			<< " -fno-threadsafe-statics -Wno-error=narrowing"
+			<< " -Wno-unused-variable"
 			<< " -mmcu=" << bc.mcu
 			<< commonDefines(bc)
 			<< includeFlags(sketchDir, buildDir);
@@ -179,6 +180,7 @@ namespace {
 		std::ostringstream f;
 		f << "-c -g -Os -Wall -Wextra -std=gnu11"
 			<< " -ffunction-sections -fdata-sections"
+			<< " -Wno-unused-variable"
 			<< " -mmcu=" << bc.mcu
 			<< commonDefines(bc)
 			<< includeFlags(sketchDir, buildDir);
@@ -413,6 +415,22 @@ namespace {
 		return result;
 	}
 
+	std::string colorizeOutput(const std::string& output) {
+		std::istringstream iss(output);
+		std::ostringstream oss;
+		std::string line;
+		while (std::getline(iss, line)) {
+			if (line.find("error:") != std::string::npos) {
+				oss << "\033[31m" << line << "\033[0m\n"; // 赤
+			} else if (line.find("warning:") != std::string::npos) {
+				oss << "\033[33m" << line << "\033[0m\n"; // 黄
+			} else {
+				oss << line << "\n";
+			}
+		}
+		return oss.str();
+	}
+
 	// =============================================================================
 	// 実コンパイル/リンク/objcopy
 	// =============================================================================
@@ -427,9 +445,9 @@ namespace {
 		std::string compiler = e.isCpp ? g_state.toolchain.avrGpp : g_state.toolchain.avrGcc;
 
 		auto pr = runProcess(compiler, args, "", true);
-		outputLog += pr.output;
+		outputLog += colorizeOutput(pr.output);
 		if (pr.exitCode != 0) {
-			outputLog += pr.error;
+			outputLog += colorizeOutput(pr.error);
 			return false;
 		}
 		return true;
@@ -468,6 +486,17 @@ namespace {
 namespace Builder {
 
 	CompileResult compile(const CompileRequest& req) {
+		static bool ansiReady = [] {
+			HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+			HANDLE hErr = GetStdHandle(STD_ERROR_HANDLE);
+			DWORD mode = 0;
+			if (GetConsoleMode(hOut, &mode))
+				SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+			if (GetConsoleMode(hErr, &mode))
+				SetConsoleMode(hErr, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+			return true;
+		}();
+
 		CompileResult out;
 		Stopwatch totalSw;
 
