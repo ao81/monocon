@@ -18,7 +18,7 @@ file(MAKE_DIRECTORY
   "C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp"
 )
 
-set(configSubDirs Debug)
+set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
     file(MAKE_DIRECTORY "C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-subbuild/nlohmann_json-populate-prefix/src/nlohmann_json-populate-stamp/${subDir}")
 endforeach()

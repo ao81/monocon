@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(ArduinoBuildDaemon CXX)
 
 # ----- C++ 標準 -----
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -51,7 +52,7 @@ add_library(common STATIC
 target_include_directories(common PUBLIC src)
 target_link_libraries(common PUBLIC nlohmann_json::nlohmann_json)
 if(WIN32)
-	target_link_libraries(common PUBLIC advapi32)
+	target_link_libraries(common PUBLIC advapi32 setupapi)
 endif()
 
 # =============================================================================
@@ -66,6 +67,8 @@ target_link_libraries(arduino-build-daemon PRIVATE common)
 if(WIN32 AND MSVC)
 	set_target_properties(arduino-build-daemon PROPERTIES
 		LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+elseif(WIN32)
+	target_link_options(arduino-build-daemon PRIVATE -mconsole)
 endif()
 
 # =============================================================================

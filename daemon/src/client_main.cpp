@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <tlhelp32.h>   // CreateToolhelp32Snapshot for kill command
 
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <thread>
