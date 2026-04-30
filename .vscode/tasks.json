@@ -1,49 +1,49 @@
 {
 	"version": "2.0.0",
 	"tasks": [
-		{
-			"label": "Arduino: Upload",
-			"type": "shell",
-			"command": "${workspaceFolder}/daemon/build/bin/Release/arduino-build-cli.exe",
-			"args": ["upload", "${fileDirname}", "--workspace", "${workspaceFolder}"],
-			"group": { "kind": "build", "isDefault": true },
-			"presentation": { "reveal": "always", "panel": "shared" },
-			"problemMatcher": []
-		},
-		{
-			"label": "Arduino: Build only",
-			"type": "shell",
-			"command": "${workspaceFolder}/daemon/build/bin/Release/arduino-build-cli.exe",
-			"args": ["build", "${fileDirname}", "--workspace", "${workspaceFolder}"],
-			"problemMatcher": []
-		}
-
-
 		// {
-		// 	"label": "Arduino: Build & Upload",
+		// 	"label": "Arduino: Upload",
 		// 	"type": "shell",
-		// 	"command": "powershell",
-		// 	"args": [
-		// 		"-NoProfile",
-		// 		"-NonInteractive",
-		// 		"-ExecutionPolicy",
-		// 		"Bypass",
-		// 		"-File",
-		// 		"${workspaceFolder}/.vscode/arduino-upload.ps1",
-		// 		"-BuildPath",
-		// 		"${workspaceFolder}/.vscode/build/${relativeFileDirname}",
-		// 		"-SketchDir",
-		// 		"${fileDirname}"
-		// 	],
+		// 	"command": "${workspaceFolder}/daemon/build/bin/Release/arduino-build-cli.exe",
+		// 	"args": ["upload", "${fileDirname}", "--workspace", "${workspaceFolder}"],
 		// 	"group": { "kind": "build", "isDefault": true },
-		// 	"presentation": {
-		// 		"reveal": "always",
-		// 		"panel": "shared",
-		// 		"echo": false,
-		// 		"clear": true
-		// 	},
+		// 	"presentation": { "reveal": "always", "panel": "shared" },
 		// 	"problemMatcher": []
 		// },
+		// {
+		// 	"label": "Arduino: Build only",
+		// 	"type": "shell",
+		// 	"command": "${workspaceFolder}/daemon/build/bin/Release/arduino-build-cli.exe",
+		// 	"args": ["build", "${fileDirname}", "--workspace", "${workspaceFolder}"],
+		// 	"problemMatcher": []
+		// }
+
+
+		{
+			"label": "Arduino: Build & Upload",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-NonInteractive",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/.vscode/arduino-upload.ps1",
+				"-BuildPath",
+				"${workspaceFolder}/.vscode/build/${relativeFileDirname}",
+				"-SketchDir",
+				"${fileDirname}"
+			],
+			"group": { "kind": "build", "isDefault": true },
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"echo": false,
+				"clear": true
+			},
+			"problemMatcher": []
+		},
 
 
 		// {
