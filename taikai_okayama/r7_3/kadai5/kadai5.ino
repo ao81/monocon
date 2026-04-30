@@ -127,7 +127,7 @@ void setup() {
 	ph = digitalRead(_USER_CON_3PIN);
 	xpos = analogRead(A1);
 
-	randomSeed(millis);
+	randomSeed(millis());
 }
 
 void loop() {

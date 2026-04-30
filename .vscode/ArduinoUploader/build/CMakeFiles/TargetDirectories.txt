@@ -1,0 +1,3 @@
+C:/Users/ao/Desktop/monokon/.vscode/ArduinoUploader/build/CMakeFiles/ArduinoUploader.dir
+C:/Users/ao/Desktop/monokon/.vscode/ArduinoUploader/build/CMakeFiles/edit_cache.dir
+C:/Users/ao/Desktop/monokon/.vscode/ArduinoUploader/build/CMakeFiles/rebuild_cache.dir
