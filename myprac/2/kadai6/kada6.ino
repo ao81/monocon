@@ -47,15 +47,10 @@ void setup() {
 }
 
 void loop() {
-	int seg[2] = { 0x00, 0x00 };
-
-	int xi = getidx(x);
-	int yi = getidx(y);
-
-	seg[0] |= xseg[xi][0];
-	seg[1] |= xseg[xi][1];
-	seg[0] |= yseg[yi][0];
-	seg[1] |= yseg[yi][1];
-
+	int xi = getidx(x), yi = getidx(y);
+	int seg[2] = {
+		xseg[xi][0] | yseg[yi][0],
+		xseg[xi][1] | yseg[yi][1],
+	};
 	onedisp(seg);
 }
