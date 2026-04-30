@@ -48,13 +48,13 @@ ISR(TIMER3_COMPA_vect) {
 }
 
 void cw() {
-	if (++phase > 3) phase = 0;
+	if (--phase < 0) phase = 3;
 	lm.color.SM = stepm_init(phase);
 	led_stepmotor(lm.b8);
 }
 
 void ccw() {
-	if (--phase < 0) phase = 3;
+	if (++phase > 3) phase = 0;
 	lm.color.SM = stepm_init(phase);
 	led_stepmotor(lm.b8);
 }
