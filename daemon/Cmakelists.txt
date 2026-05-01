@@ -1,6 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
 project(ArduinoBuildDaemon CXX)
 
+# =============================================================================
+# 静的ビルド設定（環境非依存）
+# =============================================================================
+if(WIN32)
+    if(MSVC)
+        # MSVCランタイムを静的リンク (/MT)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    else()
+        # MinGW (GCC) の場合
+        add_link_options(-static -static-libgcc -static-libstdc++)
+    endif()
+endif()
+
 # ----- C++ 標準 -----
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(CMAKE_CXX_STANDARD 17)
