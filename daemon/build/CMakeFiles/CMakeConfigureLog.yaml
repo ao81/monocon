@@ -41,7 +41,6 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -134,7 +133,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -146,7 +144,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -229,7 +226,6 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -510,7 +506,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -522,7 +517,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -607,7 +601,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -619,7 +612,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -719,7 +711,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -784,7 +775,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -796,7 +786,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -874,7 +863,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -939,7 +927,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -951,7 +938,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1029,7 +1015,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1094,7 +1079,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1106,7 +1090,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1184,7 +1167,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1249,7 +1231,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1261,7 +1242,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1339,7 +1319,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1404,7 +1383,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1416,7 +1394,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1494,7 +1471,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1559,7 +1535,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1571,7 +1546,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1649,7 +1623,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1714,7 +1687,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1726,7 +1698,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1804,7 +1775,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1869,7 +1839,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1881,7 +1850,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1959,7 +1927,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -2024,7 +1991,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -2036,7 +2002,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -2114,7 +2079,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -2179,7 +2143,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -2191,7 +2154,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -2269,7 +2231,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -2358,9 +2319,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/tapi.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/tapi.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/tapi"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/tapi.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/tapi.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/tapi"
       - "C:/Program Files/nodejs/tapi.com"
       - "C:/Program Files/nodejs/tapi.exe"
       - "C:/Program Files/nodejs/tapi"
@@ -2513,7 +2471,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -2525,7 +2482,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -2606,7 +2562,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -2695,9 +2650,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar-15.1.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar-15.1.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar-15.1"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar-15.1.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar-15.1.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar-15.1"
       - "C:/Program Files/nodejs/gcc-ar-15.1.com"
       - "C:/Program Files/nodejs/gcc-ar-15.1.exe"
       - "C:/Program Files/nodejs/gcc-ar-15.1"
@@ -2875,9 +2827,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar-15.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar-15.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar-15"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar-15.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar-15.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar-15"
       - "C:/Program Files/nodejs/gcc-ar-15.com"
       - "C:/Program Files/nodejs/gcc-ar-15.exe"
       - "C:/Program Files/nodejs/gcc-ar-15"
@@ -3055,9 +3004,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar15.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar15.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ar15"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar15.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar15.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ar15"
       - "C:/Program Files/nodejs/gcc-ar15.com"
       - "C:/Program Files/nodejs/gcc-ar15.exe"
       - "C:/Program Files/nodejs/gcc-ar15"
@@ -3211,7 +3157,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -3223,7 +3168,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -3304,7 +3248,6 @@ events:
       - "C:/Program Files/Process Lasso/"
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -3393,9 +3336,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib-15.1.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib-15.1.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib-15.1"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib-15.1.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib-15.1.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib-15.1"
       - "C:/Program Files/nodejs/gcc-ranlib-15.1.com"
       - "C:/Program Files/nodejs/gcc-ranlib-15.1.exe"
       - "C:/Program Files/nodejs/gcc-ranlib-15.1"
@@ -3573,9 +3513,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib-15.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib-15.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib-15"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib-15.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib-15.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib-15"
       - "C:/Program Files/nodejs/gcc-ranlib-15.com"
       - "C:/Program Files/nodejs/gcc-ranlib-15.exe"
       - "C:/Program Files/nodejs/gcc-ranlib-15"
@@ -3753,9 +3690,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib15.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib15.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/gcc-ranlib15"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib15.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib15.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/gcc-ranlib15"
       - "C:/Program Files/nodejs/gcc-ranlib15.com"
       - "C:/Program Files/nodejs/gcc-ranlib15.exe"
       - "C:/Program Files/nodejs/gcc-ranlib15"
@@ -3909,7 +3843,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -3921,7 +3854,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -4002,7 +3934,6 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -4115,7 +4046,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -4127,7 +4057,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -4186,8 +4115,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u"
-      binary: "C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u"
+      source: "C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa"
+      binary: "C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -4198,13 +4127,13 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u'
+        Change Dir: 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa'
         
-        Run Build Command(s): "C:/Program Files/CMake/bin/cmake.exe" -E env VERBOSE=1 C:/PROGRA~2/mingw64/bin/mingw32-make.exe -f Makefile cmTC_87518/fast
-        C:/PROGRA~2/mingw64/bin/mingw32-make.exe  -f CMakeFiles\\cmTC_87518.dir\\build.make CMakeFiles/cmTC_87518.dir/build
-        mingw32-make[1]: Entering directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u'
-        Building CXX object CMakeFiles/cmTC_87518.dir/CMakeCXXCompilerABI.cpp.obj
-        C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE   -v -o CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj -c "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+        Run Build Command(s): "C:/Program Files/CMake/bin/cmake.exe" -E env VERBOSE=1 C:/PROGRA~2/mingw64/bin/mingw32-make.exe -f Makefile cmTC_43c32/fast
+        C:/PROGRA~2/mingw64/bin/mingw32-make.exe  -f CMakeFiles\\cmTC_43c32.dir\\build.make CMakeFiles/cmTC_43c32.dir/build
+        mingw32-make[1]: Entering directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa'
+        Building CXX object CMakeFiles/cmTC_43c32.dir/CMakeCXXCompilerABI.cpp.obj
+        C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE   -v -o CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj -c "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
         Using built-in specs.
         COLLECT_GCC=C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE
         Target: x86_64-w64-mingw32
@@ -4212,8 +4141,8 @@ events:
         Thread model: win32
         Supported LTO compression algorithms: zlib
         gcc version 15.1.0 (x86_64-win32-seh-rev0, Built by MinGW-Builds project) 
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_87518.dir\\'
-         C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/cc1plus.exe -quiet -v -iprefix C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/ -U_REENTRANT C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles\\cmTC_87518.dir\\ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=core2 -march=nocona -version -o C:\\Users\\ao\\AppData\\Local\\Temp\\ccj8W4D1.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_43c32.dir\\'
+         C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/cc1plus.exe -quiet -v -iprefix C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/ -U_REENTRANT C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles\\cmTC_43c32.dir\\ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=core2 -march=nocona -version -o C:\\Users\\ao\\AppData\\Local\\Temp\\ccsND8BM.s
         GNU C++17 (x86_64-win32-seh-rev0, Built by MinGW-Builds project) version 15.1.0 (x86_64-w64-mingw32)
         	compiled by GNU C version 15.1.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
         
@@ -4236,14 +4165,14 @@ events:
          C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/include
         End of search list.
         Compiler executable checksum: be9018a1d629d854d6ed8b0913c59dec
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_87518.dir\\'
-         C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj C:\\Users\\ao\\AppData\\Local\\Temp\\ccj8W4D1.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_43c32.dir\\'
+         C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj C:\\Users\\ao\\AppData\\Local\\Temp\\ccsND8BM.s
         GNU assembler version 2.44 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.44
         COMPILER_PATH=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/;C:/Program Files (x86)/mingw64/bin/../libexec/gcc/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/
         LIBRARY_PATH=C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.'
-        Linking CXX executable cmTC_87518.exe
-        "C:\\Program Files\\CMake\\bin\\cmake.exe" -E cmake_link_script CMakeFiles\\cmTC_87518.dir\\link.txt --verbose=1
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.'
+        Linking CXX executable cmTC_43c32.exe
+        "C:\\Program Files\\CMake\\bin\\cmake.exe" -E cmake_link_script CMakeFiles\\cmTC_43c32.dir\\link.txt --verbose=1
         Using built-in specs.
         COLLECT_GCC=C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE
         COLLECT_LTO_WRAPPER=C:/Program\\ Files\\ (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe
@@ -4254,16 +4183,16 @@ events:
         gcc version 15.1.0 (x86_64-win32-seh-rev0, Built by MinGW-Builds project) 
         COMPILER_PATH=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/;C:/Program Files (x86)/mingw64/bin/../libexec/gcc/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/
         LIBRARY_PATH=C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/;C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_87518.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_87518.'
-         C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/collect2.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\ccxXjnub.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_87518.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_87518.dir/objects.a --no-whole-archive --out-implib libcmTC_87518.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_43c32.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_43c32.'
+         C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/collect2.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\cco9gH82.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_43c32.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_43c32.dir/objects.a --no-whole-archive --out-implib libcmTC_43c32.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o
         collect2 version 15.1.0
-        C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/ld.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\ccxXjnub.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_87518.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_87518.dir/objects.a --no-whole-archive --out-implib libcmTC_87518.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o
+        C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/ld.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\cco9gH82.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_43c32.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_43c32.dir/objects.a --no-whole-archive --out-implib libcmTC_43c32.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o
         GNU ld (GNU Binutils) 2.44
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_87518.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_87518.'
-        "C:\\Program Files\\CMake\\bin\\cmake.exe" -E rm -f CMakeFiles\\cmTC_87518.dir/objects.a
-        C:\\PROGRA~2\\mingw64\\bin\\ar.exe qc CMakeFiles\\cmTC_87518.dir/objects.a @CMakeFiles\\cmTC_87518.dir\\objects1.rsp
-        C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE  -v -Wl,-v -Wl,--whole-archive CMakeFiles\\cmTC_87518.dir/objects.a -Wl,--no-whole-archive -o cmTC_87518.exe -Wl,--out-implib,libcmTC_87518.dll.a -Wl,--major-image-version,0,--minor-image-version,0
-        mingw32-make[1]: Leaving directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u'
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_43c32.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_43c32.'
+        "C:\\Program Files\\CMake\\bin\\cmake.exe" -E rm -f CMakeFiles\\cmTC_43c32.dir/objects.a
+        C:\\PROGRA~2\\mingw64\\bin\\ar.exe qc CMakeFiles\\cmTC_43c32.dir/objects.a @CMakeFiles\\cmTC_43c32.dir\\objects1.rsp
+        C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE  -v -Wl,-v -Wl,--whole-archive CMakeFiles\\cmTC_43c32.dir/objects.a -Wl,--no-whole-archive -o cmTC_43c32.exe -Wl,--out-implib,libcmTC_43c32.dll.a -Wl,--major-image-version,0,--minor-image-version,0
+        mingw32-make[1]: Leaving directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa'
         
       exitCode: 0
   -
@@ -4302,13 +4231,13 @@ events:
       Parsed CXX implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)))("|,| |$)]
-        ignore line: [Change Dir: 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u']
+        ignore line: [Change Dir: 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa']
         ignore line: []
-        ignore line: [Run Build Command(s): "C:/Program Files/CMake/bin/cmake.exe" -E env VERBOSE=1 C:/PROGRA~2/mingw64/bin/mingw32-make.exe -f Makefile cmTC_87518/fast]
-        ignore line: [C:/PROGRA~2/mingw64/bin/mingw32-make.exe  -f CMakeFiles\\cmTC_87518.dir\\build.make CMakeFiles/cmTC_87518.dir/build]
-        ignore line: [mingw32-make[1]: Entering directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u']
-        ignore line: [Building CXX object CMakeFiles/cmTC_87518.dir/CMakeCXXCompilerABI.cpp.obj]
-        ignore line: [C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE   -v -o CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj -c "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"]
+        ignore line: [Run Build Command(s): "C:/Program Files/CMake/bin/cmake.exe" -E env VERBOSE=1 C:/PROGRA~2/mingw64/bin/mingw32-make.exe -f Makefile cmTC_43c32/fast]
+        ignore line: [C:/PROGRA~2/mingw64/bin/mingw32-make.exe  -f CMakeFiles\\cmTC_43c32.dir\\build.make CMakeFiles/cmTC_43c32.dir/build]
+        ignore line: [mingw32-make[1]: Entering directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa']
+        ignore line: [Building CXX object CMakeFiles/cmTC_43c32.dir/CMakeCXXCompilerABI.cpp.obj]
+        ignore line: [C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE   -v -o CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj -c "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE]
         ignore line: [Target: x86_64-w64-mingw32]
@@ -4316,8 +4245,8 @@ events:
         ignore line: [Thread model: win32]
         ignore line: [Supported LTO compression algorithms: zlib]
         ignore line: [gcc version 15.1.0 (x86_64-win32-seh-rev0  Built by MinGW-Builds project) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_87518.dir\\']
-        ignore line: [ C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/cc1plus.exe -quiet -v -iprefix C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/ -U_REENTRANT C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles\\cmTC_87518.dir\\ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=core2 -march=nocona -version -o C:\\Users\\ao\\AppData\\Local\\Temp\\ccj8W4D1.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_43c32.dir\\']
+        ignore line: [ C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/cc1plus.exe -quiet -v -iprefix C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/ -U_REENTRANT C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles\\cmTC_43c32.dir\\ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=core2 -march=nocona -version -o C:\\Users\\ao\\AppData\\Local\\Temp\\ccsND8BM.s]
         ignore line: [GNU C++17 (x86_64-win32-seh-rev0  Built by MinGW-Builds project) version 15.1.0 (x86_64-w64-mingw32)]
         ignore line: [	compiled by GNU C version 15.1.0  GMP version 6.2.1  MPFR version 4.1.0  MPC version 1.2.1  isl version isl-0.27-GMP]
         ignore line: []
@@ -4340,8 +4269,8 @@ events:
         ignore line: [ C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/include]
         ignore line: [End of search list.]
         ignore line: [Compiler executable checksum: be9018a1d629d854d6ed8b0913c59dec]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_87518.dir\\']
-        ignore line: [ C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj C:\\Users\\ao\\AppData\\Local\\Temp\\ccj8W4D1.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_43c32.dir\\']
+        ignore line: [ C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj C:\\Users\\ao\\AppData\\Local\\Temp\\ccsND8BM.s]
         ignore line: [GNU assembler version 2.44 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.44]
         ignore line: [COMPILER_PATH=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/]
         ignore line: [C:/Program Files (x86)/mingw64/bin/../libexec/gcc/]
@@ -4352,9 +4281,9 @@ events:
         ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib/]
         ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/]
         ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_87518.dir\\CMakeCXXCompilerABI.cpp.']
-        ignore line: [Linking CXX executable cmTC_87518.exe]
-        ignore line: ["C:\\Program Files\\CMake\\bin\\cmake.exe" -E cmake_link_script CMakeFiles\\cmTC_87518.dir\\link.txt --verbose=1]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.obj' '-c' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'CMakeFiles\\cmTC_43c32.dir\\CMakeCXXCompilerABI.cpp.']
+        ignore line: [Linking CXX executable cmTC_43c32.exe]
+        ignore line: ["C:\\Program Files\\CMake\\bin\\cmake.exe" -E cmake_link_script CMakeFiles\\cmTC_43c32.dir\\link.txt --verbose=1]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE]
         ignore line: [COLLECT_LTO_WRAPPER=C:/Program\\ Files\\ (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe]
@@ -4372,16 +4301,16 @@ events:
         ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib/]
         ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/]
         ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_87518.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_87518.']
-        ignore line: [ C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/collect2.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\ccxXjnub.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_87518.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_87518.dir/objects.a --no-whole-archive --out-implib libcmTC_87518.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_43c32.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_43c32.']
+        ignore line: [ C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/collect2.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\cco9gH82.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_43c32.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_43c32.dir/objects.a --no-whole-archive --out-implib libcmTC_43c32.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o]
         ignore line: [collect2 version 15.1.0]
-        ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/ld.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\ccxXjnub.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_87518.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_87518.dir/objects.a --no-whole-archive --out-implib libcmTC_87518.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o]
+        ignore line: [C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/bin/ld.exe -plugin C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/liblto_plugin.dll -plugin-opt=C:/Program Files (x86)/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.1.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\\Users\\ao\\AppData\\Local\\Temp\\cco9gH82.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 --sysroot=C:/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 -m i386pep -Bdynamic -o cmTC_43c32.exe C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtbegin.o -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0 -LC:/Program Files (x86)/mingw64/bin/../lib/gcc -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../../../x86_64-w64-mingw32/lib -LC:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/../../.. -v --whole-archive CMakeFiles\\cmTC_43c32.dir/objects.a --no-whole-archive --out-implib libcmTC_43c32.dll.a --major-image-version 0 --minor-image-version 0 -lstdc++ -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc_s -lgcc -lmingwex -lmsvcrt -lkernel32 C:/Program Files (x86)/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.1.0/crtend.o]
         ignore line: [GNU ld (GNU Binutils) 2.44]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_87518.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_87518.']
-        ignore line: ["C:\\Program Files\\CMake\\bin\\cmake.exe" -E rm -f CMakeFiles\\cmTC_87518.dir/objects.a]
-        ignore line: [C:\\PROGRA~2\\mingw64\\bin\\ar.exe qc CMakeFiles\\cmTC_87518.dir/objects.a @CMakeFiles\\cmTC_87518.dir\\objects1.rsp]
-        ignore line: [C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE  -v -Wl -v -Wl --whole-archive CMakeFiles\\cmTC_87518.dir/objects.a -Wl --no-whole-archive -o cmTC_87518.exe -Wl --out-implib libcmTC_87518.dll.a -Wl --major-image-version 0 --minor-image-version 0]
-        ignore line: [mingw32-make[1]: Leaving directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qbee0u']
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_43c32.exe' '-shared-libgcc' '-mtune=core2' '-march=nocona' '-dumpdir' 'cmTC_43c32.']
+        ignore line: ["C:\\Program Files\\CMake\\bin\\cmake.exe" -E rm -f CMakeFiles\\cmTC_43c32.dir/objects.a]
+        ignore line: [C:\\PROGRA~2\\mingw64\\bin\\ar.exe qc CMakeFiles\\cmTC_43c32.dir/objects.a @CMakeFiles\\cmTC_43c32.dir\\objects1.rsp]
+        ignore line: [C:\\PROGRA~2\\mingw64\\bin\\C__~1.EXE  -v -Wl -v -Wl --whole-archive CMakeFiles\\cmTC_43c32.dir/objects.a -Wl --no-whole-archive -o cmTC_43c32.exe -Wl --out-implib libcmTC_43c32.dll.a -Wl --major-image-version 0 --minor-image-version 0]
+        ignore line: [mingw32-make[1]: Leaving directory 'C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/CMakeScratch/TryCompile-qthjfa']
         ignore line: []
         ignore line: []
         linker tool for 'CXX': ../src/gcc-15.1.0/configure --host=x86_64-w64-mingw32 --build=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --prefix=/mingw64 --with-sysroot=/c/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64 --enable-host-shared --disable-multilib --enable-languages=c,c++,fortran,lto --enable-libstdcxx-time=yes --enable-threads=win32 --enable-libstdcxx-threads=yes --enable-libgomp --enable-libatomic --enable-lto --enable-graphite --enable-checking=release --enable-mingw-wildcard --enable-fully-dynamic-string --enable-version-specific-runtime-libs --enable-libstdcxx-filesystem-ts=yes --disable-libssp --disable-libstdcxx-pch --disable-libstdcxx-debug --enable-bootstrap --disable-rpath --disable-win32-registry --disable-nls --disable-werror --disable-symvers --with-gnu-as --with-gnu-ld --with-arch=nocona --with-tune=core2 --with-libiconv --with-system-zlib --with-gmp=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-mpfr=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-mpc=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-isl=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-pkgversion='x86_64-win32-seh-rev0, Built by MinGW-Builds project' --with-bugurl=https:/github.com/niXman/mingw-builds LD_FOR_TARGET=/c/buildroot/x86_64-1510-win32-seh-ucrt-rt_v12-rev0/mingw64/bin/ld.exe
@@ -4430,7 +4359,7 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FetchContent.cmake:2158:EVAL:2 (__FetchContent_doPopulation)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FetchContent.cmake:2158 (cmake_language)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FetchContent.cmake:2399 (__FetchContent_Populate)"
-      - "CMakeLists.txt:34 (FetchContent_MakeAvailable)"
+      - "CMakeLists.txt:47 (FetchContent_MakeAvailable)"
     mode: "program"
     variable: "GIT_EXECUTABLE"
     description: "Git command line client"
@@ -4460,7 +4389,6 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -4562,9 +4490,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.cmd.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.cmd.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.cmd"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/git.cmd.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/git.cmd.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/git.cmd"
       - "C:/Program Files/nodejs/git.cmd.com"
       - "C:/Program Files/nodejs/git.cmd.exe"
       - "C:/Program Files/nodejs/git.cmd"
@@ -4781,9 +4706,6 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/git.com"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/git.exe"
-      - "C:/Users/ao/Desktop/monokon/daemon/%NVM_HOME%/git"
       - "C:/Program Files/nodejs/git.com"
       - "C:/Program Files/nodejs/git.exe"
       - "C:/Program Files/nodejs/git"
@@ -4850,7 +4772,6 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -4862,7 +4783,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
-        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
