@@ -65,17 +65,17 @@ namespace {
 			dcb.fErrorChar = FALSE;
 			if (!SetCommState(h, &dcb)) { close(); return false; }
 
-			// タイムアウトを最小化 (高速応答を取りこぼさない)
+			// 「データ完了待ち」型のタイムアウト。
+			// ReadIntervalTimeout=MAXDWORD と ReadTotalTimeoutMultiplier=0 にすると、
+			// ReadFile は「指定バイト数を全部受信」or「ReadTotalTimeoutConstant 経過」
+			// のどちらかで戻る。USB-Serial のバイト間ギャップで取りこぼさない。
 			COMMTIMEOUTS to{};
-			to.ReadIntervalTimeout = MAXDWORD;            // バイト間ギャップ最小化
+			to.ReadIntervalTimeout = MAXDWORD;
 			to.ReadTotalTimeoutConstant = 500;
-			to.ReadTotalTimeoutMultiplier = 1;
-			to.WriteTotalTimeoutConstant = 100;
-			to.WriteTotalTimeoutMultiplier = 1;
+			to.ReadTotalTimeoutMultiplier = 0;
+			to.WriteTotalTimeoutConstant = 500;
+			to.WriteTotalTimeoutMultiplier = 0;
 			SetCommTimeouts(h, &to);
-
-			// 内部バッファを大きくして、書き込み時の細切れ送信を防ぐ
-			SetupComm(h, 4096, 4096);
 			return true;
 		}
 
@@ -86,14 +86,23 @@ namespace {
 			}
 		}
 
-		// Mega 2560 のリセット: DTR/RTS パルスでブートローダ起動
+		// Mega 2560 のリセット: DTR をトグルしてブートローダ起動
+		// Mega 2560 のリセット回路はコンデンサ結合 (DTR──[100nF]──RESET) なので、
+		// DTR の HIGH→LOW→HIGH エッジでだけリセットがかかる。
+		// ずっと LOW でも HIGH でもリセットしない。
 		void toggleReset() {
-			EscapeCommFunction(h, CLRDTR);
-			EscapeCommFunction(h, CLRRTS);
-			Sleep(10);
+			// まず確実に HIGH にしてエッジを作れるようにする
 			EscapeCommFunction(h, SETDTR);
-			EscapeCommFunction(h, SETRTS);
-			// Sleep(50);
+			Sleep(50);
+
+			// HIGH → LOW: コンデンサ経由で RESET ピンに負パルス → MCU リセット
+			EscapeCommFunction(h, CLRDTR);
+			Sleep(100);
+
+			// LOW → HIGH: リセット解除 → ブートローダ起動
+			EscapeCommFunction(h, SETDTR);
+
+			// リセット直後のゴミデータを捨てる
 			PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR);
 		}
 
@@ -103,7 +112,10 @@ namespace {
 		}
 
 		bool read(uint8_t* buf, size_t n) {
-			constexpr int kMaxLoops = 4;        // 500ms * 4 = 最大2秒
+			// ReadIntervalTimeout=MAXDWORD のため、ReadFile は
+			// 「指定バイト数全部受信」or「ReadTotalTimeoutConstant 経過」で戻る。
+			// 1 回の ReadFile が 500ms タイムアウト。最大 4 回 = 2 秒まで待つ。
+			constexpr int kMaxLoops = 4;
 			DWORD total = 0;
 			for (int loop = 0; loop < kMaxLoops && total < n; ++loop) {
 				DWORD r = 0;
@@ -174,7 +186,8 @@ namespace {
 
 		bool signOn() {
 			std::vector<uint8_t> resp;
-			if (!exchange({ CMD_SIGN_ON }, resp)) return false;
+			if (!sendMessage({ CMD_SIGN_ON })) return false;
+			if (!recvMessage(resp)) return false;
 			return resp.size() >= 2 && resp[0] == CMD_SIGN_ON && resp[1] == STATUS_CMD_OK;
 		}
 
@@ -324,20 +337,46 @@ namespace Stk500v2 {
 		stats.openMs = elapsedMs(t0);
 		auto t1 = std::chrono::steady_clock::now();
 
-		// 2) MCU リセット (DTR/RTS パルス)
+		// 2) MCU リセット (DTR トグルでブートローダ起動)
 		sp.toggleReset();
 		stats.resetMs = elapsedMs(t1);
 		auto t2 = std::chrono::steady_clock::now();
 
-		// 3) ブートローダと sync + プログラミングモード入場
+		// Mega 2560 純正ブートローダの起動シーケンス:
+		// リセット解除 → ブートローダ実行開始まで ~250ms
+		// avrdude も内部で同程度待つ。ここを削るとブートローダが応答しない。
+		Sleep(250);
+
+		// 3) ブートローダと sync (診断付き)
 		Stk500v2Client cli(sp);
 		bool synced = false;
-		for (int i = 0; i < 50; ++i) {
-			if (cli.signOn()) { synced = true; break; }
-			// signOn のタイムアウト (~5ms) があるので追加 Sleep 不要
+		int sendFailures = 0;
+		int recvFailures = 0;
+		int badResponses = 0;
+
+		for (int i = 0; i < 6; ++i) {
+			std::vector<uint8_t> resp;
+			if (!cli.sendMessage({ CMD_SIGN_ON })) {
+				sendFailures++;
+				continue;
+			}
+			if (!cli.recvMessage(resp)) {
+				recvFailures++;
+				continue;
+			}
+			if (resp.size() >= 2 && resp[0] == CMD_SIGN_ON && resp[1] == STATUS_CMD_OK) {
+				synced = true;
+				break;
+			}
+			badResponses++;
 		}
+
 		if (!synced) {
-			stats.errorMessage = "Failed to sync with bootloader (no response)";
+			std::ostringstream diag;
+			diag << "Sync failed. send_fails=" << sendFailures
+				<< " recv_fails=" << recvFailures
+				<< " bad_resp=" << badResponses;
+			stats.errorMessage = diag.str();
 			return stats;
 		}
 		if (!cli.enterProgMode()) {
