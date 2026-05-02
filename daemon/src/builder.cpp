@@ -1,3 +1,4 @@
+#include "stk500v2.h"
 #include "builder.h"
 #include "daemon_state.h"
 #include "utils.h"
@@ -477,6 +478,18 @@ namespace {
 		return true;
 	}
 
+	// COMポートを一瞬開閉して、ドライバの初期化遅延を取り除く
+	// avrdudeが直後に開く際の数十〜100msのオーバーヘッドが消える
+	void warmupComPort(const std::string& port) {
+		std::string devName = "\\\\.\\" + port;
+		HANDLE h = CreateFileA(devName.c_str(),
+			GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+			OPEN_EXISTING, 0, nullptr);
+		if (h != INVALID_HANDLE_VALUE) {
+			CloseHandle(h);
+		}
+	}
+
 } // anonymous namespace
 
 // =============================================================================
@@ -495,7 +508,7 @@ namespace Builder {
 			if (GetConsoleMode(hErr, &mode))
 				SetConsoleMode(hErr, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 			return true;
-		}();
+			}();
 
 		CompileResult out;
 		Stopwatch totalSw;
@@ -660,21 +673,35 @@ namespace Builder {
 		}
 		out.port = port;
 
-		// --- avrdude ---
-		BoardConfig bc = resolveBoardConfig("");
-		std::ostringstream args;
-		args << "-C\"" << g_state.toolchain.avrdudeConf << "\""
-			<< " -v -p" << bc.mcu
-			<< " -c" << bc.programmer
-			<< " -P" << port
-			<< " -b" << bc.uploadBaud
-			<< " -D"
-			<< " -Uflash:w:\"" << out.compile.hexFile << "\":i";
+		// =====================================================================
+		// ネイティブ STK500v2 アップロード (avrdude を使わない)
+		// =====================================================================
+		std::vector<uint8_t> flash;
+		std::string hexErr;
+		if (!Stk500v2::readIntelHex(out.compile.hexFile, flash, hexErr)) {
+			out.errorMessage = "Hex parse failed: " + hexErr;
+			return out;
+		}
 
-		auto pr = runProcess(g_state.toolchain.avrdude, args.str(), "", true);
-		out.avrdudeOutput = pr.output + pr.error;
-		if (pr.exitCode != 0) {
-			out.errorMessage = "avrdude failed (exit " + std::to_string(pr.exitCode) + ")";
+		// COMポートウォームアップ
+		warmupComPort(port);
+
+		auto stats = Stk500v2::uploadMega2560(port, flash);
+
+		// デバッグ用に内訳もログに残す
+		std::ostringstream oss;
+		oss << "stk500v2 native upload\n"
+			<< "  open=" << stats.openMs << "ms"
+			<< " reset=" << stats.resetMs << "ms"
+			<< " sync=" << stats.syncMs << "ms"
+			<< " prog=" << stats.progMs << "ms"
+			<< " leave=" << stats.leaveMs << "ms\n"
+			<< "  pages=" << stats.pagesWritten
+			<< " bytes=" << stats.bytesWritten << "\n";
+		out.avrdudeOutput = oss.str();
+
+		if (!stats.success) {
+			out.errorMessage = stats.errorMessage;
 			return out;
 		}
 

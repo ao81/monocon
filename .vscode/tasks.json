@@ -16,7 +16,7 @@
 			"command": "${workspaceFolder}/daemon/build/bin/arduino-build-cli.exe",
 			"args": ["build", "${fileDirname}", "--workspace", "${workspaceFolder}"],
 			"problemMatcher": []
-		},
+		}
 
 
 		// {
