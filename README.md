@@ -45,9 +45,10 @@ void loop() {
 <details>
 <summary><h4>cmake build command</h4></summary>
 
-- ```Remove-Item -Recurse -Force build, out, build_test```
-- ```cmake -S . -B build -G "MinGW Makefiles"```
-- ```cmake --build build```
+- daemon/
+- ```mkdir build & cd build```
+- ```cmake .. -DCMAKE_BUILD_TYPE=Release```
+- ```cmake --build . --config Release --parallel```
 
 </details>
 
