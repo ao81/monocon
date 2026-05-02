@@ -33,6 +33,7 @@ namespace fs = std::filesystem;
 //   - すべてのデータは「型」として明示する (ぼやっとした文字列は使わない)
 //   - 各フェーズは 1 つの関数として独立し、副作用を局所化する
 //   - キャッシュ判定は (size, mtime) のみ。ハッシュは取らない (高速優先)
+//   - ヘッダ依存は gcc -MMD で生成した .d ファイル (Make 形式) を読んで判定する
 // =============================================================================
 
 namespace {
@@ -385,6 +386,69 @@ namespace {
 	// 差分判定: どのファイルを再コンパイルすべきか
 	// =============================================================================
 
+	// gcc -MMD が出力する Make 形式の依存ファイルを読み、依存ファイルパスを返す。
+	// 例:
+	//   build/foo.cpp.o: src/foo.cpp src/foo.h \
+	//     C:\Arduino\cores\arduino\Arduino.h
+	//
+	// パース方針:
+	//   - 行末の "\<改行>" は行継続として 1 つの空白に潰す
+	//   - 最初の ":" 以降が依存リスト本体
+	//   - スペース区切りでパスを切り出す
+	//   - "\ "  (バックスラッシュ + スペース) はパス内のリテラルスペースとして扱う
+	//     (Windows のパス区切り '\' は後ろに非空白文字が続くのでエスケープと誤認しない)
+	std::vector<std::string> readDepFile(const std::string& depPath) {
+		std::vector<std::string> deps;
+		if (!Utils::fileExists(depPath)) return deps;
+
+		std::string content = Utils::readFile(depPath);
+		if (content.empty()) return deps;
+
+		// 行継続 ("\\\n" or "\\\r\n") と改行を空白に正規化
+		std::string flat;
+		flat.reserve(content.size());
+		for (size_t i = 0; i < content.size(); ++i) {
+			char c = content[i];
+			if (c == '\\' && i + 1 < content.size()
+				&& (content[i + 1] == '\n' || content[i + 1] == '\r')) {
+				++i;
+				if (content[i] == '\r' && i + 1 < content.size()
+					&& content[i + 1] == '\n') {
+					++i;
+				}
+				flat.push_back(' ');
+			} else if (c == '\n' || c == '\r') {
+				flat.push_back(' ');
+			} else {
+				flat.push_back(c);
+			}
+		}
+
+		// 最初の ":" 以降が依存リスト
+		auto pos = flat.find(':');
+		if (pos == std::string::npos) return deps;
+		std::string body = flat.substr(pos + 1);
+
+		// スペース区切りでパスを抽出。"\ " はリテラルスペースとして扱う
+		std::string tok;
+		for (size_t i = 0; i < body.size(); ++i) {
+			char c = body[i];
+			if (c == '\\' && i + 1 < body.size() && body[i + 1] == ' ') {
+				tok.push_back(' ');
+				++i;
+			} else if (c == ' ' || c == '\t') {
+				if (!tok.empty()) {
+					deps.push_back(tok);
+					tok.clear();
+				}
+			} else {
+				tok.push_back(c);
+			}
+		}
+		if (!tok.empty()) deps.push_back(tok);
+		return deps;
+	}
+
 	// 「セット同一性」判定: 前回保存したファイル一覧と今回のリストが完全一致するか
 	bool sameFileSet(const StampMap& saved, const std::vector<FileEntry>& current) {
 		if (saved.size() != current.size()) return false;
@@ -411,6 +475,38 @@ namespace {
 				|| it->second.mtime != e.mtime
 				|| it->second.size != e.size
 				|| !Utils::fileExists(e.objPath);
+
+			// ----- ヘッダ依存判定 (.d ファイル経由) -----
+			// .o は存在するがソースは変更なし、というケースで
+			// ヘッダだけが書き換えられても再コンパイルできるようにする。
+			if (!dirty) {
+				std::string depPath = e.objPath + ".d";
+				if (!Utils::fileExists(depPath)) {
+					// .o はあるが .d が無い: 旧バージョンで生成された .o か、
+					// 何らかの理由で依存情報が落ちている。安全側に倒して再コンパイル。
+					dirty = true;
+				} else {
+					long long objMtime = Utils::getFileLastWriteTime(e.objPath);
+					auto deps = readDepFile(depPath);
+					for (const auto& dep : deps) {
+						if (dep.empty()) continue;
+						if (dep == e.srcPath) continue; // ソース自体は上で判定済み
+						long long depMtime = Utils::getFileLastWriteTime(dep);
+						if (depMtime == 0) {
+							// 依存ヘッダが見つからない (削除/リネーム/移動など)
+							// -> #include 解決が変わる可能性があるので再コンパイル
+							dirty = true;
+							break;
+						}
+						if (depMtime > objMtime) {
+							// ヘッダが .o より新しい -> 再コンパイル
+							dirty = true;
+							break;
+						}
+					}
+				}
+			}
+
 			if (dirty) result.push_back(i);
 		}
 		return result;
@@ -442,7 +538,15 @@ namespace {
 		std::string flags = e.isCpp
 			? cppFlags(bc, sketchDir, buildDir)
 			: cFlags(bc, sketchDir, buildDir);
-		std::string args = flags + " \"" + e.srcPath + "\" -o \"" + e.objPath + "\"";
+
+		// 依存ヘッダ情報を <obj>.d に出力させる (差分判定でヘッダ更新を検出するため)
+		//   -MMD: ユーザヘッダのみを依存として出力 (システム/コアヘッダを除外しないなら -MD)
+		//   -MF : 出力先を明示 (デフォルトだとソース名から推測されるので buildDir に入らない)
+		std::string depPath = e.objPath + ".d";
+
+		std::string args = flags
+			+ " -MMD -MF \"" + depPath + "\""
+			+ " \"" + e.srcPath + "\" -o \"" + e.objPath + "\"";
 		std::string compiler = e.isCpp ? g_state.toolchain.avrGpp : g_state.toolchain.avrGcc;
 
 		auto pr = runProcess(compiler, args, "", true);
