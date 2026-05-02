@@ -1,7 +1,8 @@
 C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/common.dir
 C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/arduino-build-daemon.dir
 C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/arduino-build-cli.dir
-C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/edit_cache.dir
-C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/rebuild_cache.dir
-C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-build/CMakeFiles/edit_cache.dir
-C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-build/CMakeFiles/rebuild_cache.dir
+C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/INSTALL.dir
+C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/ZERO_CHECK.dir
+C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-build/CMakeFiles/INSTALL.dir
+C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-build/CMakeFiles/ALL_BUILD.dir

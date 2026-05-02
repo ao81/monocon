@@ -321,6 +321,8 @@ namespace {
 				std::cout << "Upload to " << r.value("port", "") << " in "
 					<< r.value("uploadTimeMs", 0.0) << " ms\n";
 				std::cout << "Total client time: " << sw.elapsedMilliseconds() << " ms\n";
+
+				// std::cout << r.value("avrdudeOutput", "");
 			} else if (cmd == "shutdown") {
 				std::cout << "Daemon shutdown requested.\n";
 			}
