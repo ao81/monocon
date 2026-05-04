@@ -1,0 +1,305 @@
+{
+	"name": "vscode-serial-monitor",
+	"displayName": "Serial Monitor",
+	"version": "0.13.1",
+	"description": "Send and receive text from serial ports.",
+	"categories": [
+		"Visualization",
+		"Testing"
+	],
+	"keywords": [
+		"embedded",
+		"serial",
+		"port",
+		"monitor"
+	],
+	"homepage": "https://github.com/microsoft/vscode-serial-monitor",
+	"bugs": {
+		"url": "https://github.com/microsoft/vscode-serial-monitor/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/microsoft/vscode-serial-monitor"
+	},
+	"license": "SEE LICENSE IN LICENSE.txt",
+	"qna": "https://github.com/microsoft/vscode-serial-monitor/issues",
+	"author": {
+		"name": "Microsoft Corporation"
+	},
+	"publisher": "ms-vscode",
+	"main": "./dist/extension.js",
+	"scripts": {
+		"build": "webpack --mode production",
+		"build:dev": "webpack --mode development",
+		"clean": "rimraf ./dist",
+		"lint": "eslint src --ext ts --max-warnings 0",
+		"package": "vsce package",
+		"rebuild:dev": "pnpm run build:dev",
+		"test": "",
+		"watch": "webpack --mode development --watch"
+	},
+	"contributes": {
+		"commands": [
+			{
+				"command": "vscode-serial-monitor.copy",
+				"title": "%vscode-serial-monitor.copy.title%",
+				"category": "Serial Monitor",
+				"enablement": "webviewId =~ /vscode-serial-monitor.monitor[0-2]/ && webviewSection == 'xterm'"
+			},
+			{
+				"command": "vscode-serial-monitor.paste",
+				"title": "%vscode-serial-monitor.paste.title%",
+				"category": "Serial Monitor",
+				"enablement": "webviewId =~ /vscode-serial-monitor.monitor[0-2]/ && webviewSection == 'xterm'"
+			},
+			{
+				"command": "vscode-serial-monitor.clearOutput",
+				"title": "%vscode-serial-monitor.clearOutput.title%",
+				"category": "Serial Monitor"
+			},
+			{
+				"command": "vscode-serial-monitor.sendFile",
+				"title": "%vscode-serial-monitor.sendFile.title%",
+				"category": "Serial Monitor"
+			},
+			{
+				"command": "vscode-serial-monitor.sendSelection",
+				"title": "%vscode-serial-monitor.sendSelection.title%",
+				"category": "Serial Monitor"
+			},
+			{
+				"command": "vscode-serial-monitor.resetSerialMonitors",
+				"title": "%vscode-serial-monitor.resetSerialMonitors.title%",
+				"category": "Serial Monitor"
+			}
+		],
+		"configuration": {
+			"title": "%vscode-serial-monitor.contributes.configuration.title%",
+			"properties": {
+				"vscode-serial-monitor.loggingVerbosity": {
+					"type": "string",
+					"description": "%vscode-serial-monitor.loggingVerbosity%",
+					"enum": [
+						"off",
+						"error",
+						"warn",
+						"info",
+						"debug"
+					],
+					"default": "warn"
+				},
+				"vscode-serial-monitor.lineEnding": {
+					"type": "string",
+					"description": "%vscode-serial-monitor.lineEnding%",
+					"enum": [
+						"none",
+						"\n",
+						"\r",
+						"\r\n"
+					],
+					"enumDescriptions": [
+						"None",
+						"LF",
+						"CR",
+						"CRLF"
+					]
+				},
+				"vscode-serial-monitor.dataBits": {
+					"type": "number",
+					"description": "%vscode-serial-monitor.dataBits%",
+					"enum": [
+						5,
+						6,
+						7,
+						8
+					]
+				},
+				"vscode-serial-monitor.stopBits": {
+					"type": "number",
+					"description": "%vscode-serial-monitor.stopBits%",
+					"enum": [
+						1,
+						1.5,
+						2
+					]
+				},
+				"vscode-serial-monitor.parity": {
+					"type": "string",
+					"description": "%vscode-serial-monitor.parity%",
+					"enum": [
+						"none",
+						"even",
+						"odd",
+						"mark",
+						"space"
+					],
+					"enumDescriptions": [
+						"None",
+						"Even",
+						"Odd",
+						"Mark",
+						"Space"
+					]
+				},
+				"vscode-serial-monitor.logFileDirectory": {
+					"type": "string",
+					"description": "%vscode-serial-monitor.logFileDirectory%"
+				},
+				"vscode-serial-monitor.customBaudRates": {
+					"type": "array",
+					"description": "%vscode-serial-monitor.customBaudRates%",
+					"items": {
+						"type": "number"
+					},
+					"default": []
+				},
+				"vscode-serial-monitor.outputFontSize": {
+					"type": "number",
+					"description": "%vscode-serial-monitor.outputFontSize%"
+				},
+				"vscode-serial-monitor.timestampFormat": {
+					"type": "string",
+					"description": "%vscode-serial-monitor.timestampFormat%",
+					"default": ""
+				},
+				"vscode-serial-monitor.timestampSeparator": {
+					"type": "string",
+					"description": "%vscode-serial-monitor.timestampSeparator%",
+					"default": " -> "
+				}
+			}
+		},
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "vscode-serial-monitor.sendFile",
+					"when": "false"
+				},
+				{
+					"command": "vscode-serial-monitor.sendSelection",
+					"when": "false"
+				}
+			],
+			"serialmonitor.sendFileContents": [
+				{
+					"command": "vscode-serial-monitor.sendFile",
+					"group": "serialmonitor_sendfile@1"
+				},
+				{
+					"command": "vscode-serial-monitor.sendSelection",
+					"group": "serialmonitor_sendfile@2",
+					"when": "editorHasSelection"
+				}
+			],
+			"editor/context": [
+				{
+					"submenu": "serialmonitor.sendFileContents",
+					"group": "serialmonitor_sendfilecontents@1",
+					"when": "vscode-serial-monitor.monitor0.isActivelyMonitoring || vscode-serial-monitor.monitor1.isActivelyMonitoring || vscode-serial-monitor.monitor2.isActivelyMonitoring"
+				}
+			],
+			"webview/context": [
+				{
+					"when": "webviewId =~ /vscode-serial-monitor.monitor[0-2]/ && webviewSection == 'xterm'",
+					"command": "vscode-serial-monitor.copy",
+					"group": "serialmonitor@1"
+				},
+				{
+					"when": "webviewSection == 'xterm' && ((webviewId == 'vscode-serial-monitor.monitor0' && vscode-serial-monitor.monitor0.activeTerminalMode) || (webviewId == 'vscode-serial-monitor.monitor1' && vscode-serial-monitor.monitor1.activeTerminalMode) || (webviewId == 'vscode-serial-monitor.monitor2' && vscode-serial-monitor.monitor2.activeTerminalMode))",
+					"command": "vscode-serial-monitor.paste",
+					"group": "serialmonitor@2"
+				},
+				{
+					"when": "webviewId =~ /vscode-serial-monitor.monitor[0-2]/ && webviewSection == 'xterm'",
+					"command": "vscode-serial-monitor.clearOutput",
+					"group": "serialmonitor@3"
+				}
+			]
+		},
+		"submenus": [
+			{
+				"id": "serialmonitor.sendFileContents",
+				"label": "%vscode-serial-monitor.sendFileContents.title%"
+			}
+		],
+		"views": {
+			"vscode-serial-monitor-tools": [
+				{
+					"id": "vscode-serial-monitor.monitor0",
+					"name": "%vscode-serial-monitor.contributes.configuration.title%",
+					"type": "webview"
+				},
+				{
+					"id": "vscode-serial-monitor.monitor1",
+					"name": "%vscode-serial-monitor.contributes.configuration.secondTitle%",
+					"type": "webview",
+					"when": "vscode-serial-monitor.monitor1 == 'active'"
+				},
+				{
+					"id": "vscode-serial-monitor.monitor2",
+					"name": "%vscode-serial-monitor.contributes.configuration.thirdTitle%",
+					"type": "webview",
+					"when": "vscode-serial-monitor.monitor2 == 'active'"
+				}
+			]
+		},
+		"viewsContainers": {
+			"panel": [
+				{
+					"id": "vscode-serial-monitor-tools",
+					"title": "%vscode-serial-monitor.contributes.configuration.title%",
+					"icon": "assets/icons/SerialMonitor_128.png"
+				}
+			]
+		}
+	},
+	"activationEvents": [
+		"onView:vscode-serial-monitor.monitor0",
+		"onView:vscode-serial-monitor.monitor1",
+		"onView:vscode-serial-monitor.monitor2"
+	],
+	"dependencies": {
+		"@microsoft/vscode-serial-monitor-api": "^0.1.7",
+		"@vscode-embedded-tools/localization": "^0.1.0",
+		"@vscode-embedded-tools/messaging": "^0.1.0",
+		"@vscode-embedded-tools/node-utils": "^0.1.0",
+		"@vscode-embedded-tools/serial-monitor": "^0.1.0",
+		"@vscode-embedded-tools/serial-monitor-webview": "^0.1.0",
+		"@vscode-embedded-tools/telemetry": "^0.1.0",
+		"@vscode-embedded-tools/utils": "^0.1.0",
+		"@vscode-embedded-tools/vscode-host-utils": "^0.1.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.14.2",
+		"@types/vscode": "^1.74.0",
+		"@vscode-embedded-tools/eslint-config": "^0.1.0",
+		"@vscode/vsce": "^3.1.0",
+		"copy-webpack-plugin": "^10.2.4",
+		"eslint": "^8.25.0",
+		"rimraf": "^3.0.2",
+		"source-map-loader": "~3.0.1",
+		"ts-loader": "^9.2.5",
+		"typescript": "^4.8.4",
+		"webpack": "^5.94.0",
+		"webpack-bundle-analyzer": "^4.5.0",
+		"webpack-cli": "^4.7.0"
+	},
+	"engines": {
+		"vscode": "^1.74.0"
+	},
+	"icon": "assets/icons/SerialMonitor_128.png",
+	"preview": true,
+	"extensionKind": [
+		"workspace",
+		"ui"
+	],
+	"vsce": {
+		"dependencies": false,
+		"packagePath": "dist/vscode-serial-monitor.vsix"
+	},
+	"__metadata": {
+		"installedTimestamp": 1777906825164,
+		"targetPlatform": "undefined",
+		"size": 14990597
+	}
+}

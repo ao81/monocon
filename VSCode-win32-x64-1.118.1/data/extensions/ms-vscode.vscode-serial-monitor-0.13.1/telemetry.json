@@ -1,0 +1,86 @@
+{
+  "events": {
+    "SendMessage": {
+      "lineEnding": {
+        "classification": "SystemMetaData",
+        "purpose": "PerformanceAndHealth",
+        "endPoint": "none"
+      }
+    },
+    "ToggleAutoscroll": {
+      "isChecked": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      }
+    },
+    "ToggleTimestamp": {
+      "isChecked": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      }
+    },
+    "SessionSummary": {
+      "maxMsgSize": {
+        "classification": "SystemMetaData",
+        "purpose": "PerformanceAndHealth",
+        "endPoint": "none"
+      },
+      "numberOfMessages": {
+        "classification": "SystemMetaData",
+        "purpose": "PerformanceAndHealth",
+        "endPoint": "none"
+      },
+      "maxLatencyMs": {
+        "classification": "SystemMetaData",
+        "purpose": "PerformanceAndHealth",
+        "endPoint": "none"
+      },
+      "avgLatencyMs": {
+        "classification": "SystemMetaData",
+        "purpose": "PerformanceAndHealth",
+        "endPoint": "none"
+      }
+    },
+    "OpenSerialPort": {
+      "vid": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      },
+      "pid": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      },
+      "baudRate": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      },
+      "modifyingActiveConnection": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      },
+      "isAutoscrollEnabled": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      },
+      "isTimestampEnabled": {
+        "classification": "SystemMetaData",
+        "purpose": "FeatureInsight",
+        "endPoint": "none"
+      }
+    }
+  },
+  "commonProperties": {
+    "sessionID": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "endPoint": "none"
+    }
+  }
+}
