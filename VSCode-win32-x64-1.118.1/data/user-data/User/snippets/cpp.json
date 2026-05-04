@@ -1,28 +1,23 @@
 {
 	"digitalWrite": {
 		"prefix": "dw",
-		"body": "digitalWrite(${1:pin}, ${2|HIGH,LOW|});",
+		"body": "digitalWrite(${1}, ${2|HIGH,LOW|});",
 		"description": "Set a digital pin HIGH or LOW"
 	},
 	"digitalRead": {
 		"prefix": "dr",
-		"body": "digitalRead(${1:pin});",
+		"body": "digitalRead(${1});",
 		"description": "Read a digital pin"
 	},
 	"analogWrite": {
 		"prefix": "aw",
-		"body": "analogWrite(${1:pin}, ${2:value});",
+		"body": "analogWrite(${1}, ${2});",
 		"description": "Write PWM value (0-255)"
 	},
 	"analogRead": {
 		"prefix": "ar",
-		"body": "analogRead(${1:pin});",
+		"body": "analogRead(${1});",
 		"description": "Read an analog pin (0-1023)"
-	},
-	"pinMode": {
-		"prefix": "pm",
-		"body": "pinMode(${1:pin}, ${2|INPUT,OUTPUT,INPUT_PULLUP|});",
-		"description": "Set pin mode"
 	},
 	"Serial.begin": {
 		"prefix": "sb",
@@ -31,7 +26,7 @@
 	},
 	"Serial.println": {
 		"prefix": "sp",
-		"body": "Serial.println(${1:value});",
+		"body": "Serial.println(\"${1}\");",
 		"description": "Print with newline"
 	},
 	"USER_CON_1PIN": {
