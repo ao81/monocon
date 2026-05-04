@@ -87,16 +87,16 @@ struct bitset RC;  // 構造体変数
 //--- 共用体宣言lm (LED & step Motor)
 union {
   struct {               //--- 構造体宣言，bit というグループ名
-    int SM : 4;   // bit0 ～ bit3 ステッピングモータ励磁信号
-    int R : 1;    // bit4 フルカラーLED，赤色
-    int B : 1;    // bit5 フルカラーLED，青色
-    int G : 1;    // bit6 フルカラーLED，緑色
-    int res : 1;  // bit7 未使用
+    unsigned int SM : 4;   // bit0 ～ bit3 ステッピングモータ励磁信号
+    unsigned int R : 1;    // bit4 フルカラーLED，赤色
+    unsigned int B : 1;    // bit5 フルカラーLED，青色
+    unsigned int G : 1;    // bit6 フルカラーLED，緑色
+    unsigned int res : 1;  // bit7 未使用
   } bit;          // bit アクセス名
   struct {
-    int SM : 4;
-    int GBR : 3;  // フルカラーLED, カラーコードを3bitで指定
-    int res : 1;
+    unsigned int SM : 4;
+    unsigned int GBR : 3;  // フルカラーLED, カラーコードを3bitで指定
+    unsigned int res : 1;
   } color;  // GBRを3ビットアクセス名
   int b8;   // byte アクセス名
 } lm;       // 共用体変数名
