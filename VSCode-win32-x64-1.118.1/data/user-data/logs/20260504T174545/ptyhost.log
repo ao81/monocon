@@ -1,6 +1,0 @@
-2026-05-04 17:45:46.724 [info] Revived process, old id 8aeb0a71e25abdf49b7f326df74826f8-1 -> new id 1
-2026-05-04 17:45:46.896 [info] Expanding terminal instance, old id 8aeb0a71e25abdf49b7f326df74826f8-1 -> new id 1
-2026-05-04 17:45:47.394 [warning] Persistent process "1": Process had no disconnect runners but was an orphan
-2026-05-04 17:45:47.394 [info] Persistent process reconnection "1"
-2026-05-04 17:45:47.404 [warning] Shell integration cannot be enabled for executable "C:\WINDOWS\System32\cmd.exe" and args []
-2026-05-04 17:45:47.427 [info] Persistent process "1": Replaying 373 chars and 1 size events

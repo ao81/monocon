@@ -1,0 +1,71 @@
+# ============================================
+# VSCode (Portable) - 自動生成されるファイル
+# ============================================
+
+# Electronキャッシュディレクトリ（ハッシュ名、起動毎に再生成）
+VSCode-win32-x64-1.118.1/[0-9a-f]*/
+
+# ユーザーデータ内のキャッシュ・ログ・一時データ
+VSCode-win32-x64-1.118.1/data/user-data/Backups/
+VSCode-win32-x64-1.118.1/data/user-data/blob_storage/
+VSCode-win32-x64-1.118.1/data/user-data/Cache/
+VSCode-win32-x64-1.118.1/data/user-data/CachedConfigurations/
+VSCode-win32-x64-1.118.1/data/user-data/CachedData/
+VSCode-win32-x64-1.118.1/data/user-data/CachedProfilesData/
+VSCode-win32-x64-1.118.1/data/user-data/clp/
+VSCode-win32-x64-1.118.1/data/user-data/Code Cache/
+VSCode-win32-x64-1.118.1/data/user-data/Crashpad/
+VSCode-win32-x64-1.118.1/data/user-data/DawnGraphiteCache/
+VSCode-win32-x64-1.118.1/data/user-data/DawnWebGPUCache/
+VSCode-win32-x64-1.118.1/data/user-data/GPUCache/
+VSCode-win32-x64-1.118.1/data/user-data/Local Storage/
+VSCode-win32-x64-1.118.1/data/user-data/logs/
+VSCode-win32-x64-1.118.1/data/user-data/Network/
+VSCode-win32-x64-1.118.1/data/user-data/Service Worker/
+VSCode-win32-x64-1.118.1/data/user-data/Session Storage/
+VSCode-win32-x64-1.118.1/data/user-data/Shared Dictionary/
+VSCode-win32-x64-1.118.1/data/user-data/WebStorage/
+
+# ユーザーのワーク履歴・チャット履歴（個人情報を含む可能性）
+VSCode-win32-x64-1.118.1/data/user-data/User/History/
+VSCode-win32-x64-1.118.1/data/user-data/User/globalStorage/
+VSCode-win32-x64-1.118.1/data/user-data/User/workspaceStorage/
+
+# 共有ストレージ
+VSCode-win32-x64-1.118.1/data/shared-data/
+
+# ============================================
+# Arduino daemon - ビルド生成物
+# ============================================
+
+# CMakeビルド出力（毎回再生成される）
+data/daemon/build/
+data/cache/
+
+# ============================================
+# OS / エディタの一時ファイル
+# ============================================
+
+# Windows
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ============================================
+# VSCodeワークスペース設定（任意）
+# ============================================
+# 個人設定を共有しない場合
+# .vscode/
+
+# ============================================
+# Node.js（VSCode拡張内などで生成される場合）
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

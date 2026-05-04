@@ -1,9 +1,0 @@
-2026-05-04 17:45:46.503 [info] Started local extension host with pid 13808.
-2026-05-04 17:45:47.680 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
-2026-05-04 17:45:47.890 [info] Settings Sync: Account status changed from uninitialized to unavailable
-2026-05-04 17:45:49.262 [info] [perf] Render performance baseline is 19ms
-2026-05-04 17:45:49.329 [error] 不明なエラーが発生しました。ログで詳細を確認してください。
-2026-05-04 17:45:52.683 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
-2026-05-04 17:45:58.012 [error] [Extension Host] (node:13808) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `Code --trace-deprecation ...` to show where the warning was created)
-2026-05-04 18:04:40.974 [error] 不明なエラーが発生しました。ログで詳細を確認してください。
