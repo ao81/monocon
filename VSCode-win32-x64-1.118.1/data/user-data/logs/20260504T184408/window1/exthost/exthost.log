@@ -1,0 +1,16 @@
+2026-05-04 18:44:14.592 [info] Extension host with pid 1960 started
+2026-05-04 18:44:14.612 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2026-05-04 18:44:14.613 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2026-05-04 18:44:16.750 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2026-05-04 18:44:16.751 [info] ExtensionService#_doActivateExtension oderwat.indent-rainbow, startup: true, activationEvent: '*'
+2026-05-04 18:44:16.823 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2026-05-04 18:44:16.824 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2026-05-04 18:44:18.191 [info] Eager extensions activated
+2026-05-04 18:44:18.201 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 18:44:18.202 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 18:44:18.202 [info] ExtensionService#_doActivateExtension vscode-icons-team.vscode-icons, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 18:44:18.303 [info] ExtensionService#_doActivateExtension vscodevim.vim, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 18:44:19.477 [error] Error: ENOENT: no such file or directory, open 'c:\Users\ao\Desktop\monokon\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\vscodevim.vim\.registers'
+2026-05-04 18:46:19.889 [info] Extension host terminating: received terminate message from renderer
+2026-05-04 18:46:19.900 [error] Error: ENOENT: no such file or directory, open 'c:\Users\ao\Desktop\monokon\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\vscodevim.vim\.registers'
+2026-05-04 18:46:19.900 [info] Extension host with pid 1960 exiting with code 0

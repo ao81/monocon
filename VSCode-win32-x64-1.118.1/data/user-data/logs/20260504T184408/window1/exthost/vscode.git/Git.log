@@ -1,0 +1,5 @@
+2026-05-04 18:44:18.173 [info] [main] ログ レベル: Info
+2026-05-04 18:44:18.173 [info] [main] Git の検証が検出されました: "C:\Program Files\Git\cmd\git.exe"
+2026-05-04 18:44:18.173 [info] [main] "C:\Program Files\Git\cmd\git.exe" から Git "2.53.0.windows.2" を使用しています
+2026-05-04 18:44:18.173 [info] [Model][doInitialScan] Initial repository scan started
+2026-05-04 18:44:18.173 [info] [Model][doInitialScan] Initial repository scan completed - repositories (0), closed repositories (0), parent repositories (0), unsafe repositories (0)

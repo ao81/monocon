@@ -1,4 +1,0 @@
-[2026/5/4 16:36:33] C ソース ファイルで、コンパイラの引数と compilerPath のクエリに基づいて、IntelliSenseMode が "windows-gcc-x64" から "windows-msvc-x64" に変更されました: "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.50.35717\bin\Hostx64\x64\cl.exe"
-[2026/5/4 16:36:33] IntelliSenseMode は、検出されたコンパイラと一致しなかったため、変更されました。 代わりに "compilerPath" を設定することを検討してください。 システム インクルードと定義の検出を無効にするには、"compilerPath" を "" に設定します。
-[2026/5/4 16:36:33] C++ ソース ファイルで、コンパイラの引数と compilerPath のクエリに基づいて、IntelliSenseMode が "windows-gcc-x64" から "windows-msvc-x64" に変更されました: "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.50.35717\bin\Hostx64\x64\cl.exe"
-[2026/5/4 16:36:33] IntelliSenseMode は、検出されたコンパイラと一致しなかったため、変更されました。 代わりに "compilerPath" を設定することを検討してください。 システム インクルードと定義の検出を無効にするには、"compilerPath" を "" に設定します。

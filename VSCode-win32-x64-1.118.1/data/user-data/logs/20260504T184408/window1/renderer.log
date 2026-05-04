@@ -1,0 +1,6 @@
+2026-05-04 18:44:10.792 [info] Started local extension host with pid 1960.
+2026-05-04 18:44:11.059 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-04 18:44:12.769 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2026-05-04 18:44:14.132 [info] [perf] Render performance baseline is 22ms
+2026-05-04 18:44:16.061 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-04 18:44:19.478 [error] 不明なエラーが発生しました。ログで詳細を確認してください。

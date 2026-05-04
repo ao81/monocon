@@ -4,12 +4,12 @@
     "telemetry.devDeviceId": "dc4611fa-1596-44fe-ae38-ba65ca285e8e",
     "backupWorkspaces": {
         "workspaces": [],
-        "folders": [
+        "folders": [],
+        "emptyWindows": [
             {
-                "folderUri": "file:///c%3A/Users/ao/Desktop/monokon_release"
+                "backupFolder": "1777887850052"
             }
-        ],
-        "emptyWindows": []
+        ]
     },
     "windowControlHeight": 35,
     "profileAssociations": {
@@ -17,7 +17,9 @@
             "file:///c%3A/Users/ao/Desktop/monokon": "__default__profile__",
             "file:///c%3A/Users/ao/Desktop/monokon_release": "__default__profile__"
         },
-        "emptyWindows": {}
+        "emptyWindows": {
+            "1777887850052": "__default__profile__"
+        }
     },
     "theme": "vs-dark",
     "themeBackground": "#121314",
@@ -43,7 +45,7 @@
             "editorPartMinWidth": 220,
             "titleBarHeight": 35,
             "activityBarWidth": 48,
-            "sideBarWidth": 300,
+            "sideBarWidth": 0,
             "auxiliaryBarWidth": 0,
             "statusBarHeight": 22,
             "windowBorder": false
@@ -51,12 +53,11 @@
     },
     "windowsState": {
         "lastActiveWindow": {
-            "folder": "file:///c%3A/Users/ao/Desktop/monokon_release",
-            "backupPath": "C:\\Users\\ao\\Desktop\\monokon_release\\VSCode-win32-x64-1.118.1\\data\\user-data\\Backups\\7f887cbbb0abc7802006eaded3090dc1",
+            "backupPath": "C:\\Users\\ao\\Desktop\\monokon\\VSCode-win32-x64-1.118.1\\data\\user-data\\Backups\\1777887850052",
             "uiState": {
                 "mode": 1,
-                "x": 77,
-                "y": 306,
+                "x": 26,
+                "y": 497,
                 "width": 1440,
                 "height": 928
             }
