@@ -1,0 +1,10 @@
+[
+  {
+    "key": "ctrl+space",
+    "command": "-editor.action.triggerSuggest"
+  },
+  {
+    "key": "ctrl+space",
+    "command": "workbench.action.tasks.build"
+  }
+]

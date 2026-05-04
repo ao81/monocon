@@ -1,0 +1,44 @@
+2026-05-04 17:45:38.963 [info] [main] ログ レベル: Info
+2026-05-04 17:45:38.963 [info] [main] Git の検証が検出されました: "C:\Program Files\Git\cmd\git.exe"
+2026-05-04 17:45:38.963 [info] [main] "C:\Program Files\Git\cmd\git.exe" から Git "2.53.0.windows.2" を使用しています
+2026-05-04 17:45:38.963 [info] [Model][doInitialScan] Initial repository scan started
+2026-05-04 17:45:38.963 [info] > git rev-parse --show-toplevel [96ms]
+2026-05-04 17:45:39.047 [info] > git rev-parse --git-dir --git-common-dir --show-superproject-working-tree [104ms]
+2026-05-04 17:45:39.066 [info] [Model][openRepository] Opened repository (path): c:\Users\ao\Desktop\monokon
+2026-05-04 17:45:39.066 [info] [Model][openRepository] Opened repository (real path): c:\Users\ao\Desktop\monokon
+2026-05-04 17:45:39.067 [info] [Model][openRepository] Opened repository (kind): repository
+2026-05-04 17:45:39.123 [info] > git config --get --local core.virtualfilesystem [50ms]
+2026-05-04 17:45:39.123 [warning] [Git][config] git config failed: Failed to execute git
+2026-05-04 17:45:39.124 [info] > git config --get commit.template [48ms]
+2026-05-04 17:45:39.127 [info] > git rev-parse --show-toplevel [44ms]
+2026-05-04 17:45:39.177 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [56ms]
+2026-05-04 17:45:39.188 [info] > git rev-parse --show-toplevel [57ms]
+2026-05-04 17:45:39.242 [info] > git rev-parse --show-toplevel [50ms]
+2026-05-04 17:45:39.246 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [59ms]
+2026-05-04 17:45:39.453 [info] > git status -z -uall [271ms]
+2026-05-04 17:45:39.454 [info] > git rev-parse --show-toplevel [208ms]
+2026-05-04 17:45:39.524 [info] > git rev-parse --show-toplevel [50ms]
+2026-05-04 17:45:39.528 [info] > git config --get commit.template [51ms]
+2026-05-04 17:45:39.529 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [59ms]
+2026-05-04 17:45:39.537 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [54ms]
+2026-05-04 17:45:39.580 [info] > git rev-parse --show-toplevel [52ms]
+2026-05-04 17:45:39.593 [info] > git config --get --local branch.main.vscode-merge-base [59ms]
+2026-05-04 17:45:39.614 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [69ms]
+2026-05-04 17:45:39.648 [info] > git check-ignore -v -z --stdin [60ms]
+2026-05-04 17:45:39.649 [info] > git rev-parse --show-toplevel [56ms]
+2026-05-04 17:45:39.659 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/origin/main refs/remotes/origin/main [60ms]
+2026-05-04 17:45:39.677 [info] > git status -z -uall [135ms]
+2026-05-04 17:45:39.685 [info] > git fetch [620ms]
+2026-05-04 17:45:39.704 [info] > git rev-parse --show-toplevel [51ms]
+2026-05-04 17:45:39.717 [info] > git merge-base refs/heads/main refs/remotes/origin/main [53ms]
+2026-05-04 17:45:39.741 [info] > git merge-base refs/heads/main refs/remotes/origin/main [58ms]
+2026-05-04 17:45:39.746 [info] > git config --get commit.template [57ms]
+2026-05-04 17:45:39.759 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [66ms]
+2026-05-04 17:45:39.768 [info] > git rev-parse --show-toplevel [59ms]
+2026-05-04 17:45:39.780 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% 11e42fdf830ee38e35945f0f6e78fc6215939204...refs/remotes/origin/main -- [58ms]
+2026-05-04 17:45:39.804 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% 11e42fdf830ee38e35945f0f6e78fc6215939204...refs/remotes/origin/main -- [58ms]
+2026-05-04 17:45:39.828 [info] > git rev-parse --show-toplevel [56ms]
+2026-05-04 17:45:39.829 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [61ms]
+2026-05-04 17:45:39.878 [info] > git rev-parse --show-toplevel [46ms]
+2026-05-04 17:45:39.880 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2026-05-04 17:45:39.885 [info] > git status -z -uall [121ms]

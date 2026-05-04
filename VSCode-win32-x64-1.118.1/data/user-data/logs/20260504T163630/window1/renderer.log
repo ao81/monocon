@@ -1,0 +1,9 @@
+2026-05-04 16:36:31.206 [info] Started local extension host with pid 26820.
+2026-05-04 16:36:31.605 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-04 16:36:32.065 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2026-05-04 16:36:32.126 [error] [Extension Host] (node:26820) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `Code --trace-deprecation ...` to show where the warning was created)
+2026-05-04 16:36:33.925 [info] [perf] Render performance baseline is 20ms
+2026-05-04 16:36:34.515 [error] 不明なエラーが発生しました。ログで詳細を確認してください。
+2026-05-04 16:36:36.603 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-04 16:36:40.228 [warning] [backup tracker] suspended, ignoring unregister event file:///c%3A/Users/ao/Desktop/monokon/.vscode/c_cpp_properties.json 

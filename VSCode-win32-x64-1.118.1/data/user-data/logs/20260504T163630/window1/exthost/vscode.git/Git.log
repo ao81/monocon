@@ -1,0 +1,39 @@
+2026-05-04 16:36:32.396 [info] [main] ログ レベル: Info
+2026-05-04 16:36:32.396 [info] [main] Git の検証が検出されました: "C:\Program Files\Git\cmd\git.exe"
+2026-05-04 16:36:32.430 [info] [main] "C:\Program Files\Git\cmd\git.exe" から Git "2.53.0.windows.2" を使用しています
+2026-05-04 16:36:32.430 [info] [Model][doInitialScan] Initial repository scan started
+2026-05-04 16:36:32.484 [info] > git rev-parse --show-toplevel [46ms]
+2026-05-04 16:36:32.548 [info] > git rev-parse --git-dir --git-common-dir --show-superproject-working-tree [59ms]
+2026-05-04 16:36:32.557 [info] [Model][openRepository] Opened repository (path): c:\Users\ao\Desktop\monokon
+2026-05-04 16:36:32.557 [info] [Model][openRepository] Opened repository (real path): c:\Users\ao\Desktop\monokon
+2026-05-04 16:36:32.557 [info] [Model][openRepository] Opened repository (kind): repository
+2026-05-04 16:36:32.618 [info] > git config --get --local core.virtualfilesystem [54ms]
+2026-05-04 16:36:32.618 [warning] [Git][config] git config failed: Failed to execute git
+2026-05-04 16:36:32.619 [info] > git config --get commit.template [51ms]
+2026-05-04 16:36:32.628 [info] > git rev-parse --show-toplevel [54ms]
+2026-05-04 16:36:32.637 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [57ms]
+2026-05-04 16:36:32.675 [info] > git rev-parse --show-toplevel [44ms]
+2026-05-04 16:36:32.695 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [49ms]
+2026-05-04 16:36:32.722 [info] > git rev-parse --show-toplevel [43ms]
+2026-05-04 16:36:32.745 [info] > git status -z -uall [103ms]
+2026-05-04 16:36:32.767 [info] > git rev-parse --show-toplevel [42ms]
+2026-05-04 16:36:32.807 [info] > git config --get commit.template [40ms]
+2026-05-04 16:36:32.809 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [47ms]
+2026-05-04 16:36:32.813 [info] > git rev-parse --show-toplevel [44ms]
+2026-05-04 16:36:32.818 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [46ms]
+2026-05-04 16:36:32.854 [info] > git config --get --local branch.main.vscode-merge-base [42ms]
+2026-05-04 16:36:32.862 [info] > git rev-parse --show-toplevel [46ms]
+2026-05-04 16:36:32.874 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [50ms]
+2026-05-04 16:36:32.905 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/origin/main refs/remotes/origin/main [47ms]
+2026-05-04 16:36:32.911 [info] > git rev-parse --show-toplevel [46ms]
+2026-05-04 16:36:32.924 [info] > git status -z -uall [102ms]
+2026-05-04 16:36:33.180 [info] > git merge-base refs/heads/main refs/remotes/origin/main [250ms]
+2026-05-04 16:36:33.184 [info] > git rev-parse --show-toplevel [270ms]
+2026-05-04 16:36:33.185 [info] > git merge-base refs/heads/main refs/remotes/origin/main [275ms]
+2026-05-04 16:36:33.494 [info] > git rev-parse --show-toplevel [291ms]
+2026-05-04 16:36:33.495 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% 11e42fdf830ee38e35945f0f6e78fc6215939204...refs/remotes/origin/main -- [307ms]
+2026-05-04 16:36:33.495 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% 11e42fdf830ee38e35945f0f6e78fc6215939204...refs/remotes/origin/main -- [310ms]
+2026-05-04 16:36:33.514 [info] > git check-ignore -v -z --stdin [322ms]
+2026-05-04 16:36:33.582 [info] > git rev-parse --show-toplevel [71ms]
+2026-05-04 16:36:33.644 [info] > git rev-parse --show-toplevel [56ms]
+2026-05-04 16:36:33.645 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)

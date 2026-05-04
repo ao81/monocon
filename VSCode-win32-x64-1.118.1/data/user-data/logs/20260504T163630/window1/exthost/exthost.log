@@ -1,0 +1,30 @@
+2026-05-04 16:36:31.830 [info] Extension host with pid 26820 started
+2026-05-04 16:36:31.830 [info] Skipping acquiring lock for c:\Users\ao\Desktop\programing\monokon_release\VSCode-win32-x64-1.118.1\data\user-data\User\workspaceStorage\e97a9b6982f267a4509df557fac89ea2.
+2026-05-04 16:36:31.910 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2026-05-04 16:36:31.911 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2026-05-04 16:36:32.005 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2026-05-04 16:36:32.005 [info] ExtensionService#_doActivateExtension oderwat.indent-rainbow, startup: true, activationEvent: '*'
+2026-05-04 16:36:32.008 [info] ExtensionService#_doActivateExtension ms-vscode.cpptools, startup: true, activationEvent: 'workspaceContains:/.vscode/c_cpp_properties.json'
+2026-05-04 16:36:32.268 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2026-05-04 16:36:32.268 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2026-05-04 16:36:33.194 [info] ExtensionService#_doActivateExtension vscode.configuration-editing, startup: false, activationEvent: 'onLanguage:json'
+2026-05-04 16:36:33.194 [info] ExtensionService#_doActivateExtension vscode.extension-editing, startup: false, activationEvent: 'onLanguage:json'
+2026-05-04 16:36:33.195 [info] ExtensionService#_doActivateExtension vscode.json-language-features, startup: false, activationEvent: 'onLanguage:json'
+2026-05-04 16:36:33.195 [info] ExtensionService#_doActivateExtension vscode.npm, startup: false, activationEvent: 'onLanguage:json'
+2026-05-04 16:36:33.200 [info] ExtensionService#_doActivateExtension vscode.typescript-language-features, startup: false, activationEvent: 'onLanguage:jsonc'
+2026-05-04 16:36:33.205 [info] Eager extensions activated
+2026-05-04 16:36:33.331 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:36:33.331 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:36:33.331 [info] ExtensionService#_doActivateExtension vscode-icons-team.vscode-icons, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:36:33.354 [info] ExtensionService#_doActivateExtension vscodevim.vim, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:36:34.514 [error] Error: ENOENT: no such file or directory, open 'c:\Users\ao\Desktop\programing\monokon_release\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\vscodevim.vim\.registers'
+2026-05-04 16:36:40.217 [info] Extension host terminating: received terminate message from renderer
+2026-05-04 16:36:40.243 [error] Error: ENOENT: no such file or directory, open 'c:\Users\ao\Desktop\programing\monokon_release\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\vscodevim.vim\.registers'
+2026-05-04 16:36:40.257 [error] Error: Channel has been closed
+	at r (file:///c:/Users/ao/Desktop/programing/monokon_release/VSCode-win32-x64-1.118.1/034f571df5/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:510:3935)
+	at Object.info (file:///c:/Users/ao/Desktop/programing/monokon_release/VSCode-win32-x64-1.118.1/034f571df5/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:510:4305)
+	at WT.info (c:\Users\ao\Desktop\programing\monokon_release\VSCode-win32-x64-1.118.1\034f571df5\resources\app\extensions\json-language-features\client\dist\node\jsonClientMain.js:14:709)
+	at ChildProcess.<anonymous> (c:\Users\ao\Desktop\programing\monokon_release\VSCode-win32-x64-1.118.1\034f571df5\resources\app\extensions\json-language-features\client\dist\node\jsonClientMain.js:19:48759)
+	at ChildProcess.emit (node:events:519:28)
+	at ChildProcess._handle.onexit (node:internal/child_process:293:12)
+2026-05-04 16:36:40.411 [info] Extension host with pid 26820 exiting with code 0

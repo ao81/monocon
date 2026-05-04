@@ -1,0 +1,6 @@
+[
+  {
+    "key": "ctrl+space",
+    "command": "workbench.action.tasks.build"
+  }
+]

@@ -1,0 +1,12 @@
+2026-05-04 17:27:10.278 [info] Started local extension host with pid 15752.
+2026-05-04 17:27:11.017 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-04 17:27:11.229 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2026-05-04 17:27:12.583 [error] 不明なエラーが発生しました。ログで詳細を確認してください。
+2026-05-04 17:27:12.901 [info] [perf] Render performance baseline is 18ms
+2026-05-04 17:27:16.016 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-04 17:28:45.723 [error] [Extension Host] (node:15752) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `Code --trace-deprecation ...` to show where the warning was created)
+2026-05-04 17:29:25.393 [info] Extension host (LocalProcess pid: 15752) is unresponsive.
+2026-05-04 17:29:25.516 [info] Extension host (LocalProcess pid: 15752) is responsive.
+2026-05-04 17:29:25.516 [info] UNRESPONSIVE extension host: received responsive event and cancelling profiling session
+2026-05-04 17:29:26.545 [info] UNRESPONSIVE extension host: starting to profile NOW

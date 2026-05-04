@@ -1,0 +1,82 @@
+{
+    "telemetry.machineId": "7729e18b0fa0b72a07219d557deee9fe74e8a4999ce9d4b609174553559dd2ee",
+    "telemetry.sqmId": "{1A560B77-8BD0-45EB-BE10-CB83D0EC049E}",
+    "telemetry.devDeviceId": "dc4611fa-1596-44fe-ae38-ba65ca285e8e",
+    "backupWorkspaces": {
+        "workspaces": [],
+        "folders": [
+            {
+                "folderUri": "file:///c%3A/Users/ao/Desktop/monokon_release"
+            }
+        ],
+        "emptyWindows": []
+    },
+    "windowControlHeight": 35,
+    "profileAssociations": {
+        "workspaces": {
+            "file:///c%3A/Users/ao/Desktop/monokon": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/monokon_release": "__default__profile__"
+        },
+        "emptyWindows": {}
+    },
+    "theme": "vs-dark",
+    "themeBackground": "#121314",
+    "windowSplash": {
+        "zoomLevel": 0,
+        "baseTheme": "vs-dark",
+        "colorInfo": {
+            "foreground": "#bfbfbf",
+            "background": "#121314",
+            "editorBackground": "#121314",
+            "titleBarBackground": "#191a1b",
+            "titleBarBorder": "#2a2b2c",
+            "activityBarBackground": "#191a1b",
+            "activityBarBorder": "#2a2b2c",
+            "sideBarBackground": "#191a1b",
+            "sideBarBorder": "#2a2b2c",
+            "statusBarBackground": "#191a1b",
+            "statusBarBorder": "#2a2b2c",
+            "statusBarNoFolderBackground": "#191a1b"
+        },
+        "layoutInfo": {
+            "sideBarSide": "left",
+            "editorPartMinWidth": 220,
+            "titleBarHeight": 35,
+            "activityBarWidth": 48,
+            "sideBarWidth": 300,
+            "auxiliaryBarWidth": 0,
+            "statusBarHeight": 22,
+            "windowBorder": false
+        }
+    },
+    "windowsState": {
+        "lastActiveWindow": {
+            "folder": "file:///c%3A/Users/ao/Desktop/monokon_release",
+            "backupPath": "C:\\Users\\ao\\Desktop\\monokon_release\\VSCode-win32-x64-1.118.1\\data\\user-data\\Backups\\7f887cbbb0abc7802006eaded3090dc1",
+            "uiState": {
+                "mode": 1,
+                "x": 77,
+                "y": 306,
+                "width": 1440,
+                "height": 928
+            }
+        },
+        "openedWindows": []
+    },
+    "windowSplashWorkspaceOverride": {
+        "layoutInfo": {
+            "sideBarWidth": 300,
+            "auxiliaryBarWidth": 300,
+            "workspaces": {
+                "e97a9b6982f267a4509df557fac89ea2": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "8aeb0a71e25abdf49b7f326df74826f8": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                }
+            }
+        }
+    }
+}

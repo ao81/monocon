@@ -1,0 +1,16 @@
+2026-05-04 16:37:22.469 [info] Extension host with pid 1572 started
+2026-05-04 16:37:22.517 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2026-05-04 16:37:22.517 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2026-05-04 16:37:22.699 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2026-05-04 16:37:22.699 [info] ExtensionService#_doActivateExtension oderwat.indent-rainbow, startup: true, activationEvent: '*'
+2026-05-04 16:37:22.792 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2026-05-04 16:37:22.793 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2026-05-04 16:37:22.952 [info] Eager extensions activated
+2026-05-04 16:37:22.956 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:37:22.957 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:37:22.957 [info] ExtensionService#_doActivateExtension vscode-icons-team.vscode-icons, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:37:22.981 [info] ExtensionService#_doActivateExtension vscodevim.vim, startup: false, activationEvent: 'onStartupFinished'
+2026-05-04 16:37:24.079 [error] Error: ENOENT: no such file or directory, open 'c:\Users\ao\Desktop\programing\monokon_release\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\vscodevim.vim\.registers'
+2026-05-04 17:01:24.146 [info] Extension host terminating: received terminate message from renderer
+2026-05-04 17:01:24.157 [error] Error: ENOENT: no such file or directory, open 'c:\Users\ao\Desktop\programing\monokon_release\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\vscodevim.vim\.registers'
+2026-05-04 17:01:24.157 [info] Extension host with pid 1572 exiting with code 0

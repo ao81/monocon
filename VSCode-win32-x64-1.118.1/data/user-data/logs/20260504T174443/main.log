@@ -1,0 +1,11 @@
+2026-05-04 17:44:43.891 [info] StorageMainService: creating application shared storage
+2026-05-04 17:44:43.891 [info] StorageMainService: creating application shared storage with local application storage fallback
+2026-05-04 17:44:43.891 [info] CrossAppIPCService: connecting to peer
+2026-05-04 17:44:43.898 [info] [shared storage] Creating shared storage database at 'c:\Users\ao\Desktop\monokon_release\VSCode-win32-x64-1.118.1\data\shared-data\sharedStorage\state.vscdb' (wasCreated: false)
+2026-05-04 17:44:43.898 [info] [shared storage] Initializing fallback application storage (type: local, path: c:\Users\ao\Desktop\monokon_release\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\state.vscdb)
+2026-05-04 17:44:43.933 [info] [shared storage] Fallback application storage initialized with 98 items
+2026-05-04 17:44:43.935 [info] update#setState idle
+2026-05-04 17:45:13.946 [info] update#setState checking for updates
+2026-05-04 17:45:14.027 [info] update#setState idle
+2026-05-04 17:45:37.131 [info] Extension host with pid 21832 exited with code: 0, signal: unknown.
+2026-05-04 17:45:43.272 [info] Extension host with pid 26320 exited with code: 0, signal: unknown.
