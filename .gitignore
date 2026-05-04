@@ -26,7 +26,7 @@ VSCode-win32-x64-1.118.1/data/user-data/Session Storage/
 VSCode-win32-x64-1.118.1/data/user-data/Shared Dictionary/
 VSCode-win32-x64-1.118.1/data/user-data/WebStorage/
 
-# ユーザーのワーク履歴・チャット履歴（個人情報を含む可能性）
+# ユーザーのワーク履歴・チャット履歴
 VSCode-win32-x64-1.118.1/data/user-data/User/History/
 VSCode-win32-x64-1.118.1/data/user-data/User/globalStorage/
 VSCode-win32-x64-1.118.1/data/user-data/User/workspaceStorage/
@@ -35,15 +35,15 @@ VSCode-win32-x64-1.118.1/data/user-data/User/workspaceStorage/
 VSCode-win32-x64-1.118.1/data/shared-data/
 
 # ============================================
-# Arduino daemon - ビルド生成物
+# CMake ビルド中間ファイル（bin/ の成果物は残す）
 # ============================================
 
-# CMakeビルド出力（毎回再生成される）
-data/daemon/build/
-data/cache/
+# build/ 配下を除外しつつ、bin/ だけは追跡対象に残す
+data/daemon/build/*
+!data/daemon/build/bin/
 
 # ============================================
-# OS / エディタの一時ファイル
+# OS の一時ファイル
 # ============================================
 
 # Windows
@@ -53,17 +53,9 @@ ehthumbs.db
 
 # macOS
 .DS_Store
-.AppleDouble
-.LSOverride
 
 # ============================================
-# VSCodeワークスペース設定（任意）
-# ============================================
-# 個人設定を共有しない場合
-# .vscode/
-
-# ============================================
-# Node.js（VSCode拡張内などで生成される場合）
+# Node.js
 # ============================================
 node_modules/
 npm-debug.log*
