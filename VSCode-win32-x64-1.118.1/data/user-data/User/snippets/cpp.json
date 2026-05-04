@@ -1,0 +1,69 @@
+{
+	"digitalWrite": {
+		"prefix": "dw",
+		"body": "digitalWrite(${1:pin}, ${2|HIGH,LOW|});",
+		"description": "Set a digital pin HIGH or LOW"
+	},
+	"digitalRead": {
+		"prefix": "dr",
+		"body": "digitalRead(${1:pin});",
+		"description": "Read a digital pin"
+	},
+	"analogWrite": {
+		"prefix": "aw",
+		"body": "analogWrite(${1:pin}, ${2:value});",
+		"description": "Write PWM value (0-255)"
+	},
+	"analogRead": {
+		"prefix": "ar",
+		"body": "analogRead(${1:pin});",
+		"description": "Read an analog pin (0-1023)"
+	},
+	"pinMode": {
+		"prefix": "pm",
+		"body": "pinMode(${1:pin}, ${2|INPUT,OUTPUT,INPUT_PULLUP|});",
+		"description": "Set pin mode"
+	},
+	"Serial.begin": {
+		"prefix": "sb",
+		"body": "Serial.begin(9600);",
+		"description": "Initialize serial communication"
+	},
+	"Serial.println": {
+		"prefix": "sp",
+		"body": "Serial.println(${1:value});",
+		"description": "Print with newline"
+	},
+	"USER_CON_1PIN": {
+		"prefix": "_1",
+		"body": "_USER_CON_1PIN"
+	},
+	"USER_CON_2PIN": {
+		"prefix": "_2",
+		"body": "_USER_CON_2PIN"
+	},
+	"USER_CON_3PIN": {
+		"prefix": "_3",
+		"body": "_USER_CON_3PIN"
+	},
+	"USER_CON_4PIN": {
+		"prefix": "_4",
+		"body": "_USER_CON_4PIN"
+	},
+	"USER_CON_5PIN": {
+		"prefix": "_5",
+		"body": "_USER_CON_5PIN"
+	},
+	"USER_CON_6PIN": {
+		"prefix": "_6",
+		"body": "_USER_CON_6PIN"
+	},
+	"USER_CON_7PIN": {
+		"prefix": "_7",
+		"body": "_USER_CON_7PIN"
+	},
+	"USER_CON_8PIN": {
+		"prefix": "_8",
+		"body": "_USER_CON_8PIN"
+	}
+}
