@@ -28,41 +28,6 @@ namespace Utils {
 		return "";
 	}
 
-	// 自プロセス (arduino-build-daemon.exe / arduino-build-cli.exe) の
-	// 実行ファイルが置かれているディレクトリを返す。
-	// 例: C:\VSCode\data\daemon\build\bin
-	std::string getExecutableDir() {
-		char path[MAX_PATH];
-		DWORD len = GetModuleFileNameA(nullptr, path, MAX_PATH);
-		if (len == 0 || len == MAX_PATH) return "";
-		return fs::path(path).parent_path().string();
-	}
-
-	// VSCode のポータブル data ディレクトリ配下の cache/ を返す。
-	//
-	// 想定する配置:
-	//   <VSCode>/
-	//     Code.exe
-	//     data/
-	//       daemon/build/bin/arduino-build-{cli,daemon}.exe   <- exe はここ
-	//       cache/                                            <- これを返す
-	//
-	// exe からの相対 "..\..\..\cache" で data/cache/ に到達する。
-	// 解決に失敗した場合は %LOCALAPPDATA%\ArduinoBuildDaemon\cache を使う。
-	std::string getDataCacheDir() {
-		std::string exeDir = getExecutableDir();
-		if (!exeDir.empty()) {
-			std::error_code ec;
-			fs::path candidate =
-				fs::path(exeDir) / ".." / ".." / ".." / "cache";
-			fs::path normalized = fs::weakly_canonical(candidate, ec);
-			if (ec) normalized = candidate.lexically_normal();
-			return normalized.string();
-		}
-		// フォールバック: 旧来の %LOCALAPPDATA% 配下
-		return joinPath(getLocalAppDataPath(), "ArduinoBuildDaemon\\cache");
-	}
-
 	std::string getGlobalCacheDir() {
 		return joinPath(getLocalAppDataPath(), "ArduinoBuildDaemon");
 	}

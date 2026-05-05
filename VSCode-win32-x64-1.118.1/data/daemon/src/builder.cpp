@@ -3,18 +3,16 @@
 #include "daemon_state.h"
 #include "utils.h"
 #include "port_scanner.h"
-
 #include <windows.h>
-
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <set>
 #include <sstream>
-
 namespace fs = std::filesystem;
 
 // =============================================================================
+
 // 全体の処理フロー (要約)
 //
 //   compile(req)
@@ -33,19 +31,15 @@ namespace fs = std::filesystem;
 //   - すべてのデータは「型」として明示する (ぼやっとした文字列は使わない)
 //   - 各フェーズは 1 つの関数として独立し、副作用を局所化する
 //   - キャッシュ判定は (size, mtime) のみ。ハッシュは取らない (高速優先)
-//   - ヘッダ依存は gcc -MMD で生成した .d ファイル (Make 形式) を読んで判定する
-//
-// キャッシュ配置 (修正後):
-//   <VSCode>/data/cache/
-//     ├ builds/<workspace_sha1_16>/<sketch相対パス>/   <- スケッチごとの .o/.elf/.hex
-//     ├ cores/<board_hash>/core.a                      <- ツールチェーン共通
-//     └ tmp-build/                                     <- arduino-cli 用作業領域
+
 // =============================================================================
 
 namespace {
 
 	// =============================================================================
+
 	// データ型
+
 	// =============================================================================
 
 	struct BoardConfig {
@@ -55,7 +49,6 @@ namespace {
 		std::string programmer;   // "wiring"
 		long uploadBaud = 115200;
 	};
-
 	struct FileEntry {
 		std::string srcPath;      // ソースのフルパス (.ino 統合の場合は build/<name>.ino.cpp)
 		std::string objPath;      // 出力 .o のフルパス
@@ -65,14 +58,15 @@ namespace {
 	};
 
 	// =============================================================================
+
 	// パス/環境ユーティリティ
+
 	// =============================================================================
 
 	// .ino / フォルダ / 末尾スラッシュ を吸収して「.ino を含むディレクトリ」を返す
 	std::string resolveSketchDir(const std::string& raw) {
 		std::error_code ec;
 		fs::path p(raw);
-
 		if (p.extension() == ".ino") {
 			if (fs::is_regular_file(p, ec)) return p.parent_path().string();
 			return "";
@@ -86,7 +80,6 @@ namespace {
 		}
 		return "";
 	}
-
 	// hint があればそれ、なければ sketch から親方向に .vscode/ を探す
 	std::string resolveWorkspace(const std::string& sketchDir, const std::string& hint) {
 		std::error_code ec;
@@ -105,14 +98,7 @@ namespace {
 		}
 		return sketchDir;
 	}
-
-	// ビルド成果物の配置先を決める。
-	//   配置先 = <data>/cache/builds/<workspace_sha1>/<sketch相対パス>
-	//
-	// ワークスペース全体を SHA-1 ハッシュ化することで、
-	//   - 同名スケッチが別ワークスペースにあっても干渉しない
-	//   - workspace 配下のスケッチは元の相対構造をそのまま維持できる
-	//     (差分判定の .stamps / .d ファイルがそのまま機能する)
+	// <workspace>/.vscode/build/<sketchDir からの相対パス>
 	std::string computeBuildDir(const std::string& workspace, const std::string& sketch) {
 		std::error_code ec;
 		fs::path ws = fs::absolute(workspace, ec);
@@ -120,20 +106,17 @@ namespace {
 		fs::path rel = fs::relative(sd, ws, ec);
 		std::string r = rel.string();
 		bool inside = !ec && !r.empty() && r != "." && r.rfind("..", 0) != 0;
-
-		// ワークスペース単位で分離: フルパスを SHA-1 して短縮ハッシュに
-		std::string wsHash = Utils::sha1Hex(ws.string()).substr(0, 16);
-
-		fs::path base = fs::path(Utils::getDataCacheDir()) / "builds" / wsHash;
+		fs::path base = ws / ".vscode" / "build";
 		if (inside) return (base / rel).string();
-
 		std::string leaf = sd.filename().string();
 		if (leaf.empty()) leaf = "sketch";
 		return (base / leaf).string();
 	}
 
 	// =============================================================================
+
 	// ボード設定
+
 	// =============================================================================
 
 	BoardConfig resolveBoardConfig(const std::string& fqbn) {
@@ -143,7 +126,6 @@ namespace {
 		c.variant = "mega";
 		c.programmer = "wiring";
 		c.uploadBaud = 115200;
-
 		std::string lower = fqbn;
 		std::transform(lower.begin(), lower.end(), lower.begin(),
 			[](unsigned char ch) { return (char)std::tolower(ch); });
@@ -156,7 +138,9 @@ namespace {
 	}
 
 	// =============================================================================
+
 	// コンパイラフラグ生成
+
 	// =============================================================================
 
 	std::string commonDefines(const BoardConfig& bc) {
@@ -167,7 +151,6 @@ namespace {
 			<< " -DARDUINO_ARCH_AVR";
 		return f.str();
 	}
-
 	std::string includeFlags(const std::string& sketchDir, const std::string& buildDir) {
 		std::ostringstream f;
 		f << " -I\"" << g_state.toolchain.coreDir << "\"";
@@ -178,7 +161,6 @@ namespace {
 			<< " -I\"" << buildDir << "\"";
 		return f.str();
 	}
-
 	std::string cppFlags(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& buildDir) {
 		std::ostringstream f;
@@ -191,7 +173,6 @@ namespace {
 			<< includeFlags(sketchDir, buildDir);
 		return f.str();
 	}
-
 	std::string cFlags(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& buildDir) {
 		std::ostringstream f;
@@ -205,7 +186,9 @@ namespace {
 	}
 
 	// =============================================================================
+
 	// core.a キャッシュ
+
 	// =============================================================================
 
 	std::string coreCacheKey(const BoardConfig& bc) {
@@ -215,13 +198,11 @@ namespace {
 			<< Utils::getFileLastWriteTime(g_state.toolchain.coreDir);
 		return Utils::sha1Hex(oss.str()).substr(0, 16);
 	}
-
 	std::string coreArchivePath(const std::string& key) {
 		std::string dir = Utils::joinPath(g_state.coreCacheRoot, key);
 		Utils::createDirectory(dir);
 		return Utils::joinPath(dir, "core.a");
 	}
-
 	std::string findArduinoCli() {
 		char buf[MAX_PATH * 2];
 		DWORD r = SearchPathA(nullptr, "arduino-cli.exe", nullptr, sizeof(buf), buf, nullptr);
@@ -235,43 +216,34 @@ namespace {
 		}
 		return "";
 	}
-
 	// 初回のみ arduino-cli compile を呼んで core.a を取り出す
 	bool ensureCoreArchive(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& targetCoreA, std::string& errOut) {
 		if (Utils::fileExists(targetCoreA)) return true;
-
 		std::string cli = findArduinoCli();
 		if (cli.empty()) {
 			errOut = "arduino-cli not found (cannot generate core.a)";
 			return false;
 		}
-
-		// arduino-cli の作業領域も data/cache/ 配下に統一
-		std::string tmpBuild = Utils::joinPath(Utils::getDataCacheDir(), "tmp-build");
+		std::string tmpBuild = Utils::joinPath(Utils::getGlobalCacheDir(), "tmp-build");
 		Utils::createDirectory(tmpBuild);
-
 		std::string fqbn = (bc.variant == "megaADK")
 			? "arduino:avr:megaADK"
 			: "arduino:avr:mega:cpu=" + bc.mcu;
-
 		std::ostringstream args;
 		args << "compile --fqbn " << fqbn
 			<< " --build-path \"" << tmpBuild << "\""
 			<< " \"" << sketchDir << "\"";
-
 		auto pr = runProcess(cli, args.str(), "", true);
 		if (pr.exitCode != 0) {
 			errOut = "arduino-cli compile failed:\n" + pr.error + "\n" + pr.output;
 			return false;
 		}
-
 		std::string srcCoreA = Utils::joinPath(tmpBuild, "core\\core.a");
 		if (!Utils::fileExists(srcCoreA)) {
 			errOut = "core.a not produced by arduino-cli at " + srcCoreA;
 			return false;
 		}
-
 		std::error_code ec;
 		fs::copy_file(srcCoreA, targetCoreA, fs::copy_options::overwrite_existing, ec);
 		if (ec) {
@@ -282,7 +254,9 @@ namespace {
 	}
 
 	// =============================================================================
+
 	// .ino → .cpp 変換
+
 	// =============================================================================
 
 	// 全 .ino を 1 つの .cpp に結合してファイルに書き出す
@@ -292,7 +266,6 @@ namespace {
 		const std::string& buildDir) {
 		std::string sketchName = Utils::getFileName(sketchDir);
 		std::string outPath = Utils::joinPath(buildDir, sketchName + ".ino.cpp");
-
 		std::ostringstream out;
 		out << "// Auto-generated by arduino-build-daemon\n"
 			<< "#include <Arduino.h>\n";
@@ -306,7 +279,9 @@ namespace {
 	}
 
 	// =============================================================================
+
 	// ソース列挙とプラン作成
+
 	// =============================================================================
 
 	FileEntry makeEntry(const std::string& src, const std::string& obj, bool isCpp) {
@@ -320,12 +295,10 @@ namespace {
 		if (ec) e.size = 0;
 		return e;
 	}
-
 	// すべてのコンパイル単位を列挙
 	std::vector<FileEntry> collectSources(const std::string& sketchDir,
 		const std::string& buildDir) {
 		std::vector<FileEntry> entries;
-
 		// 1) .ino を結合した 1 ファイル
 		auto inos = Utils::getFilesByExtension(sketchDir, ".ino");
 		std::sort(inos.begin(), inos.end());
@@ -360,18 +333,18 @@ namespace {
 	}
 
 	// =============================================================================
+
 	// .stamps ファイル: ファイル単位の (mtime,size) 永続化
 	// フォーマット: 各行 "<mtime> <size> <srcPath>"
+
 	// =============================================================================
 
 	struct Stamp { long long mtime; uintmax_t size; };
 	using StampMap = std::unordered_map<std::string, Stamp>;
-
 	StampMap loadStamps(const std::string& buildDir) {
 		StampMap m;
 		std::string path = Utils::joinPath(buildDir, ".stamps");
 		if (!Utils::fileExists(path)) return m;
-
 		for (const auto& line : Utils::readLines(path)) {
 			if (line.empty()) continue;
 			std::istringstream iss(line);
@@ -379,17 +352,14 @@ namespace {
 			std::string srcPath;
 			if (iss >> s.mtime >> s.size) {
 				std::getline(iss >> std::ws, srcPath);
-
 				if (!srcPath.empty() && srcPath.back() == '\r') {
 					srcPath.pop_back();
 				}
-
 				if (!srcPath.empty()) m[srcPath] = s;
 			}
 		}
 		return m;
 	}
-
 	void saveStamps(const std::string& buildDir, const std::vector<FileEntry>& entries) {
 		std::ostringstream oss;
 		for (const auto& e : entries) {
@@ -399,28 +369,22 @@ namespace {
 	}
 
 	// =============================================================================
+
 	// 差分判定: どのファイルを再コンパイルすべきか
+
 	// =============================================================================
 
 	// gcc -MMD が出力する Make 形式の依存ファイルを読み、依存ファイルパスを返す。
-	// 例:
-	//   build/foo.cpp.o: src/foo.cpp src/foo.h \
-	//     C:\Arduino\cores\arduino\Arduino.h
-	//
 	// パース方針:
-	//   - 行末の "\<改行>" は行継続として 1 つの空白に潰す
+	//   - 行末の "\<改行>" は行継続として1つの空白に潰す
 	//   - 最初の ":" 以降が依存リスト本体
-	//   - スペース区切りでパスを切り出す
-	//   - "\ "  (バックスラッシュ + スペース) はパス内のリテラルスペースとして扱う
-	//     (Windows のパス区切り '\' は後ろに非空白文字が続くのでエスケープと誤認しない)
+	//   - "\ " はパス内のリテラルスペースとして扱う
 	std::vector<std::string> readDepFile(const std::string& depPath) {
 		std::vector<std::string> deps;
 		if (!Utils::fileExists(depPath)) return deps;
-
 		std::string content = Utils::readFile(depPath);
 		if (content.empty()) return deps;
-
-		// 行継続 ("\\\n" or "\\\r\n") と改行を空白に正規化
+		// 行継続と改行を空白に正規化
 		std::string flat;
 		flat.reserve(content.size());
 		for (size_t i = 0; i < content.size(); ++i) {
@@ -428,10 +392,7 @@ namespace {
 			if (c == '\\' && i + 1 < content.size()
 				&& (content[i + 1] == '\n' || content[i + 1] == '\r')) {
 				++i;
-				if (content[i] == '\r' && i + 1 < content.size()
-					&& content[i + 1] == '\n') {
-					++i;
-				}
+				if (content[i] == '\r' && i + 1 < content.size() && content[i + 1] == '\n') ++i;
 				flat.push_back(' ');
 			} else if (c == '\n' || c == '\r') {
 				flat.push_back(' ');
@@ -439,24 +400,16 @@ namespace {
 				flat.push_back(c);
 			}
 		}
-
-		// 最初の ":" 以降が依存リスト
 		auto pos = flat.find(':');
 		if (pos == std::string::npos) return deps;
 		std::string body = flat.substr(pos + 1);
-
-		// スペース区切りでパスを抽出。"\ " はリテラルスペースとして扱う
 		std::string tok;
 		for (size_t i = 0; i < body.size(); ++i) {
 			char c = body[i];
 			if (c == '\\' && i + 1 < body.size() && body[i + 1] == ' ') {
-				tok.push_back(' ');
-				++i;
+				tok.push_back(' '); ++i;
 			} else if (c == ' ' || c == '\t') {
-				if (!tok.empty()) {
-					deps.push_back(tok);
-					tok.clear();
-				}
+				if (!tok.empty()) { deps.push_back(tok); tok.clear(); }
 			} else {
 				tok.push_back(c);
 			}
@@ -464,7 +417,6 @@ namespace {
 		if (!tok.empty()) deps.push_back(tok);
 		return deps;
 	}
-
 	// 「セット同一性」判定: 前回保存したファイル一覧と今回のリストが完全一致するか
 	bool sameFileSet(const StampMap& saved, const std::vector<FileEntry>& current) {
 		if (saved.size() != current.size()) return false;
@@ -473,7 +425,6 @@ namespace {
 		}
 		return true;
 	}
-
 	// 各エントリについて、再コンパイルが必要か判定
 	std::vector<size_t> planRebuild(const std::vector<FileEntry>& entries,
 		const StampMap& saved, bool forceFullBuild) {
@@ -491,55 +442,202 @@ namespace {
 				|| it->second.mtime != e.mtime
 				|| it->second.size != e.size
 				|| !Utils::fileExists(e.objPath);
-
 			// ----- ヘッダ依存判定 (.d ファイル経由) -----
-			// .o は存在するがソースは変更なし、というケースで
-			// ヘッダだけが書き換えられても再コンパイルできるようにする。
 			if (!dirty) {
 				std::string depPath = e.objPath + ".d";
 				if (!Utils::fileExists(depPath)) {
-					// .o はあるが .d が無い: 旧バージョンで生成された .o か、
-					// 何らかの理由で依存情報が落ちている。安全側に倒して再コンパイル。
-					dirty = true;
+					dirty = true; // .d 未生成 → 安全側に倒す
 				} else {
 					long long objMtime = Utils::getFileLastWriteTime(e.objPath);
 					auto deps = readDepFile(depPath);
 					for (const auto& dep : deps) {
-						if (dep.empty()) continue;
-						if (dep == e.srcPath) continue; // ソース自体は上で判定済み
+						if (dep.empty() || dep == e.srcPath) continue;
 						long long depMtime = Utils::getFileLastWriteTime(dep);
-						if (depMtime == 0) {
-							// 依存ヘッダが見つからない (削除/リネーム/移動など)
-							// -> #include 解決が変わる可能性があるので再コンパイル
-							dirty = true;
-							break;
-						}
-						if (depMtime > objMtime) {
-							// ヘッダが .o より新しい -> 再コンパイル
-							dirty = true;
-							break;
-						}
+						if (depMtime == 0 || depMtime > objMtime) { dirty = true; break; }
 					}
 				}
 			}
-
 			if (dirty) result.push_back(i);
 		}
 		return result;
 	}
 
+	// =============================================================================
+	// エラーメッセージ整形
+	// =============================================================================
+
+	// gcc 診断行: <file>:<line>:<col>: <kind>: <message>
+	// kind = "error" / "fatal error" / "warning" / "note"
+	//
+	// 処理方針:
+	//   1. <file>:<line>:<col>: の部分を太字+白で強調
+	//   2. error/fatal error → 赤、warning → 黄、note → シアン
+	//   3. メッセージ本文を解析して日本語ヒントを付ける
+	//   4. ソース引用行 (数字 | コード) / カーソル行 (^ ~) はそのまま出力
+	// =============================================================================
+
+	// エラーメッセージから日本語の補足ヒントを返す
+	std::string diagnosticHint(const std::string& msg) {
+		// ヘッダが見つからない
+		if (msg.find("No such file or directory") != std::string::npos) {
+			// #include "foo.h" -> ファイル名を抽出して表示
+			std::string header;
+			auto q1 = msg.find('\'');
+			auto q2 = (q1 != std::string::npos) ? msg.find('\'', q1 + 1) : std::string::npos;
+			if (q1 != std::string::npos && q2 != std::string::npos)
+				header = msg.substr(q1 + 1, q2 - q1 - 1);
+			if (header.empty()) {
+				auto b1 = msg.rfind('/'); auto b2 = msg.rfind('\\');
+				auto sep = (b1 == std::string::npos) ? b2
+					: (b2 == std::string::npos) ? b1 : std::max(b1, b2);
+				if (sep != std::string::npos) header = msg.substr(sep + 1);
+			}
+			std::string hint = "  \033[36m→ ヘッダファイルが見つかりません";
+			if (!header.empty()) hint += ": " + header;
+			hint += "\n    スケッチフォルダ内に配置されているか確認してください。\033[0m";
+			return hint;
+		}
+		// 未定義の識別子
+		if (msg.find("was not declared") != std::string::npos ||
+			msg.find("undeclared identifier") != std::string::npos ||
+			msg.find("'") != std::string::npos && msg.find("' was not declared") != std::string::npos) {
+			return "  \033[36m→ 変数や関数の名前が宣言されていません。スペルミスや #include の漏れを確認してください。\033[0m";
+		}
+		// 型の不一致
+		if (msg.find("cannot convert") != std::string::npos ||
+			msg.find("invalid conversion") != std::string::npos) {
+			return "  \033[36m→ 型が合っていません。キャストや変数の型を確認してください。\033[0m";
+		}
+		// セミコロン/括弧忘れ
+		if (msg.find("expected ';'") != std::string::npos ||
+			msg.find("expected ')'") != std::string::npos ||
+			msg.find("expected '}'") != std::string::npos) {
+			return "  \033[36m→ 記号の書き忘れがあります。直前の行末を確認してください。\033[0m";
+		}
+		// 未使用変数 (warning)
+		if (msg.find("unused variable") != std::string::npos ||
+			msg.find("unused parameter") != std::string::npos) {
+			return "  \033[36m→ 宣言したが使っていない変数があります。不要なら削除してください。\033[0m";
+		}
+		// 多重定義
+		if (msg.find("redefinition of") != std::string::npos ||
+			msg.find("redeclared") != std::string::npos) {
+			return "  \033[36m→ 同名の変数や関数が二重に定義されています。\033[0m";
+		}
+		// 関数の引数の数が違う
+		if (msg.find("too many arguments") != std::string::npos ||
+			msg.find("too few arguments") != std::string::npos) {
+			return "  \033[36m→ 関数に渡す引数の数が間違っています。\033[0m";
+		}
+		return "";
+	}
+	// gcc の診断1行を整形して返す
+	// 診断でなければそのまま (ソース引用行・カーソル行など)
+	std::string formatDiagnosticLine(const std::string& raw) {
+		// フォーマット: path:line:col: kind: message
+		// Windows パスは "C:\..." で始まるため最初の ':' はドライブ区切りの可能性あり
+		// -> 2番目以降の ": " を区切りとして探す
+		size_t colonPos = std::string::npos;
+		{
+			size_t start = 0;
+			// ドライブレター対応: 1文字目が英字で2文字目が ':' ならスキップ
+			if (raw.size() >= 2 && std::isalpha((unsigned char)raw[0]) && raw[1] == ':')
+				start = 2;
+			// file:line:col: の最後の ": " を探す
+			// 簡易判定: 3個以上の ':' を持つ行が診断行
+			int colons = 0;
+			for (size_t i = start; i < raw.size(); ++i) {
+				if (raw[i] == ':') {
+					++colons;
+					if (colons >= 3) { colonPos = i; break; }
+				}
+			}
+		}
+		if (colonPos == std::string::npos || colonPos + 2 >= raw.size())
+			return raw + "\n";
+		// kind 判定
+		std::string rest = raw.substr(colonPos + 1);
+		// rest の先頭空白をスキップ
+		size_t ks = 0;
+		while (ks < rest.size() && rest[ks] == ' ') ++ks;
+		rest = rest.substr(ks);
+		bool isFatal = rest.rfind("fatal error:", 0) == 0;
+		bool isError = isFatal || rest.rfind("error:", 0) == 0;
+		bool isWarning = !isError && rest.rfind("warning:", 0) == 0;
+		bool isNote = !isError && !isWarning && rest.rfind("note:", 0) == 0;
+		if (!isError && !isWarning && !isNote) return raw + "\n";
+		// location 部分 (path:line:col) を太字・白で強調
+		std::string location = raw.substr(0, colonPos);
+		// kindとメッセージ部分を色付け
+		const char* kindColor = isError ? "\033[1;31m" : isWarning ? "\033[1;33m" : "\033[1;32m";
+		const char* reset = "\033[0m";
+		const char* bold = "\033[1;37m";
+		// メッセージ本体 (kind: の後ろ)
+		std::string msgBody;
+		{
+			auto kc = rest.find(':');
+			if (kc != std::string::npos && kc + 1 < rest.size())
+				msgBody = rest.substr(kc + 1);
+			// 先頭空白除去
+			size_t ms = 0;
+			while (ms < msgBody.size() && msgBody[ms] == ' ') ++ms;
+			msgBody = msgBody.substr(ms);
+		}
+		// location を "file:line:col" に分解して行番号だけ黄色で強調
+		// Windows ドライブレター ("C:") は1文字+':' なので先にスキップ
+		std::string locFile, locLine, locCol;
+		{
+			size_t lstart = 0;
+			if (location.size() >= 2 && std::isalpha((unsigned char)location[0]) && location[1] == ':')
+				lstart = 2;
+			size_t c1 = location.find(':', lstart);  // file と line の間
+			size_t c2 = (c1 != std::string::npos) ? location.find(':', c1 + 1) : std::string::npos;
+			if (c1 != std::string::npos) {
+				locFile = location.substr(0, c1);
+				locLine = (c2 != std::string::npos)
+					? location.substr(c1 + 1, c2 - c1 - 1)
+					: location.substr(c1 + 1);
+				if (c2 != std::string::npos) locCol = location.substr(c2 + 1);
+			} else {
+				locFile = location;
+			}
+		}
+		const char* lineColor = "\033[1;96m"; // シアン太字: 行番号
+		std::ostringstream out;
+		// ファイル名(白太字) : 行番号(黄太字) : 列(白太字) : kind: message
+		out << bold << locFile << reset << ":";
+		if (!locLine.empty()) out << lineColor << locLine << reset << ":";
+		if (!locCol.empty())  out << bold << locCol << reset << ":";
+		out << " " << kindColor << rest.substr(0, rest.find(':') + 1) << reset
+			<< " " << msgBody << "\n";  // メッセージ
+		return out.str();
+	}
+	// コンパイラ出力全体を整形する
+	// エラー・警告件数のサマリーも末尾に付ける
 	std::string colorizeOutput(const std::string& output) {
 		std::istringstream iss(output);
 		std::ostringstream oss;
 		std::string line;
 		while (std::getline(iss, line)) {
-			if (line.find("error:") != std::string::npos) {
-				oss << "\033[31m" << line << "\033[0m\n"; // 赤
-			} else if (line.find("warning:") != std::string::npos) {
-				oss << "\033[33m" << line << "\033[0m\n"; // 黄
-			} else {
-				oss << line << "\n";
+			// \r 除去
+			if (!line.empty() && line.back() == '\r') line.pop_back();
+			// カーソル行 (^ ~~~) と ソース引用行は色なしでそのまま
+			bool isCaret = true;
+			for (char c : line) {
+				if (c != '^' && c != '~' && c != ' ' && c != '\t') { isCaret = false; break; }
 			}
+			if (isCaret && !line.empty()) {
+				// カーソル行: ^ の部分だけ赤で強調
+				std::ostringstream cl;
+				for (char c : line) {
+					if (c == '^' || c == '~') cl << "\033[1;31m" << c << "\033[0m";
+					else cl << c;
+				}
+				oss << cl.str() << "\n";
+				continue;
+			}
+			std::string formatted = formatDiagnosticLine(line);
+			oss << formatted;
 		}
 		return oss.str();
 	}
@@ -554,17 +652,14 @@ namespace {
 		std::string flags = e.isCpp
 			? cppFlags(bc, sketchDir, buildDir)
 			: cFlags(bc, sketchDir, buildDir);
-
 		// 依存ヘッダ情報を <obj>.d に出力させる (差分判定でヘッダ更新を検出するため)
-		//   -MMD: ユーザヘッダのみを依存として出力 (システム/コアヘッダを除外しないなら -MD)
-		//   -MF : 出力先を明示 (デフォルトだとソース名から推測されるので buildDir に入らない)
+		//   -MMD: ユーザヘッダのみを依存として出力
+		//   -MF : 出力先を明示 (buildDir に入らないのを防ぐ)
 		std::string depPath = e.objPath + ".d";
-
 		std::string args = flags
 			+ " -MMD -MF \"" + depPath + "\""
 			+ " \"" + e.srcPath + "\" -o \"" + e.objPath + "\"";
 		std::string compiler = e.isCpp ? g_state.toolchain.avrGpp : g_state.toolchain.avrGcc;
-
 		auto pr = runProcess(compiler, args, "", true);
 		outputLog += colorizeOutput(pr.output);
 		if (pr.exitCode != 0) {
@@ -573,7 +668,6 @@ namespace {
 		}
 		return true;
 	}
-
 	bool runLink(const std::vector<FileEntry>& all, const BoardConfig& bc,
 		const std::string& coreA, const std::string& elfPath, std::string& outputLog) {
 		std::ostringstream args;
@@ -582,13 +676,11 @@ namespace {
 			<< " -o \"" << elfPath << "\"";
 		for (const auto& e : all) args << " \"" << e.objPath << "\"";
 		args << " \"" << coreA << "\" -lm";
-
 		auto pr = runProcess(g_state.toolchain.avrGcc, args.str(), "", true);
 		outputLog += pr.output;
 		if (pr.exitCode != 0) { outputLog += pr.error; return false; }
 		return true;
 	}
-
 	bool runObjcopy(const std::string& elfPath, const std::string& hexPath,
 		std::string& outputLog) {
 		std::string args = "-O ihex -R .eeprom \"" + elfPath + "\" \"" + hexPath + "\"";
@@ -597,27 +689,15 @@ namespace {
 		if (pr.exitCode != 0) { outputLog += pr.error; return false; }
 		return true;
 	}
-
-	// COMポートを一瞬開閉して、ドライバの初期化遅延を取り除く
-	// avrdudeが直後に開く際の数十〜100msのオーバーヘッドが消える
-	void warmupComPort(const std::string& port) {
-		std::string devName = "\\\\.\\" + port;
-		HANDLE h = CreateFileA(devName.c_str(),
-			GENERIC_READ | GENERIC_WRITE, 0, nullptr,
-			OPEN_EXISTING, 0, nullptr);
-		if (h != INVALID_HANDLE_VALUE) {
-			CloseHandle(h);
-		}
-	}
-
 } // anonymous namespace
 
 // =============================================================================
+
 // public API
+
 // =============================================================================
 
 namespace Builder {
-
 	CompileResult compile(const CompileRequest& req) {
 		static bool ansiReady = [] {
 			HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -629,16 +709,13 @@ namespace Builder {
 				SetConsoleMode(hErr, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 			return true;
 			}();
-
 		CompileResult out;
 		Stopwatch totalSw;
-
 		// --- 入口チェック ---
 		if (!g_state.toolchain.valid) {
 			out.errorMessage = "Toolchain not initialized: " + g_state.toolchain.errorMessage;
 			return out;
 		}
-
 		std::string sketchDir = resolveSketchDir(req.sketchDir);
 		if (sketchDir.empty() || !Utils::directoryExists(sketchDir)) {
 			out.errorMessage = "Cannot resolve sketch directory: \"" + req.sketchDir + "\"";
@@ -648,13 +725,10 @@ namespace Builder {
 			out.errorMessage = "No .ino file found in: " + sketchDir;
 			return out;
 		}
-
 		std::string workspace = resolveWorkspace(sketchDir, req.workspaceDir);
 		std::string buildDir = computeBuildDir(workspace, sketchDir);
 		Utils::createDirectory(buildDir);
-
 		BoardConfig bc = resolveBoardConfig(req.fqbn);
-
 		// --- core.a の確保 (初回のみ) ---
 		std::string coreA = coreArchivePath(coreCacheKey(bc));
 		if (req.forceFullBuild) Utils::deleteFile(coreA);
@@ -665,19 +739,15 @@ namespace Builder {
 				return out;
 			}
 		}
-
 		// --- ソース列挙 + 差分判定 ---
 		auto entries = collectSources(sketchDir, buildDir);
 		auto saved = loadStamps(buildDir);
 		auto plan = planRebuild(entries, saved, req.forceFullBuild);
-
 		std::string sketchName = Utils::getFileName(sketchDir);
 		std::string elfPath = Utils::joinPath(buildDir, sketchName + ".elf");
 		std::string hexPath = Utils::joinPath(buildDir, sketchName + ".hex");
-
 		out.totalFiles = (int)entries.size();
 		out.recompiledFiles = (int)plan.size();
-
 		// --- 完全キャッシュヒット: .hex と .elf があり、変更ゼロ ---
 		if (plan.empty() && Utils::fileExists(hexPath) && Utils::fileExists(elfPath)) {
 			out.success = true;
@@ -685,7 +755,6 @@ namespace Builder {
 			out.hexFile = hexPath;
 			out.elfFile = elfPath;
 			out.buildTimeMs = totalSw.elapsedMilliseconds();
-
 			// state にも反映 (upload で参照される)
 			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
 			auto& s = g_state.sketches[sketchDir];
@@ -696,7 +765,6 @@ namespace Builder {
 			s.hasValidBuild = true;
 			return out;
 		}
-
 		// --- コンパイル (差分のみ) ---
 		for (size_t idx : plan) {
 			if (!compileOne(entries[idx], bc, sketchDir, buildDir, out.compilerOutput)) {
@@ -705,12 +773,10 @@ namespace Builder {
 				return out;
 			}
 		}
-
 		// --- 何か再コンパイルしたか、elf/hex が無いならリンク ---
 		bool needLink = !plan.empty()
 			|| !Utils::fileExists(elfPath)
 			|| !Utils::fileExists(hexPath);
-
 		if (needLink) {
 			if (!runLink(entries, bc, coreA, elfPath, out.compilerOutput)) {
 				out.errorMessage = "Link failed";
@@ -721,10 +787,8 @@ namespace Builder {
 				return out;
 			}
 		}
-
 		// --- スタンプ更新 ---
 		saveStamps(buildDir, entries);
-
 		// --- state 更新 ---
 		{
 			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
@@ -736,7 +800,6 @@ namespace Builder {
 			s.hasValidBuild = true;
 			s.lastBuildAt = std::chrono::steady_clock::now();
 		}
-
 		out.success = true;
 		out.cached = false;
 		out.hexFile = hexPath;
@@ -744,17 +807,14 @@ namespace Builder {
 		out.buildTimeMs = totalSw.elapsedMilliseconds();
 		return out;
 	}
-
 	UploadResult upload(const UploadRequest& req) {
 		UploadResult out;
 		Stopwatch sw;
-
 		std::string sketchDir = resolveSketchDir(req.sketchDir);
 		if (sketchDir.empty()) {
 			out.errorMessage = "Cannot resolve sketch directory: \"" + req.sketchDir + "\"";
 			return out;
 		}
-
 		// --- コンパイル ---
 		if (!req.skipCompile) {
 			CompileRequest cr;
@@ -777,7 +837,6 @@ namespace Builder {
 			out.compile.hexFile = it->second.hexFile;
 			out.compile.elfFile = it->second.elfFile;
 		}
-
 		// --- ポート決定 ---
 		std::string port = req.port;
 		if (port.empty()) {
@@ -794,20 +853,19 @@ namespace Builder {
 		out.port = port;
 
 		// =====================================================================
+
 		// ネイティブ STK500v2 アップロード (avrdude を使わない)
+
 		// =====================================================================
+
 		std::vector<uint8_t> flash;
 		std::string hexErr;
 		if (!Stk500v2::readIntelHex(out.compile.hexFile, flash, hexErr)) {
 			out.errorMessage = "Hex parse failed: " + hexErr;
 			return out;
 		}
-
-		// COMポートウォームアップ
-		warmupComPort(port);
-
+		// 注: 旧 warmupComPort は削除。SerialPort::open() が直後に同じ COM を開くため重複していた。
 		auto stats = Stk500v2::uploadMega2560(port, flash);
-
 		// デバッグ用に内訳もログに残す
 		std::ostringstream oss;
 		oss << "stk500v2 native upload\n"
@@ -819,19 +877,19 @@ namespace Builder {
 			<< "  pages=" << stats.pagesWritten
 			<< " bytes=" << stats.bytesWritten << "\n";
 		out.avrdudeOutput = oss.str();
-
 		if (!stats.success) {
 			out.errorMessage = stats.errorMessage;
 			return out;
 		}
-
 		out.success = true;
 		out.uploadTimeMs = sw.elapsedMilliseconds();
 		return out;
 	}
 
 	// =============================================================================
+
 	// JSON シリアライズ
+
 	// =============================================================================
 
 	nlohmann::json toJson(const CompileResult& r) {
@@ -847,7 +905,6 @@ namespace Builder {
 			{"compilerOutput", r.compilerOutput}
 		};
 	}
-
 	nlohmann::json toJson(const UploadResult& r) {
 		return {
 			{"success", r.success},
@@ -858,5 +915,4 @@ namespace Builder {
 			{"compile", toJson(r.compile)}
 		};
 	}
-
 } // namespace Builder

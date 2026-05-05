@@ -99,9 +99,7 @@ bool initializeDaemonState() {
 	tc.compilerVersion = getCompilerVersionString(tc.avrGcc);
 
 	// 5) core.a キャッシュルート
-	//   旧: %LOCALAPPDATA%\ArduinoBuildDaemon\core-cache
-	//   新: <VSCode>\data\cache\cores  (ポータブル data 配下に統一)
-	g_state.coreCacheRoot = Utils::joinPath(Utils::getDataCacheDir(), "cores");
+	g_state.coreCacheRoot = Utils::joinPath(Utils::getGlobalCacheDir(), "core-cache");
 	Utils::createDirectory(g_state.coreCacheRoot);
 
 	// 6) 起動時刻 / COM ポート初回スキャン
