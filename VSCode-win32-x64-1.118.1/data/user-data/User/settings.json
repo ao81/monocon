@@ -17,23 +17,23 @@
 	"editor.minimap.showSlider": "always",
 	"editor.codeLens": false,
 	"editor.codeLensFontFamily": "'Consolas'",
-	"editor.formatOnSave": false,
+	"editor.formatOnSave": true,
 	"editor.snippetSuggestions": "top",
 	"editor.wordBasedSuggestionsMode": "matchingDocuments",
 	"editor.quickSuggestions": {
 		"comments": "on",
 		"strings": "on"
 	},
-
 	// =========================================================
 	// Formatter (per language)
 	// =========================================================
-	"[c]":   { "editor.defaultFormatter": "ms-vscode.cpptools" },
+	"[c]": {
+		"editor.defaultFormatter": "ms-vscode.cpptools"
+	},
 	"[cpp]": {
 		"editor.defaultFormatter": "ms-vscode.cpptools",
 		"editor.snippetSuggestions": "top"
 	},
-
 	// =========================================================
 	// C / C++
 	// =========================================================
@@ -52,7 +52,6 @@
 	"C_Cpp.intelliSenseEngine": "Tag Parser",
 	"clang-format.style": "{ BasedOnStyle: LLVM, IndentWidth: 4, UseTab: Always, TabWidth: 4 }",
 	"clang-format.fallbackStyle": "LLVM",
-
 	// =========================================================
 	// Terminal
 	// =========================================================
@@ -62,7 +61,13 @@
 	"terminal.integrated.detectLocale": "off",
 	"terminal.integrated.enableMultiLinePasteWarning": "never",
 	"terminal.integrated.allowedLinkSchemes": [
-		"file", "http", "https", "mailto", "vscode", "vscode-insiders", "ms-settings"
+		"file",
+		"http",
+		"https",
+		"mailto",
+		"vscode",
+		"vscode-insiders",
+		"ms-settings"
 	],
 	"terminal.integrated.suggest.quickSuggestions": {
 		"commands": "on",
@@ -76,7 +81,10 @@
 			"icon": "terminal-powershell"
 		},
 		"Command Prompt": {
-			"path": ["${env:windir}\\Sysnative\\cmd.exe", "${env:windir}\\System32\\cmd.exe"],
+			"path": [
+				"${env:windir}\\Sysnative\\cmd.exe",
+				"${env:windir}\\System32\\cmd.exe"
+			],
 			"args": [],
 			"icon": "terminal-cmd"
 		},
@@ -85,10 +93,12 @@
 		},
 		"Ubuntu (WSL)": {
 			"path": "C:\\WINDOWS\\System32\\wsl.exe",
-			"args": ["-d", "Ubuntu"]
+			"args": [
+				"-d",
+				"Ubuntu"
+			]
 		}
 	},
-
 	// =========================================================
 	// Workbench
 	// =========================================================
@@ -102,7 +112,6 @@
 		"editor.formatOnSave",
 		"editor.fontFamily"
 	],
-
 	// =========================================================
 	// Explorer
 	// =========================================================
@@ -110,7 +119,6 @@
 	"explorer.confirmDragAndDrop": false,
 	"explorer.confirmPasteNative": false,
 	"explorer.compactFolders": false,
-
 	// =========================================================
 	// Arduino
 	// =========================================================
@@ -124,14 +132,12 @@
 		"https://dl.espressif.com/dl/package_esp32_index.json"
 	],
 	"arduino.ignoreBoards": [],
-
 	// =========================================================
 	// File associations
 	// =========================================================
 	"files.associations": {
 		"*.ino": "cpp"
 	},
-
 	// =========================================================
 	// Indent Rainbow
 	// =========================================================
@@ -143,7 +149,6 @@
 	],
 	"indentRainbow.errorColor": "rgba(255,255,255,0.3)",
 	"indentRainbow.updateDelay": 10,
-
 	// =========================================================
 	// Misc
 	// =========================================================
@@ -158,5 +163,7 @@
 	"workbench.activityBar.location": "top",
 	"scm.diffDecorations": "none",
 	"scm.diffDecorationsGutterAction": "none",
-	"chat.disableAIFeatures": true
+	"chat.disableAIFeatures": true,
+	"editor.formatOnPaste": true,
+	"editor.defaultFormatter": "ms-vscode.cpptools"
 }
