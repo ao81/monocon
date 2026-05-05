@@ -1,28 +1,28 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\ao\Desktop\monokon\daemon\src\utils.cpp">
+    <ClCompile Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\ao\Desktop\monokon\daemon\src\pipe_io.cpp">
+    <ClCompile Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\pipe_io.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\ao\Desktop\monokon\daemon\src\port_scanner.cpp">
+    <ClCompile Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\port_scanner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\ao\Desktop\monokon\daemon\src\stk500v2.cpp">
+    <ClCompile Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\stk500v2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-src\nlohmann_json.natvis" />
+    <Natvis Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-src\nlohmann_json.natvis" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{77C105C9-1928-3A35-BADD-8BE195DD0CBF}</UniqueIdentifier>
+      <UniqueIdentifier>{78482DE5-5BC4-3AA7-8114-B8B09E10C67C}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

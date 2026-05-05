@@ -63,6 +63,24 @@ namespace {
 
 	// =============================================================================
 
+	// ポータブル版VSCodeのキャッシュディレクトリを特定
+	std::string getPortableCacheDir() {
+		char buf[MAX_PATH];
+		GetModuleFileNameA(nullptr, buf, MAX_PATH);
+		fs::path p = buf;
+
+		// 実行ファイル位置から親ディレクトリを遡り、対象のVSCodeフォルダを探す
+		while (!p.empty() && p.parent_path() != p) {
+			std::string name = p.filename().string();
+			if (name.find("VSCode-win32") != std::string::npos || name == "VSCode") {
+				return (p / "data" / "cache").string();
+			}
+			p = p.parent_path();
+		}
+		// フォールバック: 見つからない場合は実行ファイル直下の data/cache を使用
+		return (fs::path(buf).parent_path() / "data" / "cache").string();
+	}
+
 	// .ino / フォルダ / 末尾スラッシュ を吸収して「.ino を含むディレクトリ」を返す
 	std::string resolveSketchDir(const std::string& raw) {
 		std::error_code ec;
@@ -98,19 +116,21 @@ namespace {
 		}
 		return sketchDir;
 	}
-	// <workspace>/.vscode/build/<sketchDir からの相対パス>
+
+	// ポータブルディレクトリの cache/build/<スケッチ名>_<ハッシュ> に保存
 	std::string computeBuildDir(const std::string& workspace, const std::string& sketch) {
 		std::error_code ec;
-		fs::path ws = fs::absolute(workspace, ec);
+		fs::path cacheRoot = getPortableCacheDir();
 		fs::path sd = fs::absolute(sketch, ec);
-		fs::path rel = fs::relative(sd, ws, ec);
-		std::string r = rel.string();
-		bool inside = !ec && !r.empty() && r != "." && r.rfind("..", 0) != 0;
-		fs::path base = ws / ".vscode" / "build";
-		if (inside) return (base / rel).string();
+
 		std::string leaf = sd.filename().string();
 		if (leaf.empty()) leaf = "sketch";
-		return (base / leaf).string();
+
+		// 同名のスケッチ名が別ディレクトリにある場合の衝突回避
+		std::string hash = Utils::sha1Hex(sd.string()).substr(0, 8);
+		fs::path base = cacheRoot / "build" / (leaf + "_" + hash);
+
+		return base.string();
 	}
 
 	// =============================================================================
@@ -198,11 +218,15 @@ namespace {
 			<< Utils::getFileLastWriteTime(g_state.toolchain.coreDir);
 		return Utils::sha1Hex(oss.str()).substr(0, 16);
 	}
+
+	// ポータブルディレクトリ内に cores フォルダを構築
 	std::string coreArchivePath(const std::string& key) {
-		std::string dir = Utils::joinPath(g_state.coreCacheRoot, key);
+		fs::path cacheRoot = getPortableCacheDir();
+		std::string dir = Utils::joinPath((cacheRoot / "cores").string(), key);
 		Utils::createDirectory(dir);
 		return Utils::joinPath(dir, "core.a");
 	}
+
 	std::string findArduinoCli() {
 		char buf[MAX_PATH * 2];
 		DWORD r = SearchPathA(nullptr, "arduino-cli.exe", nullptr, sizeof(buf), buf, nullptr);
@@ -216,6 +240,7 @@ namespace {
 		}
 		return "";
 	}
+
 	// 初回のみ arduino-cli compile を呼んで core.a を取り出す
 	bool ensureCoreArchive(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& targetCoreA, std::string& errOut) {
@@ -225,8 +250,11 @@ namespace {
 			errOut = "arduino-cli not found (cannot generate core.a)";
 			return false;
 		}
-		std::string tmpBuild = Utils::joinPath(Utils::getGlobalCacheDir(), "tmp-build");
+
+		// テンポラリビルドもポータブル内へ作成
+		std::string tmpBuild = Utils::joinPath(getPortableCacheDir(), "tmp-build");
 		Utils::createDirectory(tmpBuild);
+
 		std::string fqbn = (bc.variant == "megaADK")
 			? "arduino:avr:megaADK"
 			: "arduino:avr:mega:cpu=" + bc.mcu;

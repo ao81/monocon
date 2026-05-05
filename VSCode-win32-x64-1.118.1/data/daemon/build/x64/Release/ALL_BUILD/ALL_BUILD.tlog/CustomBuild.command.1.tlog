@@ -1,6 +1,6 @@
-^C:\USERS\AO\DESKTOP\MONOKON\DAEMON\CMAKELISTS.TXT
+^C:\USERS\AO\DESKTOP\MONOKON_VSCODE\MONOKON\VSCODE-WIN32-X64-1.118.1\DATA\DAEMON\CMAKELISTS.TXT
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ao/Desktop/monokon/daemon -BC:/Users/ao/Desktop/monokon/daemon/build --check-stamp-file C:/Users/ao/Desktop/monokon/daemon/build/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon -BC:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build --check-stamp-file C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

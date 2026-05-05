@@ -7,9 +7,9 @@
   },
   {
     "compile": {
-      "source_path": "C:\\Users\\ao\\Desktop\\monokon_release\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai1.ino.cpp",
-      "object_path": "C:\\Users\\ao\\Desktop\\monokon_release\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai1.ino.cpp.o",
-      "depfile_path": "C:\\Users\\ao\\Desktop\\monokon_release\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai1.ino.cpp.d"
+      "source_path": "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai2.ino.cpp",
+      "object_path": "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai2.ino.cpp.o",
+      "depfile_path": "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai2.ino.cpp.d"
     },
     "compile_task": {
       "args": [
@@ -38,7 +38,7 @@
         "-DARDUINO_ARCH_AVR",
         "-IC:\\Users\\ao\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.7\\cores\\arduino",
         "-IC:\\Users\\ao\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.7\\variants\\mega",
-        "C:\\Users\\ao\\Desktop\\monokon_release\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai1.ino.cpp",
+        "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\cache\\tmp-build\\sketch\\kadai2.ino.cpp",
         "-o",
         "nul"
       ]

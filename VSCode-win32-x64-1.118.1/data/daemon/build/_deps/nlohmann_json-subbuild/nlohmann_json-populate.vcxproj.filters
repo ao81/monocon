@@ -1,44 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-mkdir.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-mkdir.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-download.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-download.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-update.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-update.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-patch.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-patch.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-configure.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-configure.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-build.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-build.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-install.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-install.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\4b2efcade02cbb0be3d85b493234c6eb\nlohmann_json-populate-test.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\c3586e562d25dab77ca39099c5067c22\nlohmann_json-populate-test.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\2564a259c9452b9f602d5a795fd67a17\nlohmann_json-populate-complete.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\22e219037f6e85c0821786d064cfb5e0\nlohmann_json-populate-complete.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\0031f038beeaa2e886f10c78fe8481c7\nlohmann_json-populate.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\09318783c7aa0823f1e6e5f1ded98119\nlohmann_json-populate.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="C:\Users\ao\Desktop\monokon\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\nlohmann_json-populate" />
+    <None Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\nlohmann_json-populate" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{D337CB51-B655-3D00-89CC-9225CB695A46}</UniqueIdentifier>
+      <UniqueIdentifier>{35B27BB4-2E82-3D07-8BFD-E759E9BB7CE2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

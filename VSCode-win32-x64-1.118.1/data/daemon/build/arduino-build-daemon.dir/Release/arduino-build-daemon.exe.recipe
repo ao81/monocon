@@ -2,10 +2,10 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\ao\Desktop\monokon\daemon\build\x64\Release\ZERO_CHECK</FullPath>
+      <FullPath>C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\x64\Release\ZERO_CHECK</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\Users\ao\Desktop\monokon\daemon\build\bin\arduino-build-daemon.exe</FullPath>
+      <FullPath>C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\bin\arduino-build-daemon.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

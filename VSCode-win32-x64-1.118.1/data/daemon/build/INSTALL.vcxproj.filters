@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon\daemon\build\CMakeFiles\e9adbd4b07fe238d5c77964489ae0285\INSTALL_force.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\CMakeFiles\d2de9c569c090b582f9f0500b07088e7\INSTALL_force.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{A1DF14B2-0863-389B-9509-9B109E7DF785}</UniqueIdentifier>
+      <UniqueIdentifier>{C7ADD2E9-2AEB-3333-94D0-6572D2F9F354}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
-^C:\USERS\AO\DESKTOP\MONOKON\DAEMON\BUILD\_DEPS\NLOHMANN_JSON-SUBBUILD\CMAKELISTS.TXT
+^C:\USERS\AO\DESKTOP\MONOKON_VSCODE\MONOKON\VSCODE-WIN32-X64-1.118.1\DATA\DAEMON\BUILD\_DEPS\NLOHMANN_JSON-SUBBUILD\CMAKELISTS.TXT
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-subbuild -BC:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-subbuild --check-stamp-file C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-subbuild/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/_deps/nlohmann_json-subbuild -BC:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/_deps/nlohmann_json-subbuild --check-stamp-file C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/_deps/nlohmann_json-subbuild/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
