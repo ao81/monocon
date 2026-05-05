@@ -57,3 +57,5 @@ yarn-error.log*
 # ============================================
 debug.log
 VSCode-win32-x64-1.118.1/data/cache/builds/*
+code.lock
+*-wal
