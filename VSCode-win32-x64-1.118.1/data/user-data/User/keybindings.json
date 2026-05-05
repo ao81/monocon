@@ -342,5 +342,15 @@
 		"key": "ctrl+v",
 		"command": "filesExplorer.paste",
 		"when": "filesExplorerFocus && foldersViewVisible && !explorerResourceReadonly && !inputFocus"
+	},
+	{
+		"key": "ctrl+backspace",
+		"command": "-extension.vim_ctrl+backspace",
+		"when": "editorTextFocus && vim.active && vim.use<C-BS> && !inDebugRepl && vim.mode != 'Insert'"
+	},
+	{
+		"key": "ctrl+unknown",
+		"command": "-extension.vim_ctrl+^",
+		"when": "editorTextFocus && vim.active && vim.use<C-^> && !inDebugRepl"
 	}
 ]
