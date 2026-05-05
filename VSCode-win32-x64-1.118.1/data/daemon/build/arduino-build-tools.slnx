@@ -7,13 +7,13 @@
 		<BuildType Name="RelWithDebInfo"/>
 		<Platform Name="x64"/>
 	</Configurations>
-	<Project Path="ALL_BUILD.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="25dfa078-0266-36e8-97ae-e53908e0b4d3" DefaultStartup="true">
+	<Project Path="ALL_BUILD.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="ae578d2d-6bbc-3363-a430-1e741f604fef" DefaultStartup="true">
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 		<BuildDependency Project="arduino-build-cli.vcxproj"/>
 		<BuildDependency Project="arduino-build-daemon.vcxproj"/>
 		<BuildDependency Project="common.vcxproj"/>
 	</Project>
-	<Project Path="INSTALL.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="bbfd5b2c-3c52-366e-bd71-2aee38f8a5f5">
+	<Project Path="INSTALL.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="d9507db9-e9c5-3930-8624-63bc52e38d40">
 		<BuildDependency Project="ALL_BUILD.vcxproj"/>
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 		<Build Solution="Debug|*" Project="false"/>
@@ -21,16 +21,16 @@
 		<Build Solution="MinSizeRel|*" Project="false"/>
 		<Build Solution="RelWithDebInfo|*" Project="false"/>
 	</Project>
-	<Project Path="ZERO_CHECK.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="37515145-79cc-3199-a132-d5437a7d34d6"/>
-	<Project Path="arduino-build-cli.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="4c855644-3eb7-3522-a232-c9415fad9114">
+	<Project Path="ZERO_CHECK.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="4009a4ae-1e1f-3d0a-b818-03d5996dd994"/>
+	<Project Path="arduino-build-cli.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="8fdc3173-1d4d-3174-9746-08b7754ee443">
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 		<BuildDependency Project="common.vcxproj"/>
 	</Project>
-	<Project Path="arduino-build-daemon.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="3b84b88e-0249-328b-aea5-318e0ae68b53">
+	<Project Path="arduino-build-daemon.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="9a1b57c6-0a26-3cd0-9e3e-7e78fa7b1e23">
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 		<BuildDependency Project="common.vcxproj"/>
 	</Project>
-	<Project Path="common.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="57cfc290-35f6-31c9-a6d3-4e56d035fd25">
+	<Project Path="common.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="20f71309-bbb9-312e-8913-639a795c5b31">
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 	</Project>
 </Solution>

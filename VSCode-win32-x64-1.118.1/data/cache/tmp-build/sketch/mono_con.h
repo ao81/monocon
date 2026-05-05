@@ -1,4 +1,4 @@
-#line 1 "C:\\Users\\ao\\Desktop\\monokon_release\\sample\\kadai1\\mono_con.h"
+#line 1 "C:\\Users\\ao\\Desktop\\tmp\\tests\\kadai2\\mono_con.h"
 //===================================================================================================================
 //
 //  高校生ものづくりコンテスト2026岡山県大会用 ArduinoShield

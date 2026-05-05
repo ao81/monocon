@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-subbuild/cmake_install.cmake"
+		"C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/_deps/nlohmann_json-subbuild/cmake_install.cmake"
 	],
 	"Parallel" : false
 }
