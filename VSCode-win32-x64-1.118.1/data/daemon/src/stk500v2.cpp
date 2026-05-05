@@ -44,6 +44,10 @@ namespace {
 				OPEN_EXISTING, 0, nullptr);
 			if (h == INVALID_HANDLE_VALUE) return false;
 
+			// ドライバ側のバッファを大きく確保: フルページ (270B) を 1 USB 転送で受け切れる。
+			// 既定値はドライバ依存 (FTDI=4096 など) だが、小さい場合でも上書きで最適化。
+			SetupComm(h, 4096, 4096);
+
 			DCB dcb{};
 			dcb.DCBlength = sizeof(dcb);
 			if (!GetCommState(h, &dcb)) { close(); return false; }
@@ -69,14 +73,19 @@ namespace {
 			// ReadIntervalTimeout=MAXDWORD と ReadTotalTimeoutMultiplier=0 にすると、
 			// ReadFile は「指定バイト数を全部受信」or「ReadTotalTimeoutConstant 経過」
 			// のどちらかで戻る。USB-Serial のバイト間ギャップで取りこぼさない。
+			setReadTimeout(200);
+			return true;
+		}
+
+		// 動的にタイムアウトを切り替える。sync 中は短く、ページ書込中は長め。
+		void setReadTimeout(DWORD ms) {
 			COMMTIMEOUTS to{};
 			to.ReadIntervalTimeout = MAXDWORD;
-			to.ReadTotalTimeoutConstant = 500;
+			to.ReadTotalTimeoutConstant = ms;
 			to.ReadTotalTimeoutMultiplier = 0;
-			to.WriteTotalTimeoutConstant = 500;
+			to.WriteTotalTimeoutConstant = ms;
 			to.WriteTotalTimeoutMultiplier = 0;
 			SetCommTimeouts(h, &to);
-			return true;
 		}
 
 		void close() {
@@ -87,17 +96,21 @@ namespace {
 		}
 
 		// Mega 2560 のリセット: DTR をトグルしてブートローダ起動
-		// Mega 2560 のリセット回路はコンデンサ結合 (DTR──[100nF]──RESET) なので、
+		// Mega 2560 のリセット回路はコンデンサ結合 (DTR──[100nF]──RESET, RESET 側 10kΩ プルアップ) なので、
 		// DTR の HIGH→LOW→HIGH エッジでだけリセットがかかる。
 		// ずっと LOW でも HIGH でもリセットしない。
+		// RC 時定数 = 10kΩ × 100nF = 1ms。実際のリセットパルス幅は約 1ms。
+		// よって長時間 LOW を維持しても効果は無く、純粋なドライバ反映待ちで十分。
 		void toggleReset() {
-			// まず確実に HIGH にしてエッジを作れるようにする
+			// HIGH を確実に立てるための最低限の settle (旧: 50ms → 2ms)
 			EscapeCommFunction(h, SETDTR);
-			Sleep(50);
+			Sleep(2);
 
 			// HIGH → LOW: コンデンサ経由で RESET ピンに負パルス → MCU リセット
+			// 旧 100ms はドライバ反映と一部 USB-Serial の遅延を吸収するための余裕。
+			// 20ms あれば CH340/FTDI/16U2 すべて反映済み。RC 1ms に対して十分過大。
 			EscapeCommFunction(h, CLRDTR);
-			Sleep(100);
+			Sleep(20);
 
 			// LOW → HIGH: リセット解除 → ブートローダ起動
 			EscapeCommFunction(h, SETDTR);
@@ -152,26 +165,36 @@ namespace {
 		}
 
 		bool recvMessage(std::vector<uint8_t>& body) {
-			// MESSAGE_START を探す
-			uint8_t b = 0;
-			for (int i = 0; i < 1024; ++i) {
-				if (!port.read(&b, 1)) return false;
-				if (b == MESSAGE_START) break;
+			// PurgeComm 後 / 直前送信に対する応答であれば、RX バッファ先頭は確実に
+			// MESSAGE_START になる。ヘッダ 5 バイトを 1 ReadFile で取得して
+			// シスコール回数を 1 つ削る (ページ毎に 1 回 → 数十 ms オーダー)。
+			uint8_t hdr5[5];
+			if (!port.read(hdr5, 5)) return false;
+
+			if (hdr5[0] != MESSAGE_START) {
+				// 異常系: 古いゴミが先頭にある場合は線形に MESSAGE_START を探す
+				// (1 KB 以内に必ず正しい応答が来るとみなす)
+				int searched = 0;
+				while (hdr5[0] != MESSAGE_START) {
+					if (++searched > 1024) return false;
+					uint8_t b;
+					if (!port.read(&b, 1)) return false;
+					hdr5[0] = b;
+				}
+				// 残り 4 バイトを再度読む
+				if (!port.read(hdr5 + 1, 4)) return false;
 			}
-			if (b != MESSAGE_START) return false;
 
-			uint8_t hdr[4];
-			if (!port.read(hdr, 4)) return false;
-			if (hdr[3] != TOKEN) return false;
+			if (hdr5[4] != TOKEN) return false;
 
-			uint16_t sz = ((uint16_t)hdr[1] << 8) | hdr[2];
+			uint16_t sz = ((uint16_t)hdr5[2] << 8) | hdr5[3];
 			body.resize(sz);
 			if (sz > 0 && !port.read(body.data(), sz)) return false;
 
 			uint8_t chk;
 			if (!port.read(&chk, 1)) return false;
 
-			uint8_t calc = MESSAGE_START ^ hdr[0] ^ hdr[1] ^ hdr[2] ^ hdr[3];
+			uint8_t calc = MESSAGE_START ^ hdr5[1] ^ hdr5[2] ^ hdr5[3] ^ hdr5[4];
 			for (uint8_t bb : body) calc ^= bb;
 			if (calc != chk) return false;
 
@@ -226,21 +249,49 @@ namespace {
 		}
 
 		bool programPage(const uint8_t* data, size_t len) {
-			std::vector<uint8_t> req;
-			req.reserve(10 + len);
-			req.push_back(CMD_PROGRAM_FLASH_ISP);
-			req.push_back((uint8_t)((len >> 8) & 0xFF));
-			req.push_back((uint8_t)(len & 0xFF));
-			req.push_back(0xC1);          // mode: paged + write page
-			req.push_back(10);            // delay
-			req.push_back(0x40);          // cmd1
-			req.push_back(0x4C);          // cmd2 (write page)
-			req.push_back(0x20);          // cmd3 (read for value-poll)
-			req.push_back(0x00);          // poll1
-			req.push_back(0x00);          // poll2
-			req.insert(req.end(), data, data + len);
+			// ホットパス: ヒープを使わずスタック上で 1 メッセージを組み立てて 1 回の WriteFile で送る。
+			// レイアウト:
+			//   [0] MESSAGE_START
+			//   [1] seq
+			//   [2..3] body size (BE)
+			//   [4] TOKEN
+			//   [5..14] CMD_PROGRAM_FLASH_ISP + 9 byte param header
+			//   [15..15+len-1] flash data
+			//   [15+len] checksum (XOR)
+			// 合計サイズは 16 + len。Mega2560 は len=256 で 272 byte。
+			constexpr size_t kHeaderBytes = 5 + 10; // フレーム 5 + cmd ヘッダ 10
+			uint8_t buf[16 + MEGA2560_PAGE_SIZE];   // 最大ページサイズ固定で十分
+			if (len > MEGA2560_PAGE_SIZE) return false;
+
+			const uint16_t bodySize = (uint16_t)(10 + len);
+			buf[0] = MESSAGE_START;
+			buf[1] = seq;
+			buf[2] = (uint8_t)((bodySize >> 8) & 0xFF);
+			buf[3] = (uint8_t)(bodySize & 0xFF);
+			buf[4] = TOKEN;
+
+			buf[5] = CMD_PROGRAM_FLASH_ISP;
+			buf[6] = (uint8_t)((len >> 8) & 0xFF);
+			buf[7] = (uint8_t)(len & 0xFF);
+			buf[8] = 0xC1;          // mode: paged + write page
+			buf[9] = 10;            // delay
+			buf[10] = 0x40;         // cmd1
+			buf[11] = 0x4C;         // cmd2 (write page)
+			buf[12] = 0x20;         // cmd3 (read for value-poll)
+			buf[13] = 0x00;         // poll1
+			buf[14] = 0x00;         // poll2
+
+			memcpy(buf + kHeaderBytes, data, len);
+
+			uint8_t chk = 0;
+			const size_t endIdx = kHeaderBytes + len;
+			for (size_t i = 0; i < endIdx; ++i) chk ^= buf[i];
+			buf[endIdx] = chk;
+
+			if (!port.write(buf, endIdx + 1)) return false;
+
 			std::vector<uint8_t> resp;
-			if (!exchange(req, resp)) return false;
+			if (!recvMessage(resp)) return false;
 			return resp.size() >= 2 && resp[0] == CMD_PROGRAM_FLASH_ISP && resp[1] == STATUS_CMD_OK;
 		}
 	};
@@ -342,19 +393,29 @@ namespace Stk500v2 {
 		stats.resetMs = elapsedMs(t1);
 		auto t2 = std::chrono::steady_clock::now();
 
-		// Mega 2560 純正ブートローダの起動シーケンス:
-		// リセット解除 → ブートローダ実行開始まで ~250ms
-		// avrdude も内部で同程度待つ。ここを削るとブートローダが応答しない。
-		Sleep(250);
+		// Mega 2560 wiring ブートローダの起動シーケンス:
+		// - リセット解除直後、ブートローダの初期化 (UART 設定, ウォッチドッグ解除等) に ~50ms
+		// - 旧来の Sleep(250) は最悪値マージン込みの過剰待機。
+		// - 80ms 確定待機 → 50ms タイムアウトでアダプティブ sync すれば、
+		//   ブートローダ準備完了の瞬間に sync 成立する。
+		Sleep(80);
 
-		// 3) ブートローダと sync (診断付き)
+		// 3) ブートローダと sync: 短タイムアウト + 早期再試行
+		// 全体予算を 1.2 秒で打ち切る (旧: 6 retries × 500ms = 最悪 3 秒)
+		sp.setReadTimeout(50);
+
 		Stk500v2Client cli(sp);
 		bool synced = false;
 		int sendFailures = 0;
 		int recvFailures = 0;
 		int badResponses = 0;
 
-		for (int i = 0; i < 6; ++i) {
+		auto syncStart = std::chrono::steady_clock::now();
+		while (true) {
+			auto syncElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::steady_clock::now() - syncStart).count();
+			if (syncElapsed > 1200) break;
+
 			std::vector<uint8_t> resp;
 			if (!cli.sendMessage({ CMD_SIGN_ON })) {
 				sendFailures++;
@@ -370,6 +431,10 @@ namespace Stk500v2 {
 			}
 			badResponses++;
 		}
+
+		// プログラミング中は通常タイムアウトに戻す。
+		// (ページ書込中はフラッシュ erase+write で ~9ms 停止するため、最低でも数十 ms 必要)
+		sp.setReadTimeout(200);
 
 		if (!synced) {
 			std::ostringstream diag;
@@ -387,25 +452,38 @@ namespace Stk500v2 {
 		auto t3 = std::chrono::steady_clock::now();
 
 		// 4) 全ページ書き込み (0xFF だけのページはスキップ)
+		// 重要: Wiring ブートローダ (公式 Mega 2560) は CMD_PROGRAM_FLASH_ISP の後、
+		//   内部の `address` 変数を「書き込んだバイト数 / 2」だけ自動的に進める。
+		//   よって連続するページに対して loadAddress を毎回呼ぶ必要はない。
+		//   呼ぶのは「直前のページから連続でない」場合のみ (= 初回 or 0xFF スキップ後)。
+		// この削減により ~3-5 ms × ページ数 を削れる (32 ページなら ~100ms)。
 		size_t pages = flash.size() / MEGA2560_PAGE_SIZE;
+		uint32_t expectedNextWordAddr = ~0u;  // 「未確定」を表すセンチネル
 		for (size_t p = 0; p < pages; ++p) {
 			size_t addr = p * MEGA2560_PAGE_SIZE;
 
+			// 64bit 単位で 0xFF 判定 (バイト単位より高速)
 			bool allFF = true;
-			for (size_t i = 0; i < MEGA2560_PAGE_SIZE; ++i) {
-				if (flash[addr + i] != 0xFF) { allFF = false; break; }
+			const uint64_t kFFMask = 0xFFFFFFFFFFFFFFFFull;
+			const uint64_t* p64 = reinterpret_cast<const uint64_t*>(&flash[addr]);
+			for (size_t i = 0; i < MEGA2560_PAGE_SIZE / sizeof(uint64_t); ++i) {
+				if (p64[i] != kFFMask) { allFF = false; break; }
 			}
 			if (allFF) continue;
 
 			uint32_t wordAddr = (uint32_t)(addr / 2);
-			if (!cli.loadAddress(wordAddr)) {
-				stats.errorMessage = "loadAddress failed at page " + std::to_string(p);
-				return stats;
+			if (wordAddr != expectedNextWordAddr) {
+				if (!cli.loadAddress(wordAddr)) {
+					stats.errorMessage = "loadAddress failed at page " + std::to_string(p);
+					return stats;
+				}
 			}
 			if (!cli.programPage(&flash[addr], MEGA2560_PAGE_SIZE)) {
 				stats.errorMessage = "programPage failed at page " + std::to_string(p);
 				return stats;
 			}
+			// ブートローダ側のアドレスはページサイズ / 2 だけ進んだはず
+			expectedNextWordAddr = wordAddr + (uint32_t)(MEGA2560_PAGE_SIZE / 2);
 			stats.bytesWritten += MEGA2560_PAGE_SIZE;
 			stats.pagesWritten++;
 		}

@@ -18,8 +18,6 @@ namespace Utils {
 
 	// --- パス取得 ---
 	std::string getLocalAppDataPath();
-	std::string getExecutableDir();
-	std::string getDataCacheDir();
 	std::string getGlobalCacheDir();      // %LOCALAPPDATA%\ArduinoBuildDaemon
 
 	// --- ファイル / ディレクトリ ---
