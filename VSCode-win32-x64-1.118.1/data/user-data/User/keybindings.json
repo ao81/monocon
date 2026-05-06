@@ -4,7 +4,7 @@
 	// フォーマット: Ctrl+B
 	// =====================================================================
 	{
-		"key": "ctrl+b",
+		"key": "alt+v",
 		"command": "editor.action.formatDocument",
 		"when": "editorHasDocumentFormattingProvider && editorTextFocus && !editorReadonly && !inCompositeEditor"
 	},
@@ -14,7 +14,7 @@
 		"when": "editorHasDocumentFormattingProvider && editorTextFocus && !editorReadonly && !inCompositeEditor"
 	},
 	{
-		"key": "ctrl+b",
+		"key": "alt+v",
 		"command": "editor.action.formatDocument.none",
 		"when": "editorTextFocus && !editorHasDocumentFormattingProvider && !editorReadonly"
 	},
@@ -24,7 +24,7 @@
 		"when": "editorTextFocus && !editorHasDocumentFormattingProvider && !editorReadonly"
 	},
 	{
-		"key": "ctrl+b",
+		"key": "alt+v",
 		"command": "notebook.format",
 		"when": "notebookEditable && !editorTextFocus && activeEditor == 'workbench.editor.notebook'"
 	},
@@ -129,7 +129,7 @@
 	},
 	{
 		"key": "ctrl+a",
-		"command": "-extension.vim_ctrl+a",
+		"command": "extension.vim_ctrl+a",
 		"when": "editorTextFocus && vim.active && vim.use<C-a> && !inDebugRepl"
 	},
 	{
