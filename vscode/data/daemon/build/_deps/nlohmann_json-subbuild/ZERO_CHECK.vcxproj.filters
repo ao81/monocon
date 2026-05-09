@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\09318783c7aa0823f1e6e5f1ded98119\generate.stamp.rule">
+    <CustomBuild Include="C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\build\_deps\nlohmann_json-subbuild\CMakeFiles\78c3bd4083f086f3c969c9b2d23092b6\generate.stamp.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{35B27BB4-2E82-3D07-8BFD-E759E9BB7CE2}</UniqueIdentifier>
+      <UniqueIdentifier>{A6177235-D611-3F81-BC6E-A01254FA5255}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

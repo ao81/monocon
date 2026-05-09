@@ -35,6 +35,7 @@ events:
     found: "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeCXXCompilerId.cpp.in"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -119,9 +120,9 @@ events:
       The output was:
       0
       MSBuild 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ 18.5.4+cb4e32d21 (.NET Framework)
-      2026/05/06 豌ｴ 1:04:12 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
+      2026/05/09 蝨・15:49:34 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
       
-      繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
+      繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
       PrepareForBuild:
         繝・ぅ繝ｬ繧ｯ繝医Μ "Debug\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
         讒矩\xc2\x80蛹門・蜉帙′譛牙柑縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶\xc2\x80ゅさ繝ｳ繝代う繝ｩ險ｺ譁ｭ縺ｮ譖ｸ蠑剰ｨｭ螳壹↓縺ｯ繧ｨ繝ｩ繝ｼ髫主ｱ､縺悟渚譏縺輔ｌ縺ｾ縺吶\xc2\x80りｩｳ邏ｰ縺ｫ縺､縺・※縺ｯ縲”ttps://aka.ms/cpp/structured-output 繧貞盾辣ｧ縺励※縺上□縺輔＞縲・
@@ -134,7 +135,7 @@ events:
         CMakeCXXCompilerId.cpp
       Link:
         C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
-        CompilerIdCXX.vcxproj -> C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.exe
+        CompilerIdCXX.vcxproj -> C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.exe
       PostBuildEvent:
         for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
         :VCEnd
@@ -142,13 +143,13 @@ events:
       FinalizeBuildStatus:
         繝輔ぃ繧､繝ｫ "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild" 繧貞炎髯､縺励※縺・∪縺吶\xc2\x80・
         "Debug\\CompilerIdCXX.tlog\\CompilerIdCXX.lastbuildstate" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
-      繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′螳御ｺ・＠縺ｾ縺励◆縲・
+      繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′螳御ｺ・＠縺ｾ縺励◆縲・
       
       繝薙Ν繝峨↓謌仙粥縺励∪縺励◆縲・
           0 蛟九・隴ｦ蜻・
           0 繧ｨ繝ｩ繝ｼ
       
-      邨碁℃譎る俣 00:00:00.51
+      邨碁℃譎る俣 00:00:01.03
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -156,7 +157,7 @@ events:
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.vcxproj"
       
       The CXX compiler identification is MSVC, found in:
-        C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/4.3.2/CompilerIdCXX/CompilerIdCXX.exe
+        C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/4.3.2/CompilerIdCXX/CompilerIdCXX.exe
       
   -
     kind: "find-v1"
@@ -181,6 +182,7 @@ events:
       - "link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -245,6 +247,7 @@ events:
     found: "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -336,6 +339,7 @@ events:
       - "lld-link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -399,6 +403,9 @@ events:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/lld-link.exe"
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/lld-link"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/lld-link.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/lld-link.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/lld-link"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/lld-link.com"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/lld-link.exe"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/lld-link"
@@ -544,6 +551,7 @@ events:
     found: "C:/Program Files/LLVM/bin/lld-link.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -633,6 +641,7 @@ events:
       - "link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -697,6 +706,7 @@ events:
     found: "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -786,6 +796,7 @@ events:
       - "mt"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -849,6 +860,9 @@ events:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/mt.com"
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/mt.exe"
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/mt"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/mt.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/mt.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/mt"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/mt.com"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/mt.exe"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/mt"
@@ -1029,6 +1043,7 @@ events:
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -1118,6 +1133,7 @@ events:
       - "lib"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -1182,6 +1198,7 @@ events:
     found: "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/lib.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -1273,6 +1290,7 @@ events:
     names:
       - "rc"
     candidate_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -1345,6 +1363,9 @@ events:
       - "C:/Program Files (x86)/arduino-build-tools/sbin/"
       - "C:/Program Files (x86)/arduino-build-tools/"
     searched_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/rc.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/rc.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/rc"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/rc.com"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/rc.exe"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/rc"
@@ -1561,6 +1582,7 @@ events:
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -1644,8 +1666,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-8729c0"
-      binary: "C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-8729c0"
+      source: "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl"
+      binary: "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1656,39 +1678,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-8729c0'
+        Change Dir: 'C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_a5134.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_c4a26.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
         MSBuild 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ 18.5.4+cb4e32d21 (.NET Framework)
-        2026/05/06 豌ｴ 1:04:12 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
+        2026/05/09 蝨・15:49:36 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
         
-        繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8729c0\\cmTC_a5134.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
+        繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\cmTC_c4a26.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
         PrepareForBuild:
           讒矩\xc2\x80蛹門・蜉帙′譛牙柑縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶\xc2\x80ゅさ繝ｳ繝代う繝ｩ險ｺ譁ｭ縺ｮ譖ｸ蠑剰ｨｭ螳壹↓縺ｯ繧ｨ繝ｩ繝ｼ髫主ｱ､縺悟渚譏縺輔ｌ縺ｾ縺吶\xc2\x80りｩｳ邏ｰ縺ｫ縺､縺・※縺ｯ縲”ttps://aka.ms/cpp/structured-output 繧貞盾辣ｧ縺励※縺上□縺輔＞縲・
-          繝・ぅ繝ｬ繧ｯ繝医Μ "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8729c0\\Debug\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
-          繝・ぅ繝ｬ繧ｯ繝医Μ "cmTC_a5134.dir\\Debug\\cmTC_a5134.tlog\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
+          繝・ぅ繝ｬ繧ｯ繝医Μ "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\Debug\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
+          繝・ぅ繝ｬ繧ｯ繝医Μ "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
         InitializeBuildStatus:
-          "AlwaysCreate" 縺梧欠螳壹＆繧後◆縺溘ａ "cmTC_a5134.dir\\Debug\\cmTC_a5134.tlog\\unsuccessfulbuild" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
-          "cmTC_a5134.dir\\Debug\\cmTC_a5134.tlog\\unsuccessfulbuild" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
+          "AlwaysCreate" 縺梧欠螳壹＆繧後◆縺溘ａ "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\unsuccessfulbuild" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
+          "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\unsuccessfulbuild" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_a5134.dir\\Debug\\\\" /Fd"cmTC_a5134.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_c4a26.dir\\Debug\\\\" /Fd"cmTC_c4a26.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft(R) C/C++ Optimizing Compiler Version 19.50.35729 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_a5134.dir\\Debug\\\\" /Fd"cmTC_a5134.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_c4a26.dir\\Debug\\\\" /Fd"cmTC_c4a26.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8729c0\\Debug\\cmTC_a5134.exe" /INCREMENTAL /ILK:"cmTC_a5134.dir\\Debug\\cmTC_a5134.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-8729c0/Debug/cmTC_a5134.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-8729c0/Debug/cmTC_a5134.lib" /MACHINE:X64  /machine:x64 cmTC_a5134.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_a5134.vcxproj -> C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8729c0\\Debug\\cmTC_a5134.exe
+          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\Debug\\cmTC_c4a26.exe" /INCREMENTAL /ILK:"cmTC_c4a26.dir\\Debug\\cmTC_c4a26.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl/Debug/cmTC_c4a26.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl/Debug/cmTC_c4a26.lib" /MACHINE:X64  /machine:x64 cmTC_c4a26.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_c4a26.vcxproj -> C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\Debug\\cmTC_c4a26.exe
         FinalizeBuildStatus:
-          繝輔ぃ繧､繝ｫ "cmTC_a5134.dir\\Debug\\cmTC_a5134.tlog\\unsuccessfulbuild" 繧貞炎髯､縺励※縺・∪縺吶\xc2\x80・
-          "cmTC_a5134.dir\\Debug\\cmTC_a5134.tlog\\cmTC_a5134.lastbuildstate" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
-        繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\VSCode-win32-x64-1.118.1\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8729c0\\cmTC_a5134.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′螳御ｺ・＠縺ｾ縺励◆縲・
+          繝輔ぃ繧､繝ｫ "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\unsuccessfulbuild" 繧貞炎髯､縺励※縺・∪縺吶\xc2\x80・
+          "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\cmTC_c4a26.lastbuildstate" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
+        繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\cmTC_c4a26.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′螳御ｺ・＠縺ｾ縺励◆縲・
         
         繝薙Ν繝峨↓謌仙粥縺励∪縺励◆縲・
             0 蛟九・隴ｦ蜻・
             0 繧ｨ繝ｩ繝ｼ
         
-        邨碁℃譎る俣 00:00:00.60
+        邨碁℃譎る俣 00:00:00.56
         
       exitCode: 0
   -
@@ -1744,6 +1766,7 @@ events:
       - "git.cmd"
       - "git"
     candidate_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -1817,6 +1840,9 @@ events:
       - "C:/Program Files (x86)/arduino-build-tools/"
       - "C:/Users/ao/AppData/Local/Atlassian/SourceTree/git_local/bin/"
     searched_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.cmd.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.cmd.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.cmd"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.cmd.com"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.cmd.exe"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.cmd"
@@ -2033,6 +2059,9 @@ events:
       - "C:/Users/ao/AppData/Local/Atlassian/SourceTree/git_local/bin/git.cmd.com"
       - "C:/Users/ao/AppData/Local/Atlassian/SourceTree/git_local/bin/git.cmd.exe"
       - "C:/Users/ao/AppData/Local/Atlassian/SourceTree/git_local/bin/git.cmd"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.com"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.exe"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git"
@@ -2127,6 +2156,7 @@ events:
     found: "C:/Program Files/Git/cmd/git.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -2220,6 +2250,7 @@ events:
     names:
       - "x64/Microsoft.VC145.CRT"
     candidate_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -2291,6 +2322,7 @@ events:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Redist/MSVC/14.50.35710/"
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Redist/MSVC/14.44.35112/"
     searched_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/x64/Microsoft.VC145.CRT"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/x64/Microsoft.VC145.CRT"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/x64/Microsoft.VC145.CRT"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/x64/Microsoft.VC145.CRT"
@@ -2362,6 +2394,7 @@ events:
     found: "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Redist/MSVC/14.50.35710/"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -2456,6 +2489,7 @@ events:
       - "Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "Redist/ucrt/DLLs/x64/ucrtbase.dll"
     candidate_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
@@ -2526,6 +2560,7 @@ events:
       - "C:/Program Files (x86)/Windows Kits/10/"
       - "C:/Program Files/Windows Kits/10/"
     searched_directories:
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
@@ -2596,6 +2631,7 @@ events:
     found: "C:/Program Files (x86)/Windows Kits/10/"
     search_context:
       ENV{PATH}:
+        - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
