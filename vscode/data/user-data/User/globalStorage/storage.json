@@ -1,0 +1,131 @@
+{
+    "telemetry.machineId": "7729e18b0fa0b72a07219d557deee9fe74e8a4999ce9d4b609174553559dd2ee",
+    "telemetry.sqmId": "{1A560B77-8BD0-45EB-BE10-CB83D0EC049E}",
+    "telemetry.devDeviceId": "dc4611fa-1596-44fe-ae38-ba65ca285e8e",
+    "backupWorkspaces": {
+        "workspaces": [],
+        "folders": [
+            {
+                "folderUri": "file:///c%3A/Users/ao/Desktop/monokon"
+            },
+            {
+                "folderUri": "file:///c%3A/Users/ao/Desktop/monokon_vscode/monokon/vscode"
+            }
+        ],
+        "emptyWindows": [
+            {
+                "backupFolder": "1778296980063"
+            }
+        ]
+    },
+    "windowControlHeight": 35,
+    "profileAssociations": {
+        "workspaces": {
+            "file:///c%3A/Users/ao/Desktop/tmp/tests": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/tmp": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/monokon": "__default__profile__",
+            "file:///g%3A/arduino": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/monokon_vscode/monokon": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/monokon_vscode": "__default__profile__",
+            "file:///c%3A/Users/ao/Pictures/ns/syousetu": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/programing/git-project/okako-pg": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/programing/git-project/ao81": "__default__profile__",
+            "file:///c%3A/Users/ao/Desktop/monokon_vscode/monokon/vscode": "__default__profile__"
+        },
+        "emptyWindows": {
+            "1778296980063": "__default__profile__"
+        }
+    },
+    "theme": "vs-dark",
+    "themeBackground": "#121314",
+    "windowSplash": {
+        "zoomLevel": 0,
+        "baseTheme": "vs-dark",
+        "colorInfo": {
+            "foreground": "#bfbfbf",
+            "background": "#121314",
+            "editorBackground": "#121314",
+            "titleBarBackground": "#191a1b",
+            "titleBarBorder": "#2a2b2c",
+            "activityBarBackground": "#191a1b",
+            "activityBarBorder": "#2a2b2c",
+            "sideBarBackground": "#191a1b",
+            "sideBarBorder": "#2a2b2c",
+            "statusBarBackground": "#191a1b",
+            "statusBarBorder": "#2a2b2c",
+            "statusBarNoFolderBackground": "#191a1b"
+        },
+        "layoutInfo": {
+            "sideBarSide": "left",
+            "editorPartMinWidth": 220,
+            "titleBarHeight": 35,
+            "activityBarWidth": 0,
+            "sideBarWidth": 300,
+            "auxiliaryBarWidth": 0,
+            "statusBarHeight": 22,
+            "windowBorder": false
+        }
+    },
+    "windowsState": {
+        "lastActiveWindow": {
+            "folder": "file:///c%3A/Users/ao/Desktop/monokon_vscode/monokon/vscode",
+            "backupPath": "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\user-data\\Backups\\4c68b3a95a3b48791cc186eccaf54eba",
+            "uiState": {
+                "mode": 1,
+                "x": 144,
+                "y": 51,
+                "width": 1440,
+                "height": 911
+            }
+        },
+        "openedWindows": []
+    },
+    "windowSplashWorkspaceOverride": {
+        "layoutInfo": {
+            "sideBarWidth": 300,
+            "auxiliaryBarWidth": 300,
+            "workspaces": {
+                "039e6c61f85c24b4768b221f2c57a227": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "087c54573cbc969b404fcc697ea34b02": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "e97a9b6982f267a4509df557fac89ea2": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "02ccf422ee133c4053c35d1e33b84295": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "9891f5c6996b3d0134bc810195aec08c": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "95f7c53ef73e0ad6910a878d6e8361a3": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "02bd49b492426d48475a8d8d8289de38": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "f32036522a49156d5bc44d1b4080750b": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "95ac4add54c49ec992beac5031fcbeff": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                },
+                "d3dde47ad9ba904a9667ef3d0f7b1b72": {
+                    "sideBarVisible": true,
+                    "auxiliaryBarVisible": false
+                }
+            }
+        }
+    }
+}

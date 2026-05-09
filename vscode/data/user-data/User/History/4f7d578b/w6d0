@@ -1,0 +1,3 @@
+*.h   linguist-language=C++
+*.ino linguist-language=Arduino
+*.ino linguist-detectable=true

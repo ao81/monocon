@@ -1,0 +1,6 @@
+2026-05-09 12:11:46.193 [info] Started local extension host with pid 3064.
+2026-05-09 12:11:46.360 [info] [DefaultAccount] Authentication provider is not declared. {"id":"github","name":"GitHub","enterprise":false}
+2026-05-09 12:11:47.304 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-09 12:11:47.528 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2026-05-09 12:11:48.918 [info] [perf] Render performance baseline is 19ms
+2026-05-09 12:11:52.304 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
