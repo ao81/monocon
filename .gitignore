@@ -3,33 +3,33 @@
 # ============================================
 
 # ユーザーデータ内のキャッシュ・ログ・一時データ
-VSCode-win32-x64-1.118.1/data/user-data/Backups/
-VSCode-win32-x64-1.118.1/data/user-data/blob_storage/
-VSCode-win32-x64-1.118.1/data/user-data/Cache/
-VSCode-win32-x64-1.118.1/data/user-data/CachedConfigurations/
-VSCode-win32-x64-1.118.1/data/user-data/CachedData/
-VSCode-win32-x64-1.118.1/data/user-data/CachedProfilesData/
-VSCode-win32-x64-1.118.1/data/user-data/clp/
-VSCode-win32-x64-1.118.1/data/user-data/Code Cache/
-VSCode-win32-x64-1.118.1/data/user-data/Crashpad/
-VSCode-win32-x64-1.118.1/data/user-data/DawnGraphiteCache/
-VSCode-win32-x64-1.118.1/data/user-data/DawnWebGPUCache/
-VSCode-win32-x64-1.118.1/data/user-data/GPUCache/
-VSCode-win32-x64-1.118.1/data/user-data/Local Storage/
-VSCode-win32-x64-1.118.1/data/user-data/logs/
-VSCode-win32-x64-1.118.1/data/user-data/Network/
-VSCode-win32-x64-1.118.1/data/user-data/Service Worker/
-VSCode-win32-x64-1.118.1/data/user-data/Session Storage/
-VSCode-win32-x64-1.118.1/data/user-data/Shared Dictionary/
-VSCode-win32-x64-1.118.1/data/user-data/WebStorage/
+vscode/data/user-data/Backups/
+vscode/data/user-data/blob_storage/
+vscode/data/user-data/Cache/
+vscode/data/user-data/CachedConfigurations/
+vscode/data/user-data/CachedData/
+vscode/data/user-data/CachedProfilesData/
+vscode/data/user-data/clp/
+vscode/data/user-data/Code Cache/
+vscode/data/user-data/Crashpad/
+vscode/data/user-data/DawnGraphiteCache/
+vscode/data/user-data/DawnWebGPUCache/
+vscode/data/user-data/GPUCache/
+vscode/data/user-data/Local Storage/
+vscode/data/user-data/logs/
+vscode/data/user-data/Network/
+vscode/data/user-data/Service Worker/
+vscode/data/user-data/Session Storage/
+vscode/data/user-data/Shared Dictionary/
+vscode/data/user-data/WebStorage/
 
 # ユーザーのワーク履歴・チャット履歴
-VSCode-win32-x64-1.118.1/data/user-data/User/History/
-VSCode-win32-x64-1.118.1/data/user-data/User/globalStorage/
-VSCode-win32-x64-1.118.1/data/user-data/User/workspaceStorage/
+vscode/data/user-data/User/History/
+vscode/data/user-data/User/globalStorage/
+vscode/data/user-data/User/workspaceStorage/
 
 # 共有ストレージ
-VSCode-win32-x64-1.118.1/data/shared-data/
+vscode/data/shared-data/
 
 # ============================================
 # CMake ビルド中間ファイル（bin/ の成果物は残す）
@@ -56,7 +56,7 @@ yarn-error.log*
 # その他
 # ============================================
 debug.log
-VSCode-win32-x64-1.118.1/data/cache/
+vscode/data/cache/
 code.lock
 *-wal
-DIPS 
+DIPS

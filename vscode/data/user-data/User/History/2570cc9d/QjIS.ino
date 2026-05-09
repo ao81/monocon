@@ -1,1 +1,0 @@
-#define USE_TIMER3_ISR
