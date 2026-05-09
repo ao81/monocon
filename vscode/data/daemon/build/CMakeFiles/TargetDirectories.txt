@@ -1,8 +1,8 @@
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/common.dir
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/arduino-build-daemon.dir
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/arduino-build-cli.dir
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/INSTALL.dir
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/CMakeFiles/ZERO_CHECK.dir
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/_deps/nlohmann_json-build/CMakeFiles/INSTALL.dir
-C:/Users/ao/Desktop/monokon_vscode/monokon/VSCode-win32-x64-1.118.1/data/daemon/build/_deps/nlohmann_json-build/CMakeFiles/ALL_BUILD.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/common.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/arduino-build-daemon.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/arduino-build-cli.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/INSTALL.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/ZERO_CHECK.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/_deps/nlohmann_json-build/CMakeFiles/INSTALL.dir
+C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/_deps/nlohmann_json-build/CMakeFiles/ALL_BUILD.dir

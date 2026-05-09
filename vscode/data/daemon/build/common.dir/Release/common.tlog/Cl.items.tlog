@@ -1,4 +1,4 @@
-C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\utils.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\common.dir\Release\utils.obj
-C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\pipe_io.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\common.dir\Release\pipe_io.obj
-C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\port_scanner.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\common.dir\Release\port_scanner.obj
-C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\src\stk500v2.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\daemon\build\common.dir\Release\stk500v2.obj
+C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\src\utils.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\build\common.dir\Release\utils.obj
+C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\src\pipe_io.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\build\common.dir\Release\pipe_io.obj
+C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\src\port_scanner.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\build\common.dir\Release\port_scanner.obj
+C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\src\stk500v2.cpp;C:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\daemon\build\common.dir\Release\stk500v2.obj

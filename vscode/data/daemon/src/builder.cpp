@@ -5,6 +5,7 @@
 #include "port_scanner.h"
 #include <windows.h>
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -69,10 +70,17 @@ namespace {
 		GetModuleFileNameA(nullptr, buf, MAX_PATH);
 		fs::path p = buf;
 
+		// フォルダ名は環境により大小混在し得るため、小文字化して比較する
+		auto toLower = [](std::string s) {
+			std::transform(s.begin(), s.end(), s.begin(),
+				[](unsigned char c) { return (char)std::tolower(c); });
+			return s;
+		};
+
 		// 実行ファイル位置から親ディレクトリを遡り、対象のVSCodeフォルダを探す
 		while (!p.empty() && p.parent_path() != p) {
-			std::string name = p.filename().string();
-			if (name.find("VSCode-win32") != std::string::npos || name == "VSCode") {
+			std::string name = toLower(p.filename().string());
+			if (name.find("vscode-win32") != std::string::npos || name == "vscode") {
 				return (p / "data" / "cache").string();
 			}
 			p = p.parent_path();
