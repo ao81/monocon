@@ -13,3 +13,18 @@
 *.bin binary
 *.png binary
 *.jpg binary
+
+# VSCode policies (Windows Group Policy format - requires CRLF)
+*.admx text eol=crlf
+*.adml text eol=crlf
+
+# Serial monitor extension and similar (LF on disk, CRLF on Windows checkout)
+*.vsixmanifest text eol=crlf
+*.md text eol=crlf
+*.txt text eol=crlf
+*.ts text eol=lf
+*.cc text eol=lf
+*.c text eol=lf
+*.gyp text eol=lf
+*.gypi text eol=lf
+*.coffee text eol=lf

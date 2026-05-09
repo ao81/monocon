@@ -1,6 +1,0 @@
-2026-05-09 11:35:45.795 [info] Started local extension host with pid 24352.
-2026-05-09 11:35:46.004 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
-2026-05-09 11:35:48.411 [info] [DefaultAccount] Authentication provider is not declared. {"id":"github","name":"GitHub","enterprise":false}
-2026-05-09 11:35:48.492 [info] Settings Sync: Account status changed from uninitialized to unavailable
-2026-05-09 11:35:49.259 [error] Error while getting the latest version for the extension ms-ceintl.vscode-language-pack-ja from https://marketplace.visualstudio.com/_apis/public/gallery/vscode/{publisher}/{name}/latest. Trying the fallback https://www.vscode-unpkg.net/_gallery/{publisher}/{name}/latest Failed
-2026-05-09 11:35:49.864 [warning] [lifecycle] onWillShutdown is taking a long time, pending operations: join.stopExtensionHosts

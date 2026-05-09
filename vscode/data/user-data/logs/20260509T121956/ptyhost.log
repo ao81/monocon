@@ -1,9 +1,0 @@
-2026-05-09 12:19:57.469 [info] Revived process, old id e97a9b6982f267a4509df557fac89ea2-1 -> new id 1
-2026-05-09 12:19:57.469 [info] Revived process, old id e97a9b6982f267a4509df557fac89ea2-3 -> new id 2
-2026-05-09 12:19:57.547 [info] Expanding terminal instance, old id e97a9b6982f267a4509df557fac89ea2-1 -> new id 1
-2026-05-09 12:19:58.049 [warning] Persistent process "1": Process had no disconnect runners but was an orphan
-2026-05-09 12:19:58.049 [info] Persistent process reconnection "1"
-2026-05-09 12:19:58.104 [warning] Shell integration cannot be enabled for executable "C:\WINDOWS\System32\cmd.exe" and args []
-2026-05-09 12:19:58.141 [info] Persistent process "1": Replaying 2743 chars and 1 size events
-2026-05-09 12:22:04.451 [warning] Shell integration cannot be enabled for executable "C:\WINDOWS\System32\cmd.exe" and args ["/K","set PATH=C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\..;%PATH%"]
-2026-05-09 12:29:21.221 [warning] Shell integration cannot be enabled for executable "C:\WINDOWS\System32\cmd.exe" and args []

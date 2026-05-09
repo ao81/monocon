@@ -1,8 +1,0 @@
-2026-05-09 08:52:06.406 [info] Started local extension host with pid 17160.
-2026-05-09 08:52:06.942 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
-2026-05-09 08:52:09.386 [info] [DefaultAccount] Authentication provider is not declared. {"id":"github","name":"GitHub","enterprise":false}
-2026-05-09 08:52:09.611 [info] Settings Sync: Account status changed from uninitialized to unavailable
-2026-05-09 08:52:10.410 [info] [perf] Render performance baseline is 19ms
-2026-05-09 08:52:11.943 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
-2026-05-09 08:52:13.531 [error] [Extension Host] (node:17160) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `Code --trace-deprecation ...` to show where the warning was created)
