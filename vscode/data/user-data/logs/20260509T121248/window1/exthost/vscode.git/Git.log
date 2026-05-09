@@ -1,0 +1,53 @@
+2026-05-09 12:12:51.939 [info] [main] ログ レベル: Info
+2026-05-09 12:12:51.939 [info] [main] Git の検証が検出されました: "C:\Program Files\Git\cmd\git.exe"
+2026-05-09 12:12:51.981 [info] [main] "C:\Program Files\Git\cmd\git.exe" から Git "2.53.0.windows.2" を使用しています
+2026-05-09 12:12:51.981 [info] [Model][doInitialScan] Initial repository scan started
+2026-05-09 12:12:52.126 [info] > git rev-parse --show-toplevel [137ms]
+2026-05-09 12:12:52.272 [info] > git rev-parse --git-dir --git-common-dir --show-superproject-working-tree [81ms]
+2026-05-09 12:12:52.288 [info] [Model][openRepository] Opened repository (path): c:\Users\ao\Desktop\monokon
+2026-05-09 12:12:52.289 [info] [Model][openRepository] Opened repository (real path): c:\Users\ao\Desktop\monokon
+2026-05-09 12:12:52.289 [info] [Model][openRepository] Opened repository (kind): repository
+2026-05-09 12:12:52.348 [info] > git config --get --local core.virtualfilesystem [53ms]
+2026-05-09 12:12:52.348 [warning] [Git][config] git config failed: Failed to execute git
+2026-05-09 12:12:52.352 [info] > git config --get commit.template [52ms]
+2026-05-09 12:12:52.564 [info] > git rev-parse --show-toplevel [259ms]
+2026-05-09 12:12:52.565 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [253ms]
+2026-05-09 12:12:52.659 [info] > git rev-parse --show-toplevel [57ms]
+2026-05-09 12:12:52.675 [info] > git check-ignore -v -z --stdin [56ms]
+2026-05-09 12:12:52.691 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [59ms]
+2026-05-09 12:12:52.710 [info] > git rev-parse --show-toplevel [46ms]
+2026-05-09 12:12:52.747 [info] > git status -z -uall [121ms]
+2026-05-09 12:12:52.766 [info] > git rev-parse --show-toplevel [53ms]
+2026-05-09 12:12:52.813 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [48ms]
+2026-05-09 12:12:52.817 [info] > git rev-parse --show-toplevel [48ms]
+2026-05-09 12:12:52.863 [info] > git rev-parse --show-toplevel [42ms]
+2026-05-09 12:12:52.863 [info] > git config --get --local branch.main.vscode-merge-base [46ms]
+2026-05-09 12:12:52.890 [info] > git check-ignore -v -z --stdin [50ms]
+2026-05-09 12:12:52.916 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/origin/main refs/remotes/origin/main [49ms]
+2026-05-09 12:12:52.922 [info] > git rev-parse --show-toplevel [51ms]
+2026-05-09 12:12:52.975 [info] > git rev-parse --show-toplevel [49ms]
+2026-05-09 12:12:52.983 [info] > git merge-base refs/heads/main refs/remotes/origin/main [61ms]
+2026-05-09 12:12:53.037 [info] > git rev-parse --show-toplevel [56ms]
+2026-05-09 12:12:53.047 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% 5a9a506325ea44c8ce3f27a3e5fd6e0272b1b7a2...refs/remotes/origin/main -- [58ms]
+2026-05-09 12:12:53.090 [info] > git rev-parse --show-toplevel [49ms]
+2026-05-09 12:12:53.137 [info] > git rev-parse --show-toplevel [43ms]
+2026-05-09 12:12:53.138 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2026-05-09 12:12:53.190 [info] > git show --textconv :myprac/ai/1/kadai5/kadai5.ino [48ms]
+2026-05-09 12:12:53.196 [info] > git ls-files --stage -- myprac/ai/1/kadai5/kadai5.ino [49ms]
+2026-05-09 12:12:53.251 [info] > git hash-object -t tree /dev/null [51ms]
+2026-05-09 12:12:53.251 [warning] [GitFileSystemProvider][stat] File not found - git:/c%3A/Users/ao/Desktop/monokon/myprac/ai/1/kadai5/kadai5.ino.git?%7B%22path%22%3A%22c%3A%5C%5CUsers%5C%5Cao%5C%5CDesktop%5C%5Cmonokon%5C%5Cmyprac%5C%5Cai%5C%5C1%5C%5Ckadai5%5C%5Ckadai5.ino%22%2C%22ref%22%3A%22%22%7D
+2026-05-09 12:12:53.251 [info] > git hash-object -t tree /dev/null [56ms]
+2026-05-09 12:12:53.252 [warning] [GitFileSystemProvider][readFile] File not found - git:/c%3A/Users/ao/Desktop/monokon/myprac/ai/1/kadai5/kadai5.ino.git?%7B%22path%22%3A%22c%3A%5C%5CUsers%5C%5Cao%5C%5CDesktop%5C%5Cmonokon%5C%5Cmyprac%5C%5Cai%5C%5C1%5C%5Ckadai5%5C%5Ckadai5.ino%22%2C%22ref%22%3A%22%22%7D
+2026-05-09 12:12:53.309 [info] > git blame --root --incremental 5a9a506325ea44c8ce3f27a3e5fd6e0272b1b7a2 -- myprac/ai/1/kadai5/kadai5.ino [48ms]
+2026-05-09 12:12:53.309 [info] fatal: no such path myprac/ai/1/kadai5/kadai5.ino in 5a9a506325ea44c8ce3f27a3e5fd6e0272b1b7a2
+2026-05-09 12:12:54.067 [info] > git check-ignore -v -z --stdin [40ms]
+2026-05-09 12:12:54.114 [info] > git ls-files --stage -- myprac/ai/1/kadai3a/kadai3a.ino [39ms]
+2026-05-09 12:12:54.118 [info] > git show --textconv :myprac/ai/1/kadai3a/kadai3a.ino [46ms]
+2026-05-09 12:12:54.159 [info] > git cat-file -s f8e288bcbcaa97d9114abf18cf0b34a9cf2e2f3e [40ms]
+2026-05-09 12:12:54.218 [info] > git blame --root --incremental 5a9a506325ea44c8ce3f27a3e5fd6e0272b1b7a2 -- myprac/ai/1/kadai3a/kadai3a.ino [50ms]
+2026-05-09 12:12:56.003 [info] > git check-ignore -v -z --stdin [44ms]
+2026-05-09 12:12:56.232 [info] > git check-ignore -v -z --stdin [43ms]
+2026-05-09 12:12:56.284 [info] > git ls-files --stage -- myprac/ai/1/kadai2b/kadai2b.ino [40ms]
+2026-05-09 12:12:56.288 [info] > git show --textconv :myprac/ai/1/kadai2b/kadai2b.ino [48ms]
+2026-05-09 12:12:56.330 [info] > git cat-file -s eb4d88bec8dbf98f88ed368f7a479d4c8a3a908b [42ms]
+2026-05-09 12:12:56.391 [info] > git blame --root --incremental 5a9a506325ea44c8ce3f27a3e5fd6e0272b1b7a2 -- myprac/ai/1/kadai2b/kadai2b.ino [51ms]

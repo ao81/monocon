@@ -1,0 +1,62 @@
+2026-05-09 08:52:15.001 [info] [main] ログ レベル: Info
+2026-05-09 08:52:15.001 [info] [main] Git の検証が検出されました: "C:\Program Files\Git\cmd\git.exe"
+2026-05-09 08:52:15.482 [info] [main] "C:\Program Files\Git\cmd\git.exe" から Git "2.53.0.windows.2" を使用しています
+2026-05-09 08:52:15.482 [info] [Model][doInitialScan] Initial repository scan started
+2026-05-09 08:52:15.746 [info] > git rev-parse --show-toplevel [228ms]
+2026-05-09 08:52:20.650 [info] > git rev-parse --git-dir --git-common-dir --show-superproject-working-tree [126ms]
+2026-05-09 08:52:20.671 [info] [Model][openRepository] Opened repository (path): c:\Users\ao\Desktop\monokon
+2026-05-09 08:52:20.671 [info] [Model][openRepository] Opened repository (real path): c:\Users\ao\Desktop\monokon
+2026-05-09 08:52:20.672 [info] [Model][openRepository] Opened repository (kind): repository
+2026-05-09 08:52:20.744 [info] > git rev-parse --show-toplevel [60ms]
+2026-05-09 08:52:20.745 [info] > git config --get commit.template [64ms]
+2026-05-09 08:52:20.746 [info] > git config --get --local core.virtualfilesystem [68ms]
+2026-05-09 08:52:20.746 [warning] [Git][config] git config failed: Failed to execute git
+2026-05-09 08:52:20.800 [info] > git rev-parse --show-toplevel [45ms]
+2026-05-09 08:52:20.818 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [76ms]
+2026-05-09 08:52:20.854 [info] > git rev-parse --show-toplevel [50ms]
+2026-05-09 08:52:20.903 [info] > git rev-parse --show-toplevel [46ms]
+2026-05-09 08:52:20.968 [info] > git rev-parse --show-toplevel [49ms]
+2026-05-09 08:52:20.973 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [137ms]
+2026-05-09 08:52:21.184 [info] > git status -z -uall [353ms]
+2026-05-09 08:52:21.216 [info] > git rev-parse --show-toplevel [244ms]
+2026-05-09 08:52:21.218 [info] > git check-ignore -v -z --stdin [229ms]
+2026-05-09 08:52:21.277 [info] > git rev-parse --show-toplevel [54ms]
+2026-05-09 08:52:21.282 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [67ms]
+2026-05-09 08:52:21.327 [info] > git check-ignore -v -z --stdin [58ms]
+2026-05-09 08:52:21.335 [info] > git rev-parse --show-toplevel [53ms]
+2026-05-09 08:52:21.342 [info] > git config --get --local branch.main.vscode-merge-base [55ms]
+2026-05-09 08:52:21.396 [info] > git rev-parse --show-toplevel [56ms]
+2026-05-09 08:52:21.405 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/origin/main refs/remotes/origin/main [58ms]
+2026-05-09 08:52:21.460 [info] > git rev-parse --show-toplevel [60ms]
+2026-05-09 08:52:21.476 [info] > git merge-base refs/heads/main refs/remotes/origin/main [65ms]
+2026-05-09 08:52:21.521 [info] > git rev-parse --show-toplevel [56ms]
+2026-05-09 08:52:21.541 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2026-05-09 08:52:21.553 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% 1c37511f23e2ccc331e31bb9fc0bacad561d54d7...refs/remotes/origin/main -- [70ms]
+2026-05-09 08:52:21.596 [info] > git show --textconv :myprac/ai/1/kadai5/kadai5.ino [51ms]
+2026-05-09 08:52:21.610 [info] > git ls-files --stage -- myprac/ai/1/kadai5/kadai5.ino [59ms]
+2026-05-09 08:52:21.657 [info] > git hash-object -t tree /dev/null [47ms]
+2026-05-09 08:52:21.657 [warning] [GitFileSystemProvider][readFile] File not found - git:/c%3A/Users/ao/Desktop/monokon/myprac/ai/1/kadai5/kadai5.ino.git?%7B%22path%22%3A%22c%3A%5C%5CUsers%5C%5Cao%5C%5CDesktop%5C%5Cmonokon%5C%5Cmyprac%5C%5Cai%5C%5C1%5C%5Ckadai5%5C%5Ckadai5.ino%22%2C%22ref%22%3A%22%22%7D
+2026-05-09 08:52:21.666 [info] > git hash-object -t tree /dev/null [48ms]
+2026-05-09 08:52:21.667 [warning] [GitFileSystemProvider][stat] File not found - git:/c%3A/Users/ao/Desktop/monokon/myprac/ai/1/kadai5/kadai5.ino.git?%7B%22path%22%3A%22c%3A%5C%5CUsers%5C%5Cao%5C%5CDesktop%5C%5Cmonokon%5C%5Cmyprac%5C%5Cai%5C%5C1%5C%5Ckadai5%5C%5Ckadai5.ino%22%2C%22ref%22%3A%22%22%7D
+2026-05-09 08:52:21.747 [info] > git blame --root --incremental 1c37511f23e2ccc331e31bb9fc0bacad561d54d7 -- myprac/ai/1/kadai5/kadai5.ino [62ms]
+2026-05-09 08:52:21.747 [info] fatal: no such path myprac/ai/1/kadai5/kadai5.ino in 1c37511f23e2ccc331e31bb9fc0bacad561d54d7
+2026-05-09 08:52:21.892 [info] > git check-ignore -v -z --stdin [46ms]
+2026-05-09 08:52:22.447 [info] > git log --format=%H%n%aN%n%aE%n%at%n%ct%n%P%n%D%n%B -z --shortstat --diff-merges=first-parent -n50 --skip=0 --topo-order --decorate=full --stdin [1029ms]
+2026-05-09 08:52:22.533 [info] > git merge-base main origin/main [46ms]
+2026-05-09 08:52:23.426 [info] > git config --get commit.template [44ms]
+2026-05-09 08:52:23.432 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [46ms]
+2026-05-09 08:52:23.486 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [47ms]
+2026-05-09 08:52:23.536 [info] > git status -z -uall [101ms]
+2026-05-09 08:52:31.426 [info] > git config --get commit.template [45ms]
+2026-05-09 08:52:31.434 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [49ms]
+2026-05-09 08:52:31.489 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [48ms]
+2026-05-09 08:52:31.541 [info] > git status -z -uall [103ms]
+2026-05-09 09:01:29.386 [info] > git config --get commit.template [46ms]
+2026-05-09 09:01:29.390 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [46ms]
+2026-05-09 09:01:29.445 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [43ms]
+2026-05-09 09:01:29.492 [info] > git status -z -uall [92ms]
+2026-05-09 09:01:29.540 [info] > git merge-base refs/heads/main refs/remotes/origin/main [42ms]
+2026-05-09 09:01:29.589 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% 5a9a506325ea44c8ce3f27a3e5fd6e0272b1b7a2...refs/remotes/origin/main -- [45ms]
+2026-05-09 09:01:29.953 [info] > git log --format=%H%n%aN%n%aE%n%at%n%ct%n%P%n%D%n%B -z --shortstat --diff-merges=first-parent -n50 --skip=0 --topo-order --decorate=full --stdin [451ms]
+2026-05-09 09:01:30.016 [info] > git merge-base main origin/main [42ms]
+2026-05-09 09:01:41.779 [info] > git check-ignore -v -z --stdin [41ms]

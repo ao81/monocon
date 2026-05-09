@@ -1,0 +1,14 @@
+2026-05-09 11:46:52.606 [info] Started local extension host with pid 25896.
+2026-05-09 11:46:53.327 [info] [DefaultAccount] Authentication provider is not declared. {"id":"github","name":"GitHub","enterprise":false}
+2026-05-09 11:46:53.943 [error] [Extension Host] (node:25896) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `Code --trace-deprecation ...` to show where the warning was created)
+2026-05-09 11:46:54.087 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-09 11:46:54.328 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2026-05-09 11:46:55.374 [info] [perf] Render performance baseline is 22ms
+2026-05-09 11:46:58.007 [info] Extension host (LocalProcess pid: 25896) is unresponsive.
+2026-05-09 11:46:58.653 [info] Extension host (LocalProcess pid: 25896) is responsive.
+2026-05-09 11:46:58.693 [info] UNRESPONSIVE extension host: received responsive event and cancelling profiling session
+2026-05-09 11:46:59.106 [info] [AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+2026-05-09 11:46:59.588 [info] UNRESPONSIVE extension host: starting to profile NOW
+2026-05-09 11:46:59.730 [warning] UNRESPONSIVE extension host: 'vscode.merge-conflict' took 100% of 2.511ms, saved PROFILE here: 'file:///c%3A/Users/ao/AppData/Local/Temp/exthost-82525f.cpuprofile'
+2026-05-09 11:50:25.479 [error] 不明なエラーが発生しました。ログで詳細を確認してください。

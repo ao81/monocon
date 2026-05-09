@@ -1,0 +1,14 @@
+2026-05-06 19:53:14.693 [info] StorageMainService: creating application shared storage
+2026-05-06 19:53:14.693 [info] StorageMainService: creating application shared storage with local application storage fallback
+2026-05-06 19:53:14.693 [info] CrossAppIPCService: connecting to peer
+2026-05-06 19:53:14.780 [info] [shared storage] Creating shared storage database at 'c:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\shared-data\sharedStorage\state.vscdb' (wasCreated: false)
+2026-05-06 19:53:14.781 [info] [shared storage] Initializing fallback application storage (type: local, path: c:\Users\ao\Desktop\monokon_vscode\monokon\VSCode-win32-x64-1.118.1\data\user-data\User\globalStorage\state.vscdb)
+2026-05-06 19:53:15.013 [info] [shared storage] Fallback application storage initialized with 109 items
+2026-05-06 19:53:15.016 [info] update#setState idle
+2026-05-06 19:53:45.025 [info] update#setState checking for updates
+2026-05-06 19:53:45.112 [info] update#setState idle
+2026-05-06 20:53:45.032 [info] update#setState checking for updates
+2026-05-06 20:53:45.170 [info] update#setState idle
+2026-05-06 21:53:45.048 [info] update#setState checking for updates
+2026-05-06 21:53:45.196 [info] update#setState available for download
+2026-05-07 00:35:12.384 [error] [UtilityProcess type: shared-process, pid: 14548]: crashed with code 1073807364 and reason 'killed'

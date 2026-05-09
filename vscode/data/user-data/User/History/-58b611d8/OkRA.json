@@ -1,0 +1,98 @@
+// 既定値を上書きするには、このファイル内にキー バインドを挿入します
+[
+	{
+		"key": "ctrl+space",
+		"command": "-workbench.action.terminal.sendSequence",
+		"when": "config.terminal.integrated.enableWin32InputMode && terminalFocus && terminalShellIntegrationEnabled && !accessibilityModeEnabled && terminalShellType == 'pwsh'"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "-editor.action.triggerSuggest",
+		"when": "editorHasCompletionItemProvider && textInputFocus && !editorReadonly && !suggestWidgetVisible"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "-extension.vim_ctrl+space",
+		"when": "editorTextFocus && vim.active && vim.use<C-space> && !inDebugRepl && vim.mode != 'Insert'"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "-focusSuggestion",
+		"when": "suggestWidgetVisible && textInputFocus && !suggestWidgetHasFocusedSuggestion"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "-quickInput.toggleHover",
+		"when": "inQuickInput && quickInputType == 'quickPick' || inQuickInput && quickInputType == 'quickTree'"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "-toggleSuggestionDetails",
+		"when": "suggestWidgetHasFocusedSuggestion && suggestWidgetVisible && textInputFocus"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "-workbench.action.terminal.suggestToggleDetails",
+		"when": "simpleSuggestWidgetHasFocusedSuggestion && terminalFocus && terminalHasBeenCreated && terminalIsOpen && terminalSuggestWidgetVisible || simpleSuggestWidgetHasFocusedSuggestion && terminalFocus && terminalIsOpen && terminalProcessSupported && terminalSuggestWidgetVisible"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "-workbench.action.terminal.triggerSuggest",
+		"when": "config.terminal.integrated.suggest.enabled && terminalFocus && terminalProcessSupported && !terminalSuggestWidgetVisible"
+	},
+	{
+		"key": "ctrl+space",
+		"command": "workbench.action.tasks.build",
+		"when": "taskCommandsRegistered"
+	},
+	{
+		"key": "ctrl+shift+b",
+		"command": "-workbench.action.tasks.build",
+		"when": "taskCommandsRegistered"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-suggestWidgetCopy",
+		"when": "suggestWidgetDetailsFocused"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-remote.tunnel.copyAddressInline",
+		"when": "tunnelViewFocus && tunnelType == 'Detected' && tunnelViewMultiSelection == 'undefined' || tunnelViewFocus && tunnelType == 'Forwarded' && tunnelViewMultiSelection == 'undefined'"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-search.action.copyMatch",
+		"when": "fileMatchOrMatchFocus"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-workbench.debug.viewlet.action.copyValue",
+		"when": "!expressionSelected && focusedView == 'workbench.debug.variablesView' || !expressionSelected && focusedView == 'workbench.debug.watchExpressionsView'"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-problems.action.copy",
+		"when": "problemsVisibility && !relatedInformationFocus && focusedView == 'workbench.panel.markers.view'"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-keybindings.editor.copyKeybindingEntry",
+		"when": "inKeybindings && keybindingFocus && !whenFocus"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-filesExplorer.copy",
+		"when": "filesExplorerFocus && foldersViewVisible && !explorerResourceIsRoot && !inputFocus"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-extension.vim_ctrl+c",
+		"when": "editorTextFocus && vim.active && vim.overrideCtrlC && vim.use<C-c> && !inDebugRepl"
+	},
+	{
+		"key": "ctrl+c",
+		"command": "-chat.inlineResourceAnchor.copyResource",
+		"when": "chatAttachmentResource"
+	}
+]

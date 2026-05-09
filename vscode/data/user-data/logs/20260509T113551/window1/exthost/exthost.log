@@ -1,0 +1,10 @@
+2026-05-09 11:35:52.799 [info] Extension host with pid 504 started
+2026-05-09 11:35:52.838 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2026-05-09 11:35:52.839 [info] ExtensionService#_doActivateExtension oderwat.indent-rainbow, startup: true, activationEvent: '*'
+2026-05-09 11:35:53.088 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2026-05-09 11:35:54.496 [info] Eager extensions activated
+2026-05-09 11:35:54.500 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2026-05-09 11:35:54.501 [info] ExtensionService#_doActivateExtension vscode-icons-team.vscode-icons, startup: false, activationEvent: 'onStartupFinished'
+2026-05-09 11:35:54.599 [info] ExtensionService#_doActivateExtension vscodevim.vim, startup: false, activationEvent: 'onStartupFinished'
+2026-05-09 11:36:41.375 [info] Extension host terminating: received terminate message from renderer
+2026-05-09 11:36:41.383 [info] Extension host with pid 504 exiting with code 0

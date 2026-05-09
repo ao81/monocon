@@ -1,0 +1,35 @@
+2026-05-09 12:11:47.857 [info] [main] ログ レベル: Info
+2026-05-09 12:11:47.857 [info] [main] Git の検証が検出されました: "C:\Program Files\Git\cmd\git.exe"
+2026-05-09 12:11:47.891 [info] [main] "C:\Program Files\Git\cmd\git.exe" から Git "2.53.0.windows.2" を使用しています
+2026-05-09 12:11:47.892 [info] [Model][doInitialScan] Initial repository scan started
+2026-05-09 12:11:48.029 [info] > git rev-parse --show-toplevel [119ms]
+2026-05-09 12:11:48.148 [info] > git rev-parse --git-dir --git-common-dir --show-superproject-working-tree [93ms]
+2026-05-09 12:11:48.164 [info] [Model][openRepository] Opened repository (path): c:\Users\ao\Desktop\monokon_vscode\monokon
+2026-05-09 12:11:48.165 [info] [Model][openRepository] Opened repository (real path): c:\Users\ao\Desktop\monokon_vscode\monokon
+2026-05-09 12:11:48.165 [info] [Model][openRepository] Opened repository (kind): repository
+2026-05-09 12:11:48.228 [info] > git config --get --local core.virtualfilesystem [56ms]
+2026-05-09 12:11:48.229 [warning] [Git][config] git config failed: Failed to execute git
+2026-05-09 12:11:48.230 [info] > git config --get commit.template [50ms]
+2026-05-09 12:11:48.234 [info] > git rev-parse --show-toplevel [49ms]
+2026-05-09 12:11:48.258 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/release refs/remotes/release [66ms]
+2026-05-09 12:11:48.287 [info] > git rev-parse --show-toplevel [50ms]
+2026-05-09 12:11:48.333 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [58ms]
+2026-05-09 12:11:48.347 [info] > git rev-parse --show-toplevel [56ms]
+2026-05-09 12:11:48.349 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2026-05-09 12:11:48.533 [info] > git check-ignore -v -z --stdin [47ms]
+2026-05-09 12:11:48.588 [info] > git ls-files --stage -- vscode/data/user-data/User/settings.json [44ms]
+2026-05-09 12:11:48.593 [info] > git show --textconv :vscode/data/user-data/User/settings.json [53ms]
+2026-05-09 12:11:48.638 [info] > git hash-object -t tree /dev/null [45ms]
+2026-05-09 12:11:48.638 [warning] [GitFileSystemProvider][stat] File not found - git:/c%3A/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/user-data/User/settings.json.git?%7B%22path%22%3A%22c%3A%5C%5CUsers%5C%5Cao%5C%5CDesktop%5C%5Cmonokon_vscode%5C%5Cmonokon%5C%5Cvscode%5C%5Cdata%5C%5Cuser-data%5C%5CUser%5C%5Csettings.json%22%2C%22ref%22%3A%22%22%7D
+2026-05-09 12:11:48.638 [info] > git hash-object -t tree /dev/null [43ms]
+2026-05-09 12:11:48.638 [warning] [GitFileSystemProvider][readFile] File not found - git:/c%3A/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/user-data/User/settings.json.git?%7B%22path%22%3A%22c%3A%5C%5CUsers%5C%5Cao%5C%5CDesktop%5C%5Cmonokon_vscode%5C%5Cmonokon%5C%5Cvscode%5C%5Cdata%5C%5Cuser-data%5C%5CUser%5C%5Csettings.json%22%2C%22ref%22%3A%22%22%7D
+2026-05-09 12:11:49.524 [info] > git status -z -uall [1254ms] (cancelled)
+2026-05-09 12:11:49.532 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/release refs/remotes/release [686ms]
+2026-05-09 12:11:49.538 [info] > git blame --root --incremental daf63e22bec7196d9750a1d5d3fed7dc27e6cfbf -- vscode/data/user-data/User/settings.json [874ms]
+2026-05-09 12:11:49.538 [info] fatal: no such path vscode/data/user-data/User/settings.json in daf63e22bec7196d9750a1d5d3fed7dc27e6cfbf
+2026-05-09 12:11:49.547 [info] > git check-ignore -v -z --stdin [699ms]
+2026-05-09 12:11:49.580 [info] > git config --get --local branch.release.vscode-merge-base [43ms]
+2026-05-09 12:11:49.628 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/origin/main refs/remotes/origin/main [44ms]
+2026-05-09 12:11:49.680 [info] > git merge-base refs/heads/release refs/remotes/origin/release [46ms]
+2026-05-09 12:11:49.735 [info] > git diff --raw --numstat --diff-filter=ADMR -z --find-renames=50% daf63e22bec7196d9750a1d5d3fed7dc27e6cfbf...refs/remotes/origin/release -- [50ms]
+2026-05-09 12:11:49.896 [info] > git check-ignore -v -z --stdin [47ms]

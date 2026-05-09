@@ -1,0 +1,157 @@
+{
+	// =========================================================
+	// Editor
+	// =========================================================
+	"editor.fontFamily": "'Source Code Pro'",
+	"editor.fontLigatures": true,
+	"editor.tabSize": 4,
+	"editor.insertSpaces": false,
+	"editor.autoIndentOnPaste": true,
+	"editor.wrappingIndent": "indent",
+	"editor.smoothScrolling": true,
+	"editor.mouseWheelZoom": true,
+	"editor.showFoldingControls": "always",
+	"editor.stickyScroll.enabled": false,
+	"editor.minimap.side": "left",
+	"editor.minimap.size": "fill",
+	"editor.minimap.showSlider": "always",
+	"editor.codeLens": false,
+	"editor.codeLensFontFamily": "'Consolas'",
+	"editor.formatOnSave": false,
+	"editor.snippetSuggestions": "top",
+	"editor.wordBasedSuggestionsMode": "matchingDocuments",
+	"editor.quickSuggestions": {
+		"comments": "on",
+		"strings": "on"
+	},
+
+	// =========================================================
+	// Formatter (per language)
+	// =========================================================
+	"[c]":   { "editor.defaultFormatter": "ms-vscode.cpptools" },
+	"[cpp]": {
+		"editor.defaultFormatter": "ms-vscode.cpptools",
+		"editor.snippetSuggestions": "top"
+	},
+
+	// =========================================================
+	// C / C++
+	// =========================================================
+	"C_Cpp.formatting": "vcFormat",
+	"C_Cpp.vcFormat.newLine.beforeOpenBrace.block": "sameLine",
+	"C_Cpp.vcFormat.newLine.beforeOpenBrace.function": "sameLine",
+	"C_Cpp.vcFormat.newLine.beforeOpenBrace.lambda": "sameLine",
+	"C_Cpp.vcFormat.newLine.beforeOpenBrace.namespace": "sameLine",
+	"C_Cpp.vcFormat.newLine.beforeOpenBrace.type": "sameLine",
+	"C_Cpp.vcFormat.newLine.beforeElse": false,
+	"C_Cpp.vcFormat.newLine.beforeCatch": false,
+	"C_Cpp.vcFormat.newLine.closeBraceSameLine.emptyFunction": true,
+	"C_Cpp.vcFormat.space.beforeFunctionOpenParenthesis": "remove",
+	"C_Cpp.vcFormat.indent.multiLineRelativeTo": "outermostParenthesis",
+	"C_Cpp.default.compilerPath": "C:/Program Files (x86)/mingw64/bin/gcc.exe",
+	"C_Cpp.intelliSenseEngine": "Tag Parser",
+	"clang-format.style": "{ BasedOnStyle: LLVM, IndentWidth: 4, UseTab: Always, TabWidth: 4 }",
+	"clang-format.fallbackStyle": "LLVM",
+
+	// =========================================================
+	// Terminal
+	// =========================================================
+	"terminal.integrated.fontFamily": "monospace",
+	"terminal.integrated.gpuAcceleration": "on",
+	"terminal.integrated.unicodeVersion": "11",
+	"terminal.integrated.detectLocale": "off",
+	"terminal.integrated.enableMultiLinePasteWarning": "never",
+	"terminal.integrated.allowedLinkSchemes": [
+		"file", "http", "https", "mailto", "vscode", "vscode-insiders", "ms-settings"
+	],
+	"terminal.integrated.suggest.quickSuggestions": {
+		"commands": "on",
+		"arguments": "on",
+		"unknown": "on"
+	},
+	"terminal.integrated.defaultProfile.windows": "Command Prompt",
+	"terminal.integrated.profiles.windows": {
+		"PowerShell": {
+			"source": "PowerShell",
+			"icon": "terminal-powershell"
+		},
+		"Command Prompt": {
+			"path": ["${env:windir}\\Sysnative\\cmd.exe", "${env:windir}\\System32\\cmd.exe"],
+			"args": [],
+			"icon": "terminal-cmd"
+		},
+		"Git Bash": {
+			"source": "Git Bash"
+		},
+		"Ubuntu (WSL)": {
+			"path": "C:\\WINDOWS\\System32\\wsl.exe",
+			"args": ["-d", "Ubuntu"]
+		}
+	},
+
+	// =========================================================
+	// Workbench
+	// =========================================================
+	"workbench.startupEditor": "none",
+	"workbench.iconTheme": "vscode-icons",
+	"workbench.editor.empty.hint": "hidden",
+	"workbench.editor.enablePreview": false,
+	"workbench.secondarySideBar.defaultVisibility": "hidden",
+	"workbench.settings.applyToAllProfiles": [
+		"editor.tabSize",
+		"editor.formatOnSave",
+		"editor.fontFamily"
+	],
+
+	// =========================================================
+	// Explorer
+	// =========================================================
+	"explorer.confirmDelete": false,
+	"explorer.confirmDragAndDrop": false,
+	"explorer.confirmPasteNative": false,
+	"explorer.compactFolders": false,
+
+	// =========================================================
+	// Arduino
+	// =========================================================
+	"arduino.commandPath": "arduino-cli",
+	"arduino.logLevel": "info",
+	"arduino.enableUSBDetection": true,
+	"arduino.disableTestingOpen": false,
+	"arduino.skipHeaderProvider": false,
+	"arduino.defaultBaudRate": 9600,
+	"arduino.additionalUrls": [
+		"https://dl.espressif.com/dl/package_esp32_index.json"
+	],
+	"arduino.ignoreBoards": [],
+
+	// =========================================================
+	// File associations
+	// =========================================================
+	"files.associations": {
+		"*.ino": "cpp"
+	},
+
+	// =========================================================
+	// Indent Rainbow
+	// =========================================================
+	"indentRainbow.colors": [
+		"rgba(255,255,64,0.07)",
+		"rgba(127,255,127,0.07)",
+		"rgba(255,127,255,0.07)",
+		"rgba(79,236,236,0.07)"
+	],
+	"indentRainbow.errorColor": "rgba(255,255,255,0.3)",
+	"indentRainbow.updateDelay": 10,
+
+	// =========================================================
+	// Misc
+	// =========================================================
+	"window.openFoldersInNewWindow": "on",
+	"window.restoreWindows": "none",
+	"task.allowAutomaticTasks": "on",
+	"debug.onTaskErrors": "abort",
+	"vsicons.dontShowNewVersionMessage": true,
+	"extensions.ignoreRecommendations": true,
+	"workbench.activityBar.location": "top"
+}

@@ -1,0 +1,15 @@
+2026-05-09 12:07:09.234 [info] Extension host with pid 22092 started
+2026-05-09 12:07:09.234 [info] Skipping acquiring lock for c:\Users\ao\Desktop\monokon_vscode\monokon\vscode\data\user-data\User\workspaceStorage\9891f5c6996b3d0134bc810195aec08c.
+2026-05-09 12:07:09.328 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: false, activationEvent: 'onFileSystem:git', root cause: vscode.git
+2026-05-09 12:07:10.308 [info] ExtensionService#_doActivateExtension vscode.git, startup: false, activationEvent: 'onFileSystem:git'
+2026-05-09 12:07:10.308 [info] ExtensionService#_doActivateExtension oderwat.indent-rainbow, startup: true, activationEvent: '*'
+2026-05-09 12:07:10.446 [info] Eager extensions activated
+2026-05-09 12:07:10.496 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2026-05-09 12:07:10.497 [info] ExtensionService#_doActivateExtension vscode-icons-team.vscode-icons, startup: false, activationEvent: 'onStartupFinished'
+2026-05-09 12:07:10.521 [info] ExtensionService#_doActivateExtension vscodevim.vim, startup: false, activationEvent: 'onStartupFinished'
+2026-05-09 12:07:11.070 [info] ExtensionService#_doActivateExtension vscode.json-language-features, startup: false, activationEvent: 'onLanguage:snippets'
+2026-05-09 12:07:11.461 [warning] [Decorations] CAPPING events from decorations provider vscode.git 10000
+2026-05-09 12:09:05.302 [info] ExtensionService#_doActivateExtension vscode.configuration-editing, startup: false, activationEvent: 'onLanguage:jsonc'
+2026-05-09 12:09:05.302 [info] ExtensionService#_doActivateExtension vscode.typescript-language-features, startup: false, activationEvent: 'onLanguage:jsonc'
+2026-05-09 12:11:34.201 [info] Extension host terminating: received terminate message from renderer
+2026-05-09 12:11:34.222 [info] Extension host with pid 22092 exiting with code 0
