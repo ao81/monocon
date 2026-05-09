@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/Users/ao/Desktop/monokon/daemon/build/cmake_install.cmake",
-		"C:/Users/ao/Desktop/monokon/daemon/build/_deps/nlohmann_json-build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
