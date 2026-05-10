@@ -5,7 +5,7 @@
 git lfs install
 ```
 
-## releaseブランチのみcloneするコマンド
+## vscodeブランチのみcloneするコマンド
 ```
-git clone -b release https://github.com/ao81/monokon.git
+git clone -b vscode https://github.com/ao81/monokon.git
 ```
