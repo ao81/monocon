@@ -1,33 +1,55 @@
 {
 	"digitalWrite": {
 		"prefix": "dw",
-		"body": "digitalWrite(${1}, ${2|HIGH,LOW|});",
-		"description": "Set a digital pin HIGH or LOW"
+		"body": "digitalWrite(${1}, ${2});",
 	},
 	"digitalRead": {
 		"prefix": "dr",
 		"body": "digitalRead(${1});",
-		"description": "Read a digital pin"
 	},
 	"analogWrite": {
 		"prefix": "aw",
 		"body": "analogWrite(${1}, ${2});",
-		"description": "Write PWM value (0-255)"
 	},
 	"analogRead": {
 		"prefix": "ar",
 		"body": "analogRead(${1});",
-		"description": "Read an analog pin (0-1023)"
+	},
+	"random": {
+		"prefix": "random",
+		"body": "random(${1:min}, ${2:max})",
+	},
+	"randomSeed": {
+		"prefix": "randomseed",
+		"body": "randomSeed(${1:analogRead(0)});",
+	},
+	"noInterrupts": {
+		"prefix": "nointerrupts",
+		"body": "noInterrupts();",
+	},
+	"interrupts": {
+		"prefix": "interrupts",
+		"body": "interrupts();",
+	},
+	"tone": {
+		"prefix": "tone",
+		"body": "tone(${1}, ${2});",
+	},
+	"noTone": {
+		"prefix": "notone",
+		"body": "noTone(${1});",
 	},
 	"Serial.begin": {
 		"prefix": "sb",
 		"body": "Serial.begin(9600);",
-		"description": "Initialize serial communication"
 	},
 	"Serial.println": {
 		"prefix": "sp",
 		"body": "Serial.println(\"${1}\");",
-		"description": "Print with newline"
+	},
+	"constrain": {
+		"prefix": "constrain",
+		"body": "constrain(${1}, ${2}, ${3})",
 	},
 	"USER_CON_1PIN": {
 		"prefix": "_1",
