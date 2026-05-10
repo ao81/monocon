@@ -3,9 +3,13 @@
 
 int x, y;
 int tsw, sw, ph;
+int pretsw, presw;
+bool swps = false;
+
+int num = 0;
 
 
-word in;
+word in, cd;
 
 int getidx(int x, int y) {
 	int dx = x - 512;
@@ -20,6 +24,20 @@ int getidx(int x, int y) {
 	}
 }
 
+void genrand() {
+	num = random(0, 100);
+}
+
+typedef enum {
+	INIT,
+	WAIT,
+	CD,
+	IN,
+	JUDGE,
+	END
+} status;
+status st;
+
 ISR(TIMER3_COMPA_vect) {
 	if (in++ > 5) {
 		in = 0;
@@ -29,7 +47,13 @@ ISR(TIMER3_COMPA_vect) {
 		tsw = digitalRead(_USER_CON_5PIN);
 		sw = digitalRead(_USER_CON_4PIN);
 		ph = digitalRead(_USER_CON_3PIN);
+
+		if (sw == LOW && presw == HIGH) swps = true;
+
+		presw = sw;
 	}
+
+	if (cd > 0) cd--;
 }
 
 void setup() {
@@ -39,15 +63,33 @@ void setup() {
 	x = analogRead(A1);
 	y = analogRead(A2);
 	tsw = digitalRead(_USER_CON_5PIN);
-	sw = digitalRead(_USER_CON_4PIN);
+	pretsw = !tsw;
+	sw = presw = digitalRead(_USER_CON_4PIN);
 	ph = digitalRead(_USER_CON_3PIN);
+
+	randomSeed(analogRead(0));
+	genrand();
 }
 
 void loop() {
 	if (tsw == HIGH) {
+		if (tsw != pretsw) {
+			pretsw = tsw;
+			genrand();
+			cd = 3000;
+		}
+
+		if (swps)
+
+
 		lm.color.GBR = B100;
 		
 	} else {
+		if (tsw != pretsw) {
+			pretsw = tsw;
+			disp(0x00, 0x00);
+		}
+
 		lm.color.GBR = B000;
 
 	}
