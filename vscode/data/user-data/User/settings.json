@@ -53,7 +53,7 @@
 	"C_Cpp.vcFormat.newLine.closeBraceSameLine.emptyFunction": true,
 	"C_Cpp.vcFormat.space.beforeFunctionOpenParenthesis": "remove",
 	"C_Cpp.vcFormat.indent.multiLineRelativeTo": "outermostParenthesis",
-	"C_Cpp.default.compilerPath": "C:/Program Files (x86)/mingw64/bin/gcc.exe",
+	// "C_Cpp.default.compilerPath": "C:/Program Files (x86)/mingw64/bin/gcc.exe",
 	"C_Cpp.intelliSenseEngine": "Tag Parser",
 	"clang-format.style": "{ BasedOnStyle: LLVM, IndentWidth: 4, UseTab: Always, TabWidth: 4 }",
 	"clang-format.fallbackStyle": "LLVM",
@@ -189,5 +189,38 @@
 	"workbench.enableExperiments": false,
 	"workbench.settings.enableNaturalLanguageSearch": false,
 
+	"C_Cpp.default.includePath": [
+		"${workspaceFolder}/**",
+		"${fileDirname}",
+		"${fileDirname}/**",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/cores/arduino",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/variants/mega",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/libraries/**",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/avr/include",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/lib/gcc/avr/7.3.0/include",
+		"${env:USERPROFILE}/Documents/Arduino/libraries/**"
+	],
+	"C_Cpp.default.defines": [
+		"ARDUINO=10819",
+		"ARDUINO_AVR_MEGA2560",
+		"ARDUINO_ARCH_AVR",
+		"__AVR_ATmega2560__",
+		"F_CPU=16000000L"
+	],
+	"C_Cpp.default.forcedInclude": [
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/cores/arduino/Arduino.h"
+	],
+	"C_Cpp.default.intelliSenseMode": "gcc-x64",
+	"C_Cpp.default.cStandard": "c11",
+	"C_Cpp.default.cppStandard": "c++17",
+	"C_Cpp.default.compilerPath": "${env:LOCALAPPDATA}/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc.exe",
 
+	"C_Cpp.workspaceParsingPriority": "high",
+	"C_Cpp.autocomplete": "default",
+	"C_Cpp.autocompleteAddParentheses": true,
+	"C_Cpp.suggestSnippetsAsSnippets": false,
+
+	"editor.suggest.localityBonus": true,
+	"editor.suggest.filterGraceful": true,
+	"editor.suggest.snippetsPreventQuickSuggestions": false
 }
