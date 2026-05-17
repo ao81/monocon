@@ -222,5 +222,6 @@
 
 	"editor.suggest.localityBonus": true,
 	"editor.suggest.filterGraceful": true,
-	"editor.suggest.snippetsPreventQuickSuggestions": false
+	"editor.suggest.snippetsPreventQuickSuggestions": false,
+	"window.menuBarVisibility": "compact"
 }
