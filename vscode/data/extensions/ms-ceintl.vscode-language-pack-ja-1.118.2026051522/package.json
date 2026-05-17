@@ -2,7 +2,7 @@
 	"name": "vscode-language-pack-ja",
 	"displayName": "Japanese Language Pack for Visual Studio Code",
 	"description": "Language pack extension for Japanese",
-	"version": "1.118.2026050120",
+	"version": "1.118.2026051522",
 	"publisher": "MS-CEINTL",
 	"repository": {
 		"type": "git",
@@ -406,8 +406,8 @@
 		"update": "cd ../vscode && npm run update-localization-extension ja"
 	},
 	"__metadata": {
-		"installedTimestamp": 1777879235308,
+		"installedTimestamp": 1778927012817,
 		"targetPlatform": "undefined",
-		"size": 2513664
+		"size": 2569106
 	}
 }

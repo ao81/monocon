@@ -352,5 +352,14 @@
 		"key": "ctrl+unknown",
 		"command": "-extension.vim_ctrl+^",
 		"when": "editorTextFocus && vim.active && vim.use<C-^> && !inDebugRepl"
+	},
+	{
+		"key": "ctrl+alt+z",
+		"command": "workbench.action.toggleSidebarVisibility"
+	},
+	{
+		"key": "alt+z",
+		"command": "-workbench.action.terminal.sizeToContentWidth",
+		"when": "terminalFocus && terminalHasBeenCreated && terminalIsOpen || terminalFocus && terminalIsOpen && terminalProcessSupported"
 	}
 ]
