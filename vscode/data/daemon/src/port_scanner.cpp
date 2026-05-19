@@ -59,7 +59,7 @@ namespace {
 	// ---------------------------------------------------------------------
 	struct DeviceMatch {
 		std::string portName;     // "COM3"
-		std::string description;  // "Arduino Mega 2560 (COM3)" 等
+		std::string description;  // "Arduino UNO R4 WiFi (COM3)" 等
 		unsigned short vid = 0;
 		unsigned short pid = 0;
 	};
@@ -138,26 +138,33 @@ namespace {
 namespace PortScanner {
 
 	bool isArduinoVidPid(unsigned short vid, unsigned short pid) {
-		// Arduino LLC / SRL の VID
-		// MEGA 2560 R3:        2341:0042
-		// MEGA ADK R3:         2341:0044
-		// MEGA 2560 (CDC):     2341:0010
-		// クローン互換:        1A86:7523 (CH340), 0403:6001 (FTDI), 10C4:EA60 (CP210x)
-		(void)pid;
-		switch (vid) {
-		case 0x2341: // Arduino LLC
-		case 0x2A03: // Arduino SRL
-		case 0x1A86: // QinHeng (CH340 クローン)
-		case 0x0403: // FTDI
-		case 0x10C4: // Silicon Labs (CP210x)
-			return true;
-		default:
-			return false;
+		// Arduino Uno R4 WiFi (Renesas RA4M1) の VID:PID
+		// アプリモード:   2341:1002
+		// Bootloader DFU: 2341:006D
+		// クローン互換:   CH340 (1A86:7523), FTDI (0403:6001), CP210x (10C4:EA60)
+		//                 -- ただし正規 R4 はネイティブ USB で別 VID を持たない
+		if (vid == 0x2341) {
+			// Arduino LLC: アプリモード or DFU を許容
+			switch (pid) {
+			case 0x1002: // Uno R4 WiFi (アプリモード)
+			case 0x006D: // Uno R4 WiFi (DFU/Bootloader)
+			case 0x0069: // Uno R4 Minima (参考)
+				return true;
+			default:
+				return true;  // 他の Arduino LLC VID も寛容に通す
+			}
 		}
+		// 互換 USB-Serial (CH340 など) は description で別途判定するため false
+		(void)pid;
+		return false;
+	}
+
+	bool isBootloaderVidPid(unsigned short vid, unsigned short pid) {
+		// Uno R4 WiFi の DFU モードのみ
+		return vid == 0x2341 && pid == 0x006D;
 	}
 
 	std::vector<PortInfo> listAll() {
-		// レジストリで COM 名を取得し、SetupAPI で description を補完
 		auto names = readSerialCommRegistry();
 		auto devs = enumerateSerialDevices();
 
@@ -169,6 +176,8 @@ namespace PortScanner {
 			for (const auto& d : devs) {
 				if (d.portName == n) {
 					p.description = d.description;
+					p.vid = d.vid;
+					p.pid = d.pid;
 					break;
 				}
 			}
@@ -181,22 +190,45 @@ namespace PortScanner {
 		return readSerialCommRegistry();
 	}
 
+	std::vector<PortInfo> listAllWithIds() {
+		// listAll() と同じ。命名で意図を明示するためのエイリアス。
+		return listAll();
+	}
+
 	std::string findArduinoPort() {
 		auto devs = enumerateSerialDevices();
-		// VID マッチを優先
+		// 優先順位 1: Uno R4 WiFi アプリモード (2341:1002)
 		for (const auto& d : devs) {
-			if (isArduinoVidPid(d.vid, d.pid)) return d.portName;
+			if (d.vid == 0x2341 && d.pid == 0x1002) return d.portName;
 		}
-		// フォールバック: description に "Arduino" を含むもの
+		// 優先順位 2: 他の Arduino LLC VID
+		for (const auto& d : devs) {
+			if (d.vid == 0x2341) return d.portName;
+		}
+		// 優先順位 3: description に "Arduino" or "UNO R4" を含むもの
 		for (const auto& d : devs) {
 			std::string lower = d.description;
 			std::transform(lower.begin(), lower.end(), lower.begin(),
 				[](unsigned char c) { return std::tolower(c); });
-			if (lower.find("arduino") != std::string::npos) return d.portName;
+			if (lower.find("arduino") != std::string::npos
+				|| lower.find("uno r4") != std::string::npos
+				|| lower.find("unor4") != std::string::npos) {
+				return d.portName;
+			}
 		}
 		// それでも無ければ「最初に見つかった COM ポート」
 		auto names = readSerialCommRegistry();
 		if (!names.empty()) return names.front();
+		return "";
+	}
+
+	std::string findBootloaderPort() {
+		// DFU モードは USB CDC を提供しないため通常 SERIALCOMM には現れないが、
+		// DFU クラスでも仮想 COM を提供する R4 のロットがあるため SetupAPI でも探す。
+		auto devs = enumerateSerialDevices();
+		for (const auto& d : devs) {
+			if (isBootloaderVidPid(d.vid, d.pid)) return d.portName;
+		}
 		return "";
 	}
 

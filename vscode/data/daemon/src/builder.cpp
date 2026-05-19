@@ -1,4 +1,4 @@
-#include "stk500v2.h"
+#include "ra4m1_uploader.h"
 #include "builder.h"
 #include "daemon_state.h"
 #include "utils.h"
@@ -23,9 +23,9 @@ namespace fs = std::filesystem;
 //     ├ collectSources()    : 全 .ino/.cpp/.c とそのスタンプを列挙
 //     ├ loadStamps()        : 前回の (mtime,size) を .stamps から読む
 //     ├ planRebuild()       : 変更ファイルを特定 (差分判定の核心)
-//     ├ runCompiles()       : 変更ファイルだけ avr-g++/avr-gcc を呼ぶ
-//     ├ runLink()           : 全 .o + core.a を avr-gcc でリンク
-//     ├ runObjcopy()        : .elf → .hex
+//     ├ runCompiles()       : 変更ファイルだけ arm-none-eabi-g++/gcc を呼ぶ
+//     ├ runLink()           : 全 .o + core.a を arm-none-eabi-gcc でリンク
+//     ├ runObjcopy()        : .elf → .hex / .bin
 //     └ saveStamps()        : .stamps を更新
 //
 // 設計原則:
@@ -43,13 +43,19 @@ namespace {
 
 	// =============================================================================
 
+	// Renesas RA4M1 (Cortex-M4F) ボード設定
 	struct BoardConfig {
-		std::string mcu;          // "atmega2560"
-		std::string fcpu;         // "16000000L"
-		std::string variant;      // "mega"
-		std::string programmer;   // "wiring"
-		long uploadBaud = 115200;
+		// MCU
+		std::string mcu;           // "cortex-m4"
+		std::string fpu;           // "fpv4-sp-d16"
+		std::string floatAbi;      // "hard"
+		std::string fcpu;          // "48000000L"  RA4M1 メインクロック
+		// Arduino variant
+		std::string variant;       // "UNOWIFIR4"
+		std::string boardId;       // "UNOWIFIR4"   (-DARDUINO_UNOWIFIR4 用)
+		std::string archMacro;     // "ARDUINO_ARCH_RENESAS_UNO"
 	};
+
 	struct FileEntry {
 		std::string srcPath;      // ソースのフルパス (.ino 統合の場合は build/<name>.ino.cpp)
 		std::string objPath;      // 出力 .o のフルパス
@@ -149,18 +155,24 @@ namespace {
 
 	BoardConfig resolveBoardConfig(const std::string& fqbn) {
 		BoardConfig c;
-		c.mcu = "atmega2560";
-		c.fcpu = "16000000L";
-		c.variant = "mega";
-		c.programmer = "wiring";
-		c.uploadBaud = 115200;
+		// UNO R4 WiFi 固定
+		c.mcu        = "cortex-m4";
+		c.fpu        = "fpv4-sp-d16";
+		c.floatAbi   = "hard";
+		c.fcpu       = "48000000L";   // RA4M1 メインクロック (Arduino 起動時設定)
+		c.variant    = "UNOWIFIR4";
+		c.boardId    = "UNOWIFIR4";
+		c.archMacro  = "ARDUINO_ARCH_RENESAS_UNO";
+
+		// fqbn は基本 "arduino:renesas_uno:unor4wifi" 固定。
+		// 将来 Minima 等を追加する時はここで分岐させる。
 		std::string lower = fqbn;
 		std::transform(lower.begin(), lower.end(), lower.begin(),
 			[](unsigned char ch) { return (char)std::tolower(ch); });
-		if (lower.find("cpu=atmega1280") != std::string::npos) {
-			c.mcu = "atmega1280";
-			c.programmer = "arduino";
-			c.uploadBaud = 57600;
+
+		if (lower.find("minima") != std::string::npos) {
+			c.variant   = "MINIMA";
+			c.boardId   = "MINIMA";
 		}
 		return c;
 	}
@@ -175,39 +187,77 @@ namespace {
 		std::ostringstream f;
 		f << " -DF_CPU=" << bc.fcpu
 			<< " -DARDUINO=10819"
-			<< " -DARDUINO_AVR_MEGA2560"
-			<< " -DARDUINO_ARCH_AVR";
+			<< " -DARDUINO_" << bc.boardId
+			<< " -DARDUINO_ARCH_RENESAS"
+			<< " -D" << bc.archMacro
+			<< " -D_RENESAS_RA_"
+			<< " -D_RA_CORE=CM4"
+			<< " -D_RA_TZ_NONSECURE"
+			<< " -DUSE_FSP_LIB";
 		return f.str();
 	}
+
+	// ";" 区切りの追加 include を -I "...." として展開
+	std::string expandIncludeList(const std::string& joined) {
+		std::ostringstream f;
+		size_t start = 0;
+		while (start < joined.size()) {
+			size_t end = joined.find(';', start);
+			if (end == std::string::npos) end = joined.size();
+			std::string dir = joined.substr(start, end - start);
+			if (!dir.empty()) f << " -I\"" << dir << "\"";
+			start = end + 1;
+		}
+		return f.str();
+	}
+
 	std::string includeFlags(const std::string& sketchDir, const std::string& buildDir) {
 		std::ostringstream f;
 		f << " -I\"" << g_state.toolchain.coreDir << "\"";
 		if (!g_state.toolchain.variantDir.empty()) {
 			f << " -I\"" << g_state.toolchain.variantDir << "\"";
 		}
+		// FSP / variant の追加 include (daemon_state.cpp で収集済み)
+		if (!g_state.toolchain.includeDirs.empty()) {
+			f << expandIncludeList(g_state.toolchain.includeDirs);
+		}
 		f << " -I\"" << sketchDir << "\""
 			<< " -I\"" << buildDir << "\"";
 		return f.str();
 	}
+
+	// Cortex-M4 共通 mcpu/mthumb/fpu フラグ
+	std::string archFlags(const BoardConfig& bc) {
+		std::ostringstream f;
+		f << " -mcpu=" << bc.mcu
+			<< " -mthumb"
+			<< " -mfpu=" << bc.fpu
+			<< " -mfloat-abi=" << bc.floatAbi;
+		return f.str();
+	}
+
 	std::string cppFlags(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& buildDir) {
 		std::ostringstream f;
 		f << "-c -g -Os -Wall -Wextra -std=gnu++17"
-			<< " -ffunction-sections -fdata-sections -fno-exceptions"
-			<< " -fno-threadsafe-statics -Wno-error=narrowing"
-			<< " -Wno-unused-variable"
-			<< " -mmcu=" << bc.mcu
+			<< " -ffunction-sections -fdata-sections"
+			<< " -fno-exceptions -fno-rtti -fno-threadsafe-statics"
+			<< " -Wno-error=narrowing -Wno-unused-variable"
+			<< " -nostdlib"
+			<< archFlags(bc)
 			<< commonDefines(bc)
 			<< includeFlags(sketchDir, buildDir);
 		return f.str();
 	}
+
 	std::string cFlags(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& buildDir) {
 		std::ostringstream f;
 		f << "-c -g -Os -Wall -Wextra -std=gnu11"
 			<< " -ffunction-sections -fdata-sections"
 			<< " -Wno-unused-variable"
-			<< " -mmcu=" << bc.mcu
+			<< " -nostdlib"
+			<< archFlags(bc)
 			<< commonDefines(bc)
 			<< includeFlags(sketchDir, buildDir);
 		return f.str();
@@ -221,8 +271,10 @@ namespace {
 
 	std::string coreCacheKey(const BoardConfig& bc) {
 		std::ostringstream oss;
-		oss << bc.mcu << "|" << bc.fcpu << "|" << bc.variant << "|"
+		oss << bc.mcu << "|" << bc.fpu << "|" << bc.floatAbi << "|"
+			<< bc.fcpu << "|" << bc.variant << "|"
 			<< g_state.toolchain.compilerVersion << "|"
+			<< g_state.toolchain.boardPackageVersion << "|"
 			<< Utils::getFileLastWriteTime(g_state.toolchain.coreDir);
 		return Utils::sha1Hex(oss.str()).substr(0, 16);
 	}
@@ -263,9 +315,13 @@ namespace {
 		std::string tmpBuild = Utils::joinPath(getPortableCacheDir(), "tmp-build");
 		Utils::createDirectory(tmpBuild);
 
-		std::string fqbn = (bc.variant == "megaADK")
-			? "arduino:avr:megaADK"
-			: "arduino:avr:mega:cpu=" + bc.mcu;
+		// renesas_uno パッケージは Variant ごとに fqbn を分ける
+		std::string fqbn;
+		if (bc.variant == "MINIMA") {
+			fqbn = "arduino:renesas_uno:minima";
+		} else {
+			fqbn = "arduino:renesas_uno:unor4wifi";
+		}
 		std::ostringstream args;
 		args << "compile --fqbn " << fqbn
 			<< " --build-path \"" << tmpBuild << "\""
@@ -695,7 +751,7 @@ namespace {
 		std::string args = flags
 			+ " -MMD -MF \"" + depPath + "\""
 			+ " \"" + e.srcPath + "\" -o \"" + e.objPath + "\"";
-		std::string compiler = e.isCpp ? g_state.toolchain.avrGpp : g_state.toolchain.avrGcc;
+		std::string compiler = e.isCpp ? g_state.toolchain.armGpp : g_state.toolchain.armGcc;
 		auto pr = runProcess(compiler, args, "", true);
 		outputLog += colorizeOutput(pr.output);
 		if (pr.exitCode != 0) {
@@ -704,23 +760,53 @@ namespace {
 		}
 		return true;
 	}
+
 	bool runLink(const std::vector<FileEntry>& all, const BoardConfig& bc,
 		const std::string& coreA, const std::string& elfPath, std::string& outputLog) {
+		// Cortex-M4F + Renesas RA4M1 のリンク
+		//   - リンカスクリプトを明示指定 (variants/UNOWIFIR4/linker_scripts/gcc/fsp.ld)
+		//   - newlib-nano + nosys (--specs=nano.specs --specs=nosys.specs) で
+		//     最小フットプリント
+		//   - --gc-sections で未使用シンボル除去
+		//   - --start-group ... --end-group で core.a 内の循環依存に耐える
 		std::ostringstream args;
-		args << "-w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections"
-			<< " -mmcu=" << bc.mcu
-			<< " -o \"" << elfPath << "\"";
+		args << "-Os -g -Wall"
+			<< archFlags(bc)
+			<< " -fmerge-constants -ffunction-sections -fdata-sections"
+			<< " -Wl,--gc-sections"
+			<< " -Wl,-Map=\"" << elfPath << ".map\""
+			<< " --specs=nosys.specs --specs=nano.specs";
+		if (!g_state.toolchain.linkerScript.empty()) {
+			args << " -T\"" << g_state.toolchain.linkerScript << "\"";
+		}
+		args << " -o \"" << elfPath << "\""
+			<< " -Wl,--start-group";
 		for (const auto& e : all) args << " \"" << e.objPath << "\"";
-		args << " \"" << coreA << "\" -lm";
-		auto pr = runProcess(g_state.toolchain.avrGcc, args.str(), "", true);
+		args << " \"" << coreA << "\""
+			<< " -lstdc++ -lsupc++ -lm -lc -lgcc -lnosys"
+			<< " -Wl,--end-group";
+
+		auto pr = runProcess(g_state.toolchain.armGcc, args.str(), "", true);
 		outputLog += pr.output;
 		if (pr.exitCode != 0) { outputLog += pr.error; return false; }
 		return true;
 	}
-	bool runObjcopy(const std::string& elfPath, const std::string& hexPath,
+
+	bool runObjcopyHex(const std::string& elfPath, const std::string& hexPath,
 		std::string& outputLog) {
-		std::string args = "-O ihex -R .eeprom \"" + elfPath + "\" \"" + hexPath + "\"";
-		auto pr = runProcess(g_state.toolchain.avrObjcopy, args, "", true);
+		// Intel HEX を生成 (互換用 / 確認用)
+		std::string args = "-O ihex \"" + elfPath + "\" \"" + hexPath + "\"";
+		auto pr = runProcess(g_state.toolchain.armObjcopy, args, "", true);
+		outputLog += pr.output;
+		if (pr.exitCode != 0) { outputLog += pr.error; return false; }
+		return true;
+	}
+
+	bool runObjcopyBin(const std::string& elfPath, const std::string& binPath,
+		std::string& outputLog) {
+		// dfu-util に渡す生バイナリ (本命)
+		std::string args = "-O binary \"" + elfPath + "\" \"" + binPath + "\"";
+		auto pr = runProcess(g_state.toolchain.armObjcopy, args, "", true);
 		outputLog += pr.output;
 		if (pr.exitCode != 0) { outputLog += pr.error; return false; }
 		return true;
@@ -782,13 +868,15 @@ namespace Builder {
 		std::string sketchName = Utils::getFileName(sketchDir);
 		std::string elfPath = Utils::joinPath(buildDir, sketchName + ".elf");
 		std::string hexPath = Utils::joinPath(buildDir, sketchName + ".hex");
+		std::string binPath = Utils::joinPath(buildDir, sketchName + ".bin");
 		out.totalFiles = (int)entries.size();
 		out.recompiledFiles = (int)plan.size();
-		// --- 完全キャッシュヒット: .hex と .elf があり、変更ゼロ ---
-		if (plan.empty() && Utils::fileExists(hexPath) && Utils::fileExists(elfPath)) {
+		// --- 完全キャッシュヒット: .bin と .elf があり、変更ゼロ ---
+		if (plan.empty() && Utils::fileExists(binPath) && Utils::fileExists(elfPath)) {
 			out.success = true;
 			out.cached = true;
-			out.hexFile = hexPath;
+			out.hexFile = Utils::fileExists(hexPath) ? hexPath : "";
+			out.binFile = binPath;
 			out.elfFile = elfPath;
 			out.buildTimeMs = totalSw.elapsedMilliseconds();
 			// state にも反映 (upload で参照される)
@@ -796,7 +884,8 @@ namespace Builder {
 			auto& s = g_state.sketches[sketchDir];
 			s.sketchDir = sketchDir;
 			s.buildDir = buildDir;
-			s.hexFile = hexPath;
+			s.hexFile = out.hexFile;
+			s.binFile = binPath;
 			s.elfFile = elfPath;
 			s.hasValidBuild = true;
 			return out;
@@ -809,19 +898,21 @@ namespace Builder {
 				return out;
 			}
 		}
-		// --- 何か再コンパイルしたか、elf/hex が無いならリンク ---
+		// --- 何か再コンパイルしたか、elf/bin が無いならリンク ---
 		bool needLink = !plan.empty()
 			|| !Utils::fileExists(elfPath)
-			|| !Utils::fileExists(hexPath);
+			|| !Utils::fileExists(binPath);
 		if (needLink) {
 			if (!runLink(entries, bc, coreA, elfPath, out.compilerOutput)) {
 				out.errorMessage = "Link failed";
 				return out;
 			}
-			if (!runObjcopy(elfPath, hexPath, out.compilerOutput)) {
-				out.errorMessage = "objcopy failed";
+			if (!runObjcopyBin(elfPath, binPath, out.compilerOutput)) {
+				out.errorMessage = "objcopy -O binary failed";
 				return out;
 			}
+			// HEX は dfu-util では使わないが、シリアルダンプや確認用に生成しておく
+			runObjcopyHex(elfPath, hexPath, out.compilerOutput);
 		}
 		// --- スタンプ更新 ---
 		saveStamps(buildDir, entries);
@@ -832,6 +923,7 @@ namespace Builder {
 			s.sketchDir = sketchDir;
 			s.buildDir = buildDir;
 			s.hexFile = hexPath;
+			s.binFile = binPath;
 			s.elfFile = elfPath;
 			s.hasValidBuild = true;
 			s.lastBuildAt = std::chrono::steady_clock::now();
@@ -839,10 +931,12 @@ namespace Builder {
 		out.success = true;
 		out.cached = false;
 		out.hexFile = hexPath;
+		out.binFile = binPath;
 		out.elfFile = elfPath;
 		out.buildTimeMs = totalSw.elapsedMilliseconds();
 		return out;
 	}
+
 	UploadResult upload(const UploadRequest& req) {
 		UploadResult out;
 		Stopwatch sw;
@@ -871,6 +965,7 @@ namespace Builder {
 			out.compile.success = true;
 			out.compile.cached = true;
 			out.compile.hexFile = it->second.hexFile;
+			out.compile.binFile = it->second.binFile;
 			out.compile.elfFile = it->second.elfFile;
 		}
 		// --- ポート決定 ---
@@ -882,37 +977,39 @@ namespace Builder {
 				port = g_state.cachedPorts.front();
 			}
 		}
-		if (port.empty()) {
-			out.errorMessage = "No COM port detected";
-			return out;
-		}
+		// 注: UNO R4 WiFi では port が空でも DFU 状態なら uploader 側で
+		//     継続できる (waitDfuDevice で 50ms チェック)。空のまま下に渡す。
 		out.port = port;
 
 		// =====================================================================
 
-		// ネイティブ STK500v2 アップロード (avrdude を使わない)
+		// ネイティブ DFU アップロード (1200bps タッチ → dfu-util)
 
 		// =====================================================================
 
-		std::vector<uint8_t> flash;
-		std::string hexErr;
-		if (!Stk500v2::readIntelHex(out.compile.hexFile, flash, hexErr)) {
-			out.errorMessage = "Hex parse failed: " + hexErr;
+		if (out.compile.binFile.empty() || !Utils::fileExists(out.compile.binFile)) {
+			out.errorMessage = "bin file missing: " + out.compile.binFile;
 			return out;
 		}
-		// 注: 旧 warmupComPort は削除。SerialPort::open() が直後に同じ COM を開くため重複していた。
-		auto stats = Stk500v2::uploadMega2560(port, flash);
+
+		auto stats = Ra4m1Uploader::uploadUnoR4Wifi(
+			port,
+			out.compile.binFile,
+			g_state.toolchain.dfuUtil);
+
 		// デバッグ用に内訳もログに残す
 		std::ostringstream oss;
-		oss << "stk500v2 native upload\n"
-			<< "  open=" << stats.openMs << "ms"
-			<< " reset=" << stats.resetMs << "ms"
-			<< " sync=" << stats.syncMs << "ms"
-			<< " prog=" << stats.progMs << "ms"
-			<< " leave=" << stats.leaveMs << "ms\n"
-			<< "  pages=" << stats.pagesWritten
-			<< " bytes=" << stats.bytesWritten << "\n";
-		out.avrdudeOutput = oss.str();
+		oss << "ra4m1 native upload (UNO R4 WiFi)\n"
+			<< "  touch=" << stats.touchMs << "ms"
+			<< " portGone=" << stats.waitPortGoneMs << "ms"
+			<< " dfuWait=" << stats.waitDfuMs << "ms"
+			<< " dfu=" << stats.dfuMs << "ms\n"
+			<< "  bytes=" << stats.bytesWritten
+			<< " bootloader=" << stats.bootloaderId << "\n";
+		if (!stats.dfuOutput.empty()) {
+			oss << "--- dfu-util output ---\n" << stats.dfuOutput;
+		}
+		out.dfuOutput = oss.str();
 		if (!stats.success) {
 			out.errorMessage = stats.errorMessage;
 			return out;
@@ -935,6 +1032,7 @@ namespace Builder {
 			{"recompiledFiles", r.recompiledFiles},
 			{"totalFiles", r.totalFiles},
 			{"hexFile", r.hexFile},
+			{"binFile", r.binFile},
 			{"elfFile", r.elfFile},
 			{"buildTimeMs", r.buildTimeMs},
 			{"errorMessage", r.errorMessage},
@@ -947,7 +1045,7 @@ namespace Builder {
 			{"port", r.port},
 			{"uploadTimeMs", r.uploadTimeMs},
 			{"errorMessage", r.errorMessage},
-			{"avrdudeOutput", r.avrdudeOutput},
+			{"dfuOutput", r.dfuOutput},
 			{"compile", toJson(r.compile)}
 		};
 	}

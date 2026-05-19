@@ -294,11 +294,11 @@ namespace {
 				}
 				std::cout << "Compile " << label
 					<< " in " << r.value("buildTimeMs", 0.0) << " ms\n";
-				// std::cout << "  hex: " << r.value("hexFile", "") << "\n";
+				// std::cout << "  bin: " << r.value("binFile", "") << "\n";
 			} else if (cmd == "upload") {
 				if (!r.value("success", false)) {
 					std::cerr << ">>> Upload failed: " << r.value("errorMessage", "") << "\n";
-					std::cerr << r.value("avrdudeOutput", "") << "\n";
+					std::cerr << r.value("dfuOutput", "") << "\n";
 					if (r.contains("compile") && !r["compile"].value("success", true)) {
 						std::cerr << r["compile"].value("compilerOutput", "") << "\n";
 					}
@@ -322,7 +322,7 @@ namespace {
 					<< r.value("uploadTimeMs", 0.0) << " ms\n";
 				std::cout << "Total client time: " << sw.elapsedMilliseconds() << " ms\n";
 
-				// std::cout << r.value("avrdudeOutput", "");
+				// std::cout << r.value("dfuOutput", "");
 			} else if (cmd == "shutdown") {
 				std::cout << "Daemon shutdown requested.\n";
 			}

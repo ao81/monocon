@@ -399,7 +399,7 @@ int main(int argc, char* argv[]) {
 
 	// ここに来た時点で「自分が唯一の daemon」が確定
 	initLogger();
-	logInfo("=== arduino-build-daemon starting (pid=" +
+	logInfo("=== arduino-build-daemon (UNO R4 WiFi) starting (pid=" +
 		std::to_string(GetCurrentProcessId()) +
 		", idle=" + std::to_string(idleMinutes) + "min) ===");
 
@@ -411,11 +411,12 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// --- ツールチェーン解決 ---
+	// --- ツールチェーン解決 (UNO R4 WiFi / Renesas RA4M1 用) ---
 	if (!initializeDaemonState()) {
 		logErr("Toolchain init failed: " + g_state.toolchain.errorMessage);
 	} else {
-		logInfo("Toolchain OK: " + g_state.toolchain.compilerVersion);
+		logInfo("Toolchain OK: " + g_state.toolchain.compilerVersion
+			+ " (renesas_uno " + g_state.toolchain.boardPackageVersion + ")");
 	}
 
 	SetConsoleCtrlHandler(consoleHandler, TRUE);

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
-project(arduino-build-tools CXX)
+# Arduino UNO R4 WiFi (Renesas RA4M1) 向け常駐ビルドデーモン + CLI クライアント
+project(arduino-build-tools-unor4wifi CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,7 +51,7 @@ add_library(common STATIC
     src/utils.cpp
     src/pipe_io.cpp
     src/port_scanner.cpp
-	src/stk500v2.cpp
+    src/ra4m1_uploader.cpp
 )
 target_include_directories(common PUBLIC src)
 target_link_libraries(common PUBLIC nlohmann_json::nlohmann_json)
