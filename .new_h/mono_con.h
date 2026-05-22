@@ -63,7 +63,7 @@ public:
 
 	// ステッピングモータ: 励磁フェーズ
 	led_stepmotor& spm(uint8_t phase) {
-		b8 = (b8 & 0xF0) | ((uint8_t)stepm_init(phase) & 0x0F);
+		b8 = (b8 & 0xF0) | (stepm_init(phase) & 0x0F);
 		return *this;
 	}
 
@@ -142,8 +142,8 @@ void serial_init(void) {
 //===================================================================================================================
 void disp(char leftPat, char rightPat) {
 	digitalWrite(LAT1_PIN, LOW);
-	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, (uint8_t)leftPat);
-	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, (uint8_t)rightPat);
+	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, leftPat);
+	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, rightPat);
 	digitalWrite(LAT1_PIN, HIGH);
 }
 
