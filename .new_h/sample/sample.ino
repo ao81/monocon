@@ -16,7 +16,7 @@ word tc;
 
 void scw() {
 	if (--phase < 0) phase = 3;
-	lm.sm(phase);
+	lm.spm(phase);
 }
 
 void dcw() {
@@ -56,7 +56,7 @@ void setup() {
 	sw = presw = digitalRead(pin_4);
 	ph = preph = digitalRead(pin_3);
 
-	lm.led(led[idx]);
+	lm.led(led[idx]).flush();
 }
 
 void loop() {
@@ -98,5 +98,6 @@ void loop() {
 
 	if (tsw == HIGH) disp(num[mode], 0x00);
 	else disp(0x00, num[mode]);
-	lm.update();
+
+	lm.flush();
 }
