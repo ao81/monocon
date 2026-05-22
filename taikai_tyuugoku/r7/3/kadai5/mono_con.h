@@ -51,22 +51,24 @@ int stepm_init(int n) {
 //  フルカラーLEDとステッピングモータの動作制御クラス
 //===================================================================================================================
 class led_stepmotor {
-public:
-	uint8_t b8;
-	led_stepmotor() : b8(0) {}
+private:
+	uint8_t b8 = 0;
 
+public:
 	// フルカラーLED: 3bit GBR
-	void led(uint8_t gbr) {
+	led_stepmotor& led(uint8_t gbr) {
 		b8 = (b8 & 0x0F) | ((gbr & 0x07) << 4);
+		return *this;
 	}
 
 	// ステッピングモータ: 励磁フェーズ
-	void spm(uint8_t phase) {
+	led_stepmotor& spm(uint8_t phase) {
 		b8 = (b8 & 0xF0) | ((uint8_t)stepm_init(phase) & 0x0F);
+		return *this;
 	}
 
 	// 更新
-	void update() const {
+	void flush() const {
 		digitalWrite(LAT2_PIN, LOW);
 		shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, b8);
 		digitalWrite(LAT2_PIN, HIGH);
