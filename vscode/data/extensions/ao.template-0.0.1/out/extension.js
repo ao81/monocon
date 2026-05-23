@@ -6,7 +6,7 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 function activate(context) {
-    const disposable = vscode.commands.registerCommand('kadaiGenerator.generate', async (clickedUri, selectedUris) => {
+    const disposable = vscode.commands.registerCommand('template.generate', async (clickedUri, selectedUris) => {
         try {
             // エクスプローラで複数選択された場合、selectedUris に全て入る
             // 単独クリックや コマンドパレットから呼ばれた場合は clickedUri のみ
@@ -75,7 +75,7 @@ function activate(context) {
             }
             const count = Number(input);
             // 設定からベース名を取得
-            const config = vscode.workspace.getConfiguration('kadaiGenerator');
+            const config = vscode.workspace.getConfiguration('template');
             const baseName = config.get('baseName', 'kadai');
             const headerFileName = path.basename(headerUri.fsPath);
             const parentDir = parentDirUri.fsPath;
