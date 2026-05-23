@@ -36,7 +36,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -50,6 +49,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -61,6 +61,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -71,6 +72,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -104,6 +106,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
   -
     kind: "message-v1"
     backtrace:
@@ -120,7 +123,7 @@ events:
       The output was:
       0
       MSBuild 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ 18.5.4+cb4e32d21 (.NET Framework)
-      2026/05/09 蝨・15:49:34 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
+      2026/05/23 蝨・12:16:36 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
       
       繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
       PrepareForBuild:
@@ -149,7 +152,7 @@ events:
           0 蛟九・隴ｦ蜻・
           0 繧ｨ繝ｩ繝ｼ
       
-      邨碁℃譎る俣 00:00:01.03
+      邨碁℃譎る俣 00:00:00.83
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -183,7 +186,6 @@ events:
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -197,6 +199,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -217,6 +220,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -248,7 +252,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -262,6 +265,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -273,6 +277,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -283,6 +288,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -316,6 +322,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -340,7 +347,6 @@ events:
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -354,6 +360,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -374,6 +381,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -406,9 +414,6 @@ events:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/lld-link.com"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/lld-link.exe"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/lld-link"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/lld-link.com"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/lld-link.exe"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/lld-link"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/lld-link.com"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/lld-link.exe"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/lld-link"
@@ -448,6 +453,9 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/lld-link.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/lld-link.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/lld-link"
       - "C:/Program Files/nodejs/lld-link.com"
       - "C:/Program Files/nodejs/lld-link.exe"
       - "C:/Program Files/nodejs/lld-link"
@@ -508,6 +516,9 @@ events:
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.com"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.exe"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/lld-link.com"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/lld-link.exe"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/lld-link"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/lld-link.com"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/lld-link.exe"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/lld-link"
@@ -552,7 +563,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -566,6 +576,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -577,6 +588,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -587,6 +599,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -620,6 +633,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -642,7 +656,6 @@ events:
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -656,6 +669,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -676,6 +690,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -707,7 +722,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -721,6 +735,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -732,6 +747,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -742,6 +758,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -775,6 +792,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -797,7 +815,6 @@ events:
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -811,6 +828,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -831,6 +849,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -863,9 +882,6 @@ events:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/mt.com"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/mt.exe"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/mt"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/mt.com"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/mt.exe"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/mt"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/mt.com"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/mt.exe"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/mt"
@@ -905,6 +921,9 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/mt.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/mt.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/mt"
       - "C:/Program Files/nodejs/mt.com"
       - "C:/Program Files/nodejs/mt.exe"
       - "C:/Program Files/nodejs/mt"
@@ -965,6 +984,9 @@ events:
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.com"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.exe"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/mt.com"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/mt.exe"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/mt"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/mt.com"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/mt.exe"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/mt"
@@ -1044,7 +1066,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -1058,6 +1079,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1069,6 +1091,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1079,6 +1102,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -1112,6 +1136,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -1134,7 +1159,6 @@ events:
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -1148,6 +1172,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1168,6 +1193,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -1199,7 +1225,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -1213,6 +1238,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1224,6 +1250,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1234,6 +1261,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -1267,6 +1295,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -1291,7 +1320,6 @@ events:
       - "rc"
     candidate_directories:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -1305,6 +1333,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1325,6 +1354,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -1366,9 +1396,6 @@ events:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/rc.com"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/rc.exe"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/rc"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/rc.com"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/rc.exe"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/rc"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/rc.com"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/rc.exe"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/rc"
@@ -1408,6 +1435,9 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/rc.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/rc.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/rc"
       - "C:/Program Files/nodejs/rc.com"
       - "C:/Program Files/nodejs/rc.exe"
       - "C:/Program Files/nodejs/rc"
@@ -1468,6 +1498,9 @@ events:
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.com"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.exe"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/rc.com"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/rc.exe"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/rc"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/rc.com"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/rc.exe"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/rc"
@@ -1583,7 +1616,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -1597,6 +1629,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -1608,6 +1641,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1618,6 +1652,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -1651,6 +1686,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/arduino-build-tools"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1666,8 +1702,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl"
-      binary: "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl"
+      source: "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-6ppkz8"
+      binary: "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-6ppkz8"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1678,39 +1714,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl'
+        Change Dir: 'C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-6ppkz8'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_c4a26.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_d1420.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
         MSBuild 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ 18.5.4+cb4e32d21 (.NET Framework)
-        2026/05/09 蝨・15:49:36 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
+        2026/05/23 蝨・12:16:38 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
         
-        繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\cmTC_c4a26.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
+        繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6ppkz8\\cmTC_d1420.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
         PrepareForBuild:
           讒矩\xc2\x80蛹門・蜉帙′譛牙柑縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶\xc2\x80ゅさ繝ｳ繝代う繝ｩ險ｺ譁ｭ縺ｮ譖ｸ蠑剰ｨｭ螳壹↓縺ｯ繧ｨ繝ｩ繝ｼ髫主ｱ､縺悟渚譏縺輔ｌ縺ｾ縺吶\xc2\x80りｩｳ邏ｰ縺ｫ縺､縺・※縺ｯ縲”ttps://aka.ms/cpp/structured-output 繧貞盾辣ｧ縺励※縺上□縺輔＞縲・
-          繝・ぅ繝ｬ繧ｯ繝医Μ "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\Debug\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
-          繝・ぅ繝ｬ繧ｯ繝医Μ "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
+          繝・ぅ繝ｬ繧ｯ繝医Μ "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6ppkz8\\Debug\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
+          繝・ぅ繝ｬ繧ｯ繝医Μ "cmTC_d1420.dir\\Debug\\cmTC_d1420.tlog\\" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
         InitializeBuildStatus:
-          "AlwaysCreate" 縺梧欠螳壹＆繧後◆縺溘ａ "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\unsuccessfulbuild" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
-          "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\unsuccessfulbuild" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
+          "AlwaysCreate" 縺梧欠螳壹＆繧後◆縺溘ａ "cmTC_d1420.dir\\Debug\\cmTC_d1420.tlog\\unsuccessfulbuild" 繧剃ｽ懈・縺励※縺・∪縺吶\xc2\x80・
+          "cmTC_d1420.dir\\Debug\\cmTC_d1420.tlog\\unsuccessfulbuild" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_c4a26.dir\\Debug\\\\" /Fd"cmTC_c4a26.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_d1420.dir\\Debug\\\\" /Fd"cmTC_d1420.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft(R) C/C++ Optimizing Compiler Version 19.50.35729 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_c4a26.dir\\Debug\\\\" /Fd"cmTC_c4a26.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_d1420.dir\\Debug\\\\" /Fd"cmTC_d1420.dir\\Debug\\vc145.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\Debug\\cmTC_c4a26.exe" /INCREMENTAL /ILK:"cmTC_c4a26.dir\\Debug\\cmTC_c4a26.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl/Debug/cmTC_c4a26.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-ymuqhl/Debug/cmTC_c4a26.lib" /MACHINE:X64  /machine:x64 cmTC_c4a26.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_c4a26.vcxproj -> C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\Debug\\cmTC_c4a26.exe
+          C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6ppkz8\\Debug\\cmTC_d1420.exe" /INCREMENTAL /ILK:"cmTC_d1420.dir\\Debug\\cmTC_d1420.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-6ppkz8/Debug/cmTC_d1420.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/CMakeFiles/CMakeScratch/TryCompile-6ppkz8/Debug/cmTC_d1420.lib" /MACHINE:X64  /machine:x64 cmTC_d1420.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_d1420.vcxproj -> C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6ppkz8\\Debug\\cmTC_d1420.exe
         FinalizeBuildStatus:
-          繝輔ぃ繧､繝ｫ "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\unsuccessfulbuild" 繧貞炎髯､縺励※縺・∪縺吶\xc2\x80・
-          "cmTC_c4a26.dir\\Debug\\cmTC_c4a26.tlog\\cmTC_c4a26.lastbuildstate" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
-        繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ymuqhl\\cmTC_c4a26.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′螳御ｺ・＠縺ｾ縺励◆縲・
+          繝輔ぃ繧､繝ｫ "cmTC_d1420.dir\\Debug\\cmTC_d1420.tlog\\unsuccessfulbuild" 繧貞炎髯､縺励※縺・∪縺吶\xc2\x80・
+          "cmTC_d1420.dir\\Debug\\cmTC_d1420.tlog\\cmTC_d1420.lastbuildstate" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶\xc2\x80・
+        繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\daemon\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6ppkz8\\cmTC_d1420.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′螳御ｺ・＠縺ｾ縺励◆縲・
         
         繝薙Ν繝峨↓謌仙粥縺励∪縺励◆縲・
             0 蛟九・隴ｦ蜻・
             0 繧ｨ繝ｩ繝ｼ
         
-        邨碁℃譎る俣 00:00:00.56
+        邨碁℃譎る俣 00:00:00.50
         
       exitCode: 0
   -
@@ -1767,7 +1803,6 @@ events:
       - "git"
     candidate_directories:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -1781,6 +1816,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -1801,6 +1837,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -1843,9 +1880,6 @@ events:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.cmd.com"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.cmd.exe"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.cmd"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.cmd.com"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.cmd.exe"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.cmd"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/git.cmd.com"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/git.cmd.exe"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/git.cmd"
@@ -1885,6 +1919,9 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.cmd.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.cmd.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.cmd"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/git.cmd.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/git.cmd.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/git.cmd"
       - "C:/Program Files/nodejs/git.cmd.com"
       - "C:/Program Files/nodejs/git.cmd.exe"
       - "C:/Program Files/nodejs/git.cmd"
@@ -1945,6 +1982,9 @@ events:
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/git.cmd.com"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/git.cmd.exe"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/git.cmd"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/git.cmd.com"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/git.cmd.exe"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/git.cmd"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/git.cmd.com"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/git.cmd.exe"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/git.cmd"
@@ -2062,9 +2102,6 @@ events:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.com"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git.exe"
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/git"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.com"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git.exe"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/git"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/git.com"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/git.exe"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/git"
@@ -2104,6 +2141,9 @@ events:
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.com"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git.exe"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/git"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/git.com"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/git.exe"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/git"
       - "C:/Program Files/nodejs/git.com"
       - "C:/Program Files/nodejs/git.exe"
       - "C:/Program Files/nodejs/git"
@@ -2157,7 +2197,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -2171,6 +2210,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -2182,6 +2222,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -2192,6 +2233,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -2225,6 +2267,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/arduino-build-tools"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -2251,7 +2294,6 @@ events:
       - "x64/Microsoft.VC145.CRT"
     candidate_directories:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -2265,6 +2307,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -2285,6 +2328,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -2323,7 +2367,6 @@ events:
       - "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Redist/MSVC/14.44.35112/"
     searched_directories:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/x64/Microsoft.VC145.CRT"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/x64/Microsoft.VC145.CRT"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/x64/Microsoft.VC145.CRT"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/x64/Microsoft.VC145.CRT"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/x64/Microsoft.VC145.CRT"
@@ -2337,6 +2380,7 @@ events:
       - "C:/Program Files/Go/bin/x64/Microsoft.VC145.CRT"
       - "C:/Program Files (x86)/mingw64/bin/x64/Microsoft.VC145.CRT"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/x64/Microsoft.VC145.CRT"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/x64/Microsoft.VC145.CRT"
       - "C:/Program Files/nodejs/x64/Microsoft.VC145.CRT"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/x64/Microsoft.VC145.CRT"
       - "C:/Program Files/GitHub CLI/x64/Microsoft.VC145.CRT"
@@ -2357,6 +2401,7 @@ events:
       - "C:/arduino-cli/x64/Microsoft.VC145.CRT"
       - "C:/Program Files/CMake/bin/x64/Microsoft.VC145.CRT"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/x64/Microsoft.VC145.CRT"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/x64/Microsoft.VC145.CRT"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/x64/Microsoft.VC145.CRT"
       - "C:/Users/ao/.config/herd-lite/bin/x64/Microsoft.VC145.CRT"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/x64/Microsoft.VC145.CRT"
@@ -2395,7 +2440,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -2409,6 +2453,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -2420,6 +2465,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -2430,6 +2476,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -2463,6 +2510,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/arduino-build-tools"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -2490,7 +2538,6 @@ events:
       - "Redist/ucrt/DLLs/x64/ucrtbase.dll"
     candidate_directories:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/"
@@ -2504,6 +2551,7 @@ events:
       - "C:/Program Files/Go/bin/"
       - "C:/Program Files (x86)/mingw64/bin/"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/"
       - "C:/Program Files/nodejs/"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/"
       - "C:/Program Files/GitHub CLI/"
@@ -2524,6 +2572,7 @@ events:
       - "C:/arduino-cli/"
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/"
       - "C:/Users/ao/.config/herd-lite/bin/"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/"
@@ -2561,7 +2610,6 @@ events:
       - "C:/Program Files/Windows Kits/10/"
     searched_directories:
       - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
-      - "C:/Users/ao/AppData/Local/Programs/Microsoft VS Code/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files/MySQL/MySQL Server 8.0/bin/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Scripts/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files/Common Files/Oracle/Java/javapath/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
@@ -2575,6 +2623,7 @@ events:
       - "C:/Program Files/Go/bin/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files (x86)/mingw64/bin/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
+      - "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/%NVM_HOME%/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files/nodejs/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Users/ao/AppData/Local/Yarn/Data/global/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files/GitHub CLI/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
@@ -2595,6 +2644,7 @@ events:
       - "C:/arduino-cli/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files/CMake/bin/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
+      - "C:/Users/ao/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/php-8.5.5-nts-Win32-vs17-x64/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Users/ao/.config/herd-lite/bin/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
       - "C:/Users/ao/AppData/Local/Programs/Python/Python314/Redist/10.0.26100.0/ucrt/DLLs/x64/ucrtbase.dll"
@@ -2632,7 +2682,6 @@ events:
     search_context:
       ENV{PATH}:
         - "C:\\Users\\ao\\Desktop\\monokon_vscode\\monokon\\vscode\\data\\.."
-        - "C:\\Users\\ao\\AppData\\Local\\Programs\\Microsoft VS Code"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
         - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
@@ -2646,6 +2695,7 @@ events:
         - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files (x86)\\mingw64\\bin"
         - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Users\\ao\\AppData\\Local\\Yarn\\Data\\global"
         - "C:\\Program Files\\GitHub CLI\\"
@@ -2657,6 +2707,7 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Program Files\\cursor\\resources\\app\\bin"
         - "C:\\ProgramData\\ComposerSetup\\bin"
+        - "%NVM_HOME%"
         - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\usbipd-win\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -2667,6 +2718,7 @@ events:
         - "C:\\arduino-cli"
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
         - "C:\\php-8.5.5-nts-Win32-vs17-x64"
         - "C:\\Users\\ao\\.config\\herd-lite\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Programs\\Python\\Python314\\Scripts"
@@ -2700,6 +2752,7 @@ events:
         - "C:\\Program Files\\CMake\\bin"
         - "C:\\Users\\ao\\AppData\\Local\\Python\\bin"
         - "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin"
+        - "C:\\Users\\ao\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/arduino-build-tools"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
