@@ -1,0 +1,56 @@
+{
+	"name": "template",
+	"displayName": "Template Generator",
+	"publisher": "ao",
+	"description": "",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.80.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "template.generate",
+				"title": "Template Generator: フォルダ構造を生成"
+			}
+		],
+		"menus": {
+			"explorer/context": [
+				{
+					"command": "template.generate",
+					"group": "2_workspace"
+				}
+			]
+		},
+		"configuration": {
+			"title": "Template Generator",
+			"properties": {
+				"kadaiGenerator.baseName": {
+					"type": "string",
+					"default": "kadai",
+					"description": "サブディレクトリ名と .ino ファイル名のベース部分 (例: kadai → kadai1, kadai2, ...)"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./"
+	},
+	"devDependencies": {
+		"@types/node": "^18.0.0",
+		"@types/vscode": "^1.80.0",
+		"typescript": "^5.0.0"
+	},
+	"__metadata": {
+		"installedTimestamp": 1779507197801,
+		"targetPlatform": "undefined",
+		"size": 10314
+	}
+}
