@@ -2,6 +2,7 @@
 	"name": "template",
 	"displayName": "Template Generator",
 	"publisher": "ao",
+	"icon": "icon.ico",
 	"description": "",
 	"version": "0.0.1",
 	"engines": {
@@ -30,7 +31,7 @@
 		"configuration": {
 			"title": "Template Generator",
 			"properties": {
-				"kadaiGenerator.baseName": {
+				"template.baseName": {
 					"type": "string",
 					"default": "kadai",
 					"description": "サブディレクトリ名と .ino ファイル名のベース部分 (例: kadai → kadai1, kadai2, ...)"
@@ -44,13 +45,13 @@
 		"watch": "tsc -watch -p ./"
 	},
 	"devDependencies": {
-		"@types/node": "^18.0.0",
+		"@types/node": "^18.19.130",
 		"@types/vscode": "^1.80.0",
 		"typescript": "^5.0.0"
 	},
 	"__metadata": {
-		"installedTimestamp": 1779507197801,
+		"installedTimestamp": 1779508662908,
 		"targetPlatform": "undefined",
-		"size": 10314
+		"size": 12965
 	}
 }
