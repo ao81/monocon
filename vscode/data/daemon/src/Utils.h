@@ -49,6 +49,8 @@ namespace Utils {
 
 	// --- ハッシュ / タイムスタンプ ---
 	long long getFileLastWriteTime(const std::string& path);
+	// mtime と size を 1 syscall で取得 (差分判定で 2 倍の syscall を節約)
+	bool getFileMetadata(const std::string& path, long long& mtime, uint64_t& size);
 	std::string getSourceSignature(const std::vector<std::string>& files);
 
 	// --- 文字列操作 ---

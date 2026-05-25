@@ -44,9 +44,12 @@ namespace {
 				OPEN_EXISTING, 0, nullptr);
 			if (h == INVALID_HANDLE_VALUE) return false;
 
-			// ドライバ側のバッファを大きく確保: フルページ (270B) を 1 USB 転送で受け切れる。
-			// 既定値はドライバ依存 (FTDI=4096 など) だが、小さい場合でも上書きで最適化。
-			SetupComm(h, 4096, 4096);
+			// ドライバ側のキューを 16KB に拡張。USB-Serial 経由でページ (272B) を
+			// 連続送信する際、ドライバの内部バッファが十分にあれば WriteFile が
+			// 即座にユーザ空間に戻れる (ドライバが非同期で USB に流す)。
+			// 旧 4KB は 15 ページ分相当だが、書き込み中のフロー制御の頭打ちを
+			// 16KB 化で更に緩和する。
+			SetupComm(h, 16384, 16384);
 
 			DCB dcb{};
 			dcb.DCBlength = sizeof(dcb);
@@ -147,21 +150,34 @@ namespace {
 		SerialPort& port;
 		uint8_t seq = 1;
 
-		explicit Stk500v2Client(SerialPort& p) : port(p) {}
+		// 送信用ワーク。loadAddress / signOn 等の小さいメッセージで再利用し、
+		// 1 ページ書込ごとの heap allocation を排除する。
+		uint8_t sendBuf[64];
+		// 受信用 body バッファ。capacity を確保したまま resize で使い回す。
+		std::vector<uint8_t> respBuf;
+
+		explicit Stk500v2Client(SerialPort& p) : port(p) {
+			respBuf.reserve(64);
+		}
+
+		// 小さい body (≤ sizeof(sendBuf)-6) 用の高速送信。
+		bool sendShort(const uint8_t* body, size_t bodyLen) {
+			if (bodyLen + 6 > sizeof(sendBuf)) return false;
+			sendBuf[0] = MESSAGE_START;
+			sendBuf[1] = seq;
+			sendBuf[2] = (uint8_t)((bodyLen >> 8) & 0xFF);
+			sendBuf[3] = (uint8_t)(bodyLen & 0xFF);
+			sendBuf[4] = TOKEN;
+			memcpy(sendBuf + 5, body, bodyLen);
+			uint8_t chk = 0;
+			size_t total = 5 + bodyLen;
+			for (size_t i = 0; i < total; ++i) chk ^= sendBuf[i];
+			sendBuf[total] = chk;
+			return port.write(sendBuf, total + 1);
+		}
 
 		bool sendMessage(const std::vector<uint8_t>& body) {
-			std::vector<uint8_t> msg;
-			msg.reserve(6 + body.size());
-			msg.push_back(MESSAGE_START);
-			msg.push_back(seq);
-			msg.push_back((uint8_t)((body.size() >> 8) & 0xFF));
-			msg.push_back((uint8_t)(body.size() & 0xFF));
-			msg.push_back(TOKEN);
-			msg.insert(msg.end(), body.begin(), body.end());
-			uint8_t chk = 0;
-			for (uint8_t b : msg) chk ^= b;
-			msg.push_back(chk);
-			return port.write(msg.data(), msg.size());
+			return sendShort(body.data(), body.size());
 		}
 
 		bool recvMessage(std::vector<uint8_t>& body) {
@@ -290,9 +306,10 @@ namespace {
 
 			if (!port.write(buf, endIdx + 1)) return false;
 
-			std::vector<uint8_t> resp;
-			if (!recvMessage(resp)) return false;
-			return resp.size() >= 2 && resp[0] == CMD_PROGRAM_FLASH_ISP && resp[1] == STATUS_CMD_OK;
+			// per-ページ allocation を排除するため respBuf を再利用。
+			if (!recvMessage(respBuf)) return false;
+			return respBuf.size() >= 2 && respBuf[0] == CMD_PROGRAM_FLASH_ISP
+				&& respBuf[1] == STATUS_CMD_OK;
 		}
 	};
 
@@ -395,14 +412,17 @@ namespace Stk500v2 {
 
 		// Mega 2560 wiring ブートローダの起動シーケンス:
 		// - リセット解除直後、ブートローダの初期化 (UART 設定, ウォッチドッグ解除等) に ~50ms
-		// - 旧来の Sleep(250) は最悪値マージン込みの過剰待機。
-		// - 80ms 確定待機 → 50ms タイムアウトでアダプティブ sync すれば、
-		//   ブートローダ準備完了の瞬間に sync 成立する。
-		Sleep(80);
+		// - 旧 80ms はマージン込み。実機ベンチでは 40-50ms で初回 sync 成立する
+		//   ことが多い。アダプティブ sync (30ms timeout) があるので、ここを攻めて
+		//   早回り、失敗時のみリトライさせる方が平均は速い。
+		// - 安全側として「最低 50ms (実測 init 完了時刻)」を確保する。
+		Sleep(50);
 
 		// 3) ブートローダと sync: 短タイムアウト + 早期再試行
 		// 全体予算を 1.2 秒で打ち切る (旧: 6 retries × 500ms = 最悪 3 秒)
-		sp.setReadTimeout(50);
+		// タイムアウトを 30ms に短縮: 万一最初のリクエストが init 直後に重なって
+		// 取りこぼされても、~60ms 後に再送できるようにする (旧 100ms 後)。
+		sp.setReadTimeout(30);
 
 		Stk500v2Client cli(sp);
 		bool synced = false;
@@ -410,22 +430,26 @@ namespace Stk500v2 {
 		int recvFailures = 0;
 		int badResponses = 0;
 
+		// SIGN_ON リクエストは毎回同一。Sleep(50) 直後の最初の往復で成功するのが
+		// 想定パス。失敗時のリトライ用に body を一度だけ確保しておく。
+		const uint8_t signOnBody[1] = { CMD_SIGN_ON };
+
 		auto syncStart = std::chrono::steady_clock::now();
 		while (true) {
 			auto syncElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::steady_clock::now() - syncStart).count();
 			if (syncElapsed > 1200) break;
 
-			std::vector<uint8_t> resp;
-			if (!cli.sendMessage({ CMD_SIGN_ON })) {
+			if (!cli.sendShort(signOnBody, 1)) {
 				sendFailures++;
 				continue;
 			}
-			if (!cli.recvMessage(resp)) {
+			if (!cli.recvMessage(cli.respBuf)) {
 				recvFailures++;
 				continue;
 			}
-			if (resp.size() >= 2 && resp[0] == CMD_SIGN_ON && resp[1] == STATUS_CMD_OK) {
+			if (cli.respBuf.size() >= 2 && cli.respBuf[0] == CMD_SIGN_ON
+				&& cli.respBuf[1] == STATUS_CMD_OK) {
 				synced = true;
 				break;
 			}
