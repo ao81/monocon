@@ -33,6 +33,11 @@
 #define SCK_PIN  24
 #define SDI_PIN  25
 
+//--- led_stepmotor::spm() の引数用
+#define CW		0xFF
+#define CCW		0xFE
+#define STOP	0xFD
+
 //===================================================================================================================
 //  ステッピングモータの励磁パターンを返す関数
 //===================================================================================================================
@@ -53,6 +58,7 @@ int stepm_init(int n) {
 class led_stepmotor {
 private:
 	uint8_t b8 = 0;
+	uint8_t cur_phase = 0;
 
 public:
 	// フルカラーLED: 3bit GBR
@@ -63,7 +69,20 @@ public:
 
 	// ステッピングモータ: 励磁フェーズ
 	led_stepmotor& spm(uint8_t phase) {
-		b8 = (b8 & 0xF0) | (stepm_init(phase) & 0x0F);
+		uint8_t p;
+		if (phase == CW) {
+			cur_phase = (cur_phase + 3) & 0x03;
+			p = cur_phase;
+		} else if (phase == CCW) {
+			cur_phase = (cur_phase + 1) & 0x03;
+			p = cur_phase;
+		} else if (phase < 4) {
+			cur_phase = phase;
+			p = phase;
+		} else {
+			p = 4;
+		}
+		b8 = (b8 & 0xF0) | (stepm_init(p) & 0x0F);
 		return *this;
 	}
 
