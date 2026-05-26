@@ -1,5 +1,3 @@
-// (3)の途中まで
-
 #define USE_TIMER3
 #include "mono_con.h"
 
@@ -11,6 +9,8 @@ int presw, preph;
 bool swps = false, phps = false;
 
 int cnt = 0;
+bool alarm = false;
+bool tgl = true;
 
 word tc, wait = 2000;
 
@@ -23,10 +23,10 @@ void cw() {
 	digitalWrite(RIN_PIN, LOW);
 }
 
-void ccw() [
+void ccw() {
 	digitalWrite(FIN_PIN, LOW);
 	analogWrite(RIN_PIN, speed);
-]
+}
 
 void stop() {
 	digitalWrite(FIN_PIN, HIGH);
@@ -45,14 +45,23 @@ ISR(TIMER3_COMPA_vect) {
 		ph = digitalRead(pin3);
 
 		if (sw == LOW && presw == HIGH) swps = true;
-		if (ph == HIGH && presw == LOW) phps = true;
+		if (ph == HIGH && preph == LOW) phps = true;
 
 		presw = sw;
 		preph = ph;
 	}
 
 	tc++;
-	if (ph == LOW) wait--;
+	if (ph == HIGH) {
+		if (wait > 0) {
+			if (wait == 1) {
+				alarm = true;
+				tc = 500;
+				tgl = true;
+			}
+			wait--;
+		}
+	} else wait = 2000;
 }
 
 void setup() {
@@ -67,16 +76,38 @@ void setup() {
 }
 
 void loop() {
-	if (tsw == LOW) { // OFF
+	if (alarm) {
+		if (swps) {
+			swps = false;
+			noTone(BZ_PIN);
+			alarm = false;
+		}
+
+		if (tc >= 500) {
+			tc = 0;
+			if (tgl) {
+				lm.led(B001);
+				tone(BZ_PIN, 1500);
+				disp(num[cnt / 10], num[cnt % 10]);
+			} else {
+				lm.led(B000);
+				tone(BZ_PIN, 500);
+				disp(0x00, 0x00);
+			}
+			tgl = !tgl;
+		}
+
+		phps = false;
+	} else if (tsw == LOW) { // OFF
 		lm.led(B100);
 
 		int i = getidx(y);
 
 		if (tc >= 30) {
 			tc = 0;
-			if (i == 4 || i == 5) lm.spm(STOP);
-			else if (i <= 3) lm.spm(CCW);
-			else lm.spm(CW);
+			if (i == 4 || i == 5) stop();
+			else if (i <= 3) ccw();
+			else cw();
 		}
 
 		if (i == 4 || i == 5) i = 0;
@@ -96,8 +127,6 @@ void loop() {
 			swps = false;
 			cnt = 0;
 		}
-
-		if (ph == LOW)
 
 		disp(num[cnt / 10], num[cnt % 10]);
 	}
