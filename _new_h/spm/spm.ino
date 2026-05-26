@@ -14,7 +14,7 @@ ISR(TIMER3_COMPA_vect) {
 	static word in = 0;
 	if (in++ > 5) {
 		in = 0;
-		tsw = digitalRead(pin_5);
+		tsw = digitalRead(pin5);
 	}
 	tc++;
 }
@@ -23,7 +23,7 @@ void setup() {
 	config_init();
 	serial_init();
 
-	tsw = digitalRead(pin_5);
+	tsw = digitalRead(pin5);
 }
 
 void loop() {
