@@ -14,14 +14,14 @@
 #define _MONO_CON_2026_H
 
 //--- Arduino ATmega2560 Input
-#define pin_1	A1
-#define pin_2	A2
-#define pin_3	17  // D1
-#define pin_4	18  // D2
-#define pin_5	19  // D3
-#define pin_6	40  // M1
-#define pin_7	42  // M2
-#define pin_8	20  // D4: GND
+#define pin1	A1
+#define pin2	A2
+#define pin3	17  // D1
+#define pin4	18  // D2
+#define pin5	19  // D3
+#define pin6	40  // M1
+#define pin7	42  // M2
+#define pin8	20  // D4: GND
 
 //--- OKAKO_Shield_CN2
 #define BOARD_SW_PIN 26
@@ -63,7 +63,7 @@ public:
 
 	// ステッピングモータ: 励磁フェーズ
 	led_stepmotor& spm(uint8_t phase) {
-		b8 = (b8 & 0xF0) | ((uint8_t)stepm_init(phase) & 0x0F);
+		b8 = (b8 & 0xF0) | (stepm_init(phase) & 0x0F);
 		return *this;
 	}
 
@@ -81,17 +81,17 @@ led_stepmotor lm;
 //===================================================================================================================
 void config_init(void) {
 	// 入力
-	pinMode(pin_1, INPUT);
-	pinMode(pin_2, INPUT);
-	pinMode(pin_3, INPUT);
-	pinMode(pin_4, INPUT);
-	pinMode(pin_5, INPUT);
-	pinMode(pin_6, INPUT);
-	pinMode(pin_7, INPUT);
+	pinMode(pin1, INPUT);
+	pinMode(pin2, INPUT);
+	pinMode(pin3, INPUT);
+	pinMode(pin4, INPUT);
+	pinMode(pin5, INPUT);
+	pinMode(pin6, INPUT);
+	pinMode(pin7, INPUT);
 
 	// D4=GND
-	pinMode(pin_8, OUTPUT);
-	digitalWrite(pin_8, LOW);
+	pinMode(pin8, OUTPUT);
+	digitalWrite(pin8, LOW);
 
 	// シールド側
 	pinMode(BOARD_SW_PIN, INPUT);
@@ -142,8 +142,8 @@ void serial_init(void) {
 //===================================================================================================================
 void disp(char leftPat, char rightPat) {
 	digitalWrite(LAT1_PIN, LOW);
-	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, (uint8_t)leftPat);
-	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, (uint8_t)rightPat);
+	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, leftPat);
+	shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, rightPat);
 	digitalWrite(LAT1_PIN, HIGH);
 }
 
