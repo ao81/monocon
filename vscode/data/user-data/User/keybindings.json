@@ -361,5 +361,9 @@
 		"key": "alt+z",
 		"command": "-workbench.action.terminal.sizeToContentWidth",
 		"when": "terminalFocus && terminalHasBeenCreated && terminalIsOpen || terminalFocus && terminalIsOpen && terminalProcessSupported"
+	},
+	{
+		"key": "ctrl+b",
+		"command": "extension.vim_ctrl+b"
 	}
 ]
