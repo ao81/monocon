@@ -17,6 +17,8 @@ bool move = true;
 int cnt = 0;
 int angle = 0;
 
+int prei = -1;
+
 word tc, sp, bz, dm;
 
 int getidx(int yy) {
@@ -98,8 +100,10 @@ void loop() {
 		lm.flush();
 	} else {
 		if (move) {
+			lm.led(B010);
+
 			int i = getidx(y); // 上2 中1 下0
-			static int prei = -1;
+
 			if (i == 2 || prei == 2) {
 				prei = 2;
 				if (tc >= 100) {
@@ -111,6 +115,7 @@ void loop() {
 					lm.spm(CW);
 				}
 			}
+
 			if (i == 0 || prei == 0) {
 				prei = 0;
 				if (tc >= 500) {
@@ -130,6 +135,7 @@ void loop() {
 					else lm.led(B000);
 					t = !t;
 				}
+
 				if (sp >= 40) {
 					sp = 0;
 					if (cnt < 3) {
@@ -150,10 +156,16 @@ void loop() {
 					}
 				}
 			}
+
+			if (getidx(y) == 2) {
+				move = true;
+			}
 		}
 
 		if (swps) {
 			swps = false;
+			if (ph == HIGH || prei == -1) return;
+			prei = -1;
 			move = false;
 			t = true;
 
@@ -166,10 +178,18 @@ void loop() {
 				t = true;
 				angle = 15;
 				dir = true;
+			} else if (n % 2 == 1) {
+				lm.led(B010);
+				tone(BZ_PIN, 330);
+				bz = 200;
+			} else {
+				lm.led(B001);
+				tone(BZ_PIN, 247);
+				bz = 500;
 			}
 		}
 
-		disp(0x00, num[n]);
+		disp(((prei == 0 || prei == 2) && ph == HIGH ? 0x76 : 0x00), num[n]);
 	}
 
 	lm.flush();
