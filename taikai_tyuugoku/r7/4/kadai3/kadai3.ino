@@ -7,10 +7,9 @@ int x, y;
 int getdir(int xx, int yy) {
 	int dx = xx - 511, dy = yy - 511;
 	if (abs(dx) < 200 && abs(dy) < 200) return -1;
-	int t = (int)((atan2((float)dx, (float)dy) + PI / 8) * 4 / PI);
-	if (t < 0) t += 8;
-	if (t > 7) t -= 8;
-	return t;
+	double angle = atan2((double)dx, (double)dy);
+	int dir = (int)((angle + 2 * PI + PI / 8) / (PI / 4));
+	return dir % 8;
 }
 
 ISR(TIMER3_COMPA_vect) {
