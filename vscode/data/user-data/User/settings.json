@@ -58,6 +58,12 @@
 	"clang-format.style": "{ BasedOnStyle: LLVM, IndentWidth: 4, UseTab: Always, TabWidth: 4 }",
 	"clang-format.fallbackStyle": "LLVM",
 
+	"C_Cpp.default.browse.path": [
+		"${fileDirname}"
+	],
+	"C_Cpp.default.limitSymbolsToIncludedHeaders": true,
+	"editor.parameterHints.enabled": false,
+
 	// =========================================================
 	// Terminal
 	// =========================================================
@@ -190,9 +196,9 @@
 	"workbench.settings.enableNaturalLanguageSearch": false,
 
 	"C_Cpp.default.includePath": [
-		"${workspaceFolder}/**",
+		// "${workspaceFolder}/**",
 		"${fileDirname}",
-		"${fileDirname}/**",
+		// "${fileDirname}/**",
 		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/cores/arduino",
 		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/variants/mega",
 		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/libraries/**",
