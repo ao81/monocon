@@ -54,12 +54,16 @@
 	"C_Cpp.vcFormat.space.beforeFunctionOpenParenthesis": "remove",
 	"C_Cpp.vcFormat.indent.multiLineRelativeTo": "outermostParenthesis",
 	// "C_Cpp.default.compilerPath": "C:/Program Files (x86)/mingw64/bin/gcc.exe",
-	"C_Cpp.intelliSenseEngine": "Tag Parser",
+	"C_Cpp.intelliSenseEngine": "default",
 	"clang-format.style": "{ BasedOnStyle: LLVM, IndentWidth: 4, UseTab: Always, TabWidth: 4 }",
 	"clang-format.fallbackStyle": "LLVM",
 
 	"C_Cpp.default.browse.path": [
-		"${fileDirname}"
+		"${fileDirname}",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/cores/arduino",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/variants/mega",
+		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/libraries/**",
+		"${env:USERPROFILE}/Documents/Arduino/libraries/**"
 	],
 	"C_Cpp.default.limitSymbolsToIncludedHeaders": true,
 	"editor.parameterHints.enabled": false,
@@ -174,6 +178,35 @@
 			}
 		},
 	},
+
+	// =========================================================
+	// 外観のカスタマイズ
+	// =========================================================
+	"workbench.colorCustomizations": {
+		"editorError.foreground": "#ff000080",
+		"editorWarning.foreground": "#ff000080",
+
+		"minimap.errorHighlight": "#ff000040",
+		"minimap.warningHighlight": "#00000000",
+
+		"errorLens.errorForeground": "#ff8888",      // 柔らかいサーモンピンクの文字
+		"errorLens.warningForeground": "#ffcc00",    // 柔らかい黄色の文字
+		"errorLens.infoForeground": "#88bbff"        // 柔らかい水色の文字
+	},
+
+	"problems.decorations.enabled": false,
+	"explorer.decorations.colors": false,
+	"explorer.decorations.badges": false,
+	"git.decorations.enabled": false,
+
+	// =========================================================
+	// errorLens
+	// =========================================================
+	"errorLens.margin": "5ch",
+	"errorLens.fontStyleItalic": true,
+	"errorLens.fontWeight": "300",
+	"errorLens.messageBackgroundMode": "message",
+	"errorLens.gutterIconsEnabled": false,
 
 	// =========================================================
 	// Misc
