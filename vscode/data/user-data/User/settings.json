@@ -262,5 +262,7 @@
 	"editor.suggest.localityBonus": true,
 	"editor.suggest.filterGraceful": true,
 	"editor.suggest.snippetsPreventQuickSuggestions": false,
-	"window.menuBarVisibility": "compact"
+	"window.menuBarVisibility": "compact",
+
+	"vscode-neovim.ctrlKeysForNormalMode": ["a","b","d","e","f","h","i","j","k","l","m","o","r","t","u","v","w","x","y","z","/","]","q"]
 }
