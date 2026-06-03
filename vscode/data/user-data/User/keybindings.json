@@ -1,7 +1,7 @@
 // 既定値を上書きするには、このファイル内にキー バインドを挿入します
 [
 	// =====================================================================
-	// フォーマット: Ctrl+B
+	// フォーマット: Alt+V
 	// =====================================================================
 	{
 		"key": "alt+v",
@@ -33,6 +33,11 @@
 		"command": "-notebook.format",
 		"when": "notebookEditable && !editorTextFocus && activeEditor == 'workbench.editor.notebook'"
 	},
+
+	// =====================================================================
+	// Ctrl+B を空ける（サイドバー/Bold を無効化 → Neovim 側に渡す）
+	// 通常モードの Ctrl+B（ページ上スクロール）は Neovim が自動処理
+	// =====================================================================
 	{
 		"key": "ctrl+b",
 		"command": "-workbench.action.toggleSidebarVisibility"
@@ -41,11 +46,6 @@
 		"key": "ctrl+b",
 		"command": "-markdown.extension.editing.toggleBold",
 		"when": "editorTextFocus && !editorReadonly && editorLangId =~ /^markdown$|^rmd$|^quarto$/"
-	},
-	{
-		"key": "ctrl+b",
-		"command": "-extension.vim_ctrl+b",
-		"when": "editorTextFocus && vim.active && vim.use<C-b> && !inDebugRepl && vim.mode != 'Insert'"
 	},
 
 	// =====================================================================
@@ -111,26 +111,22 @@
 	},
 
 	// =====================================================================
-	// 全選択: Ctrl+A (Vim モード外) / Alt+A
+	// 全選択: Alt+A（常時） / Ctrl+A（挿入モードまたは Neovim 未起動時のみ）
+	// 通常モードの Ctrl+A（数値インクリメント）は Neovim が自動処理
+	// （ctrlKeysForNormalMode の既定リストに "a" が含まれるため）
 	// =====================================================================
 	{
 		"key": "alt+a",
 		"command": "editor.action.selectAll"
 	},
-	// Vim が無効なとき (通常エディタ) は Ctrl+A でも全選択できるようにする
 	{
 		"key": "ctrl+a",
 		"command": "editor.action.selectAll",
-		"when": "editorTextFocus && (!vim.active || vim.mode == 'Insert')"
+		"when": "editorTextFocus && (neovim.mode == 'insert' || !neovim.init)"
 	},
 	{
 		"key": "ctrl+a",
 		"command": "-editor.action.selectAll"
-	},
-	{
-		"key": "ctrl+a",
-		"command": "extension.vim_ctrl+a",
-		"when": "editorTextFocus && vim.active && vim.use<C-a> && !inDebugRepl"
 	},
 	{
 		"key": "ctrl+a",
@@ -139,17 +135,14 @@
 	},
 
 	// =====================================================================
-	// Vim: Alt+Y → Ctrl+Y 相当
+	// Alt+Y → Neovim の Ctrl+Y（1行上スクロール）
+	// VSCodeVim の extension.vim_ctrl+y を vscode-neovim.send に置換
 	// =====================================================================
 	{
 		"key": "alt+y",
-		"command": "extension.vim_ctrl+y",
-		"when": "editorTextFocus && vim.active && vim.use<C-y> && !inDebugRepl"
-	},
-	{
-		"key": "ctrl+y",
-		"command": "-extension.vim_ctrl+y",
-		"when": "editorTextFocus && vim.active && vim.use<C-y> && !inDebugRepl"
+		"command": "vscode-neovim.send",
+		"args": "<C-y>",
+		"when": "editorTextFocus && neovim.mode != 'insert'"
 	},
 
 	// =====================================================================
@@ -287,11 +280,6 @@
 	},
 	{
 		"key": "ctrl+space",
-		"command": "-extension.vim_ctrl+space",
-		"when": "editorTextFocus && vim.active && vim.use<C-space> && !inDebugRepl && vim.mode != 'Insert'"
-	},
-	{
-		"key": "ctrl+space",
 		"command": "-workbench.action.terminal.suggestToggleDetails",
 		"when": "simpleSuggestWidgetHasFocusedSuggestion && terminalFocus && terminalHasBeenCreated && terminalIsOpen && terminalSuggestWidgetVisible || simpleSuggestWidgetHasFocusedSuggestion && terminalFocus && terminalIsOpen && terminalProcessSupported && terminalSuggestWidgetVisible"
 	},
@@ -311,18 +299,8 @@
 	},
 
 	// =====================================================================
-	// Vim: Ctrl+C / Ctrl+V の競合解除
+	// Ctrl+V: pwsh ターミナルの貼り付け競合解除
 	// =====================================================================
-	{
-		"key": "ctrl+c",
-		"command": "-extension.vim_ctrl+c",
-		"when": "editorTextFocus && vim.active && vim.overrideCtrlC && vim.use<C-c> && !inDebugRepl"
-	},
-	{
-		"key": "ctrl+v",
-		"command": "-extension.vim_ctrl+v",
-		"when": "editorTextFocus && vim.active && vim.use<C-v> && !inDebugRepl"
-	},
 	{
 		"key": "ctrl+v",
 		"command": "-workbench.action.terminal.pastePwsh",
@@ -331,7 +309,7 @@
 
 	// =====================================================================
 	// ファイルエクスプローラー: Ctrl+C / Ctrl+V
-	// ★ when 条件を付けて、エクスプローラーにフォーカスがある時だけ有効にする
+	// エクスプローラーにフォーカスがある時だけ有効
 	// =====================================================================
 	{
 		"key": "ctrl+c",
@@ -344,15 +322,14 @@
 		"when": "filesExplorerFocus && foldersViewVisible && !explorerResourceReadonly && !inputFocus"
 	},
 	{
-		"key": "ctrl+backspace",
-		"command": "-extension.vim_ctrl+backspace",
-		"when": "editorTextFocus && vim.active && vim.use<C-BS> && !inDebugRepl && vim.mode != 'Insert'"
+		"key": "ctrl+c",
+		"command": "editor.action.clipboardCopyAction",
+		"when": "editorTextFocus"
 	},
-	{
-		"key": "ctrl+unknown",
-		"command": "-extension.vim_ctrl+^",
-		"when": "editorTextFocus && vim.active && vim.use<C-^> && !inDebugRepl"
-	},
+
+	// =====================================================================
+	// サイドバー表示トグル: Ctrl+Alt+Z
+	// =====================================================================
 	{
 		"key": "ctrl+alt+z",
 		"command": "workbench.action.toggleSidebarVisibility"
@@ -361,9 +338,5 @@
 		"key": "alt+z",
 		"command": "-workbench.action.terminal.sizeToContentWidth",
 		"when": "terminalFocus && terminalHasBeenCreated && terminalIsOpen || terminalFocus && terminalIsOpen && terminalProcessSupported"
-	},
-	{
-		"key": "ctrl+b",
-		"command": "extension.vim_ctrl+b"
 	}
 ]
