@@ -1,3 +1,12 @@
+-- leader を Space に設定する
+-- ※ プラグインを読み込むより前に書くこと
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
+-- Space 単体のデフォルト動作（カーソルを右に動かす）を無効化しておくと、
+-- leader キーとして安定して動く
+vim.keymap.set({ "n", "v" }, "<Space>", "<Nop>", { silent = true })
+
 -- Ctrl+A のように、行内の true/false を入れ替える
 local function toggle_bool()
 local line = vim.api.nvim_get_current_line()
