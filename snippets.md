@@ -59,9 +59,52 @@ void free() {
 
 ```
 
-<!--
 <br>
 
+### テンプレート
+> x,y...ジョイスティック, tsw...トグルスイッチ, sw...タクトスイッチ, ph...フォトインタラプタ<br>
+> x=pin2, y=pin1, tsw=pin5, sw=pin4, ph=pin3
+
+```c++
+
+#USE_TIMER3
+#include "mono_con.h"
+
+int tsw, sw, ph;
+bool r = true;
+
+ISR(TIMER3_COMPA_vect) {
+	static word in = 0;
+	if (in++ > 5) {
+		in = 0;
+		r = true;
+	}
+}
+
+void setup() {
+	config_init();
+	serial_init();
+}
+
+void loop() {
+	if (r) {
+		r = false;
+
+		x = analogRead(pin2);
+		y = analogRead(pin1);
+		tsw = digitalRead(pin5);
+		sw = digitalRead(pin4);
+		ph = digitalRead(pin3);
+	}
+
+
+}
+
+```
+
+<br>
+
+<!--
 ###
 
 ```c++
