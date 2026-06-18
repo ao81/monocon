@@ -1,3 +1,5 @@
+vim.treesitter.start = function() end 
+
 -- leader を Space に設定する
 -- ※ プラグインを読み込むより前に書くこと
 vim.g.mapleader = " "
@@ -7,7 +9,7 @@ vim.g.maplocalleader = " "
 -- leader キーとして安定して動く
 vim.keymap.set({ "n", "v" }, "<Space>", "<Nop>", { silent = true })
 
--- Ctrl+A のように、行内の true/false を入れ替える
+-- 行内の true/false を入れ替える
 local function toggle_bool()
 local line = vim.api.nvim_get_current_line()
 local cur = vim.api.nvim_win_get_cursor(0)
@@ -43,3 +45,10 @@ vim.api.nvim_win_set_cursor(0, { cur[1], chosen.s - 1 })
 end
 
 vim.keymap.set("n", "<C-q>", toggle_bool, { desc = "toggle true/false" })
+
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+	pcall(vim.treesitter.stop)
+	end,
+})
