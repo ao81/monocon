@@ -1,11 +1,13 @@
 #include "monocon_chuugoku.h"
 
-int sw, presw;
+int presw;
 bool swps = false;
 bool r = true;
 
 void isr() {
-	in.fenc(p1, p2);
+	in.fen(p1, p2);
+	if (c > 23) c -= 24;
+	if (c < 0) c += 24;
 
 	static word i = 0;
 	if (i++ > 50) {
