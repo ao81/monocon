@@ -67,7 +67,7 @@ public:
 	int c = 0;
 	uint8_t st = 0;
 
-	void fenc(int pinA, int pinB) {
+	void fen(int pinA, int pinB, bool d = true) {
 		a = digitalRead(pinA);
 		b = digitalRead(pinB);
 
@@ -86,9 +86,11 @@ public:
 
 		uint8_t dir = st & 0x30;
 		if (dir == 0x10) {
-			if (++c > 23) c = 0;
+			if (d) c++;
+			else c--;
 		} else if (dir == 0x20) {
-			if (--c < 0) c = 23;
+			if (d) c--;
+			else c++;
 		}
 
 		pa = a;
@@ -104,6 +106,10 @@ public:
 };
 In in;
 
+int& sw = in.sw;
+int& ts = in.ts;
+int& ph = in.ph;
+int& rm = in.rm;
 int& c = in.c;
 int& p = in.p;
 
