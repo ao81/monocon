@@ -133,10 +133,15 @@ void config_init(void) {
 
 #if defined(USE_TIMER3)
 	// Timer3: 1ms割り込み
+	cli();
 	TCCR3A = 0;
-	TCCR3B = 0x0b;    // CTC, pre=64
-	OCR3A = 249;      // 1kHz
-	TIMSK3 = 0x02;    // OCIE3A
+	TCCR3B = 0;
+	TCNT3 = 0;
+	OCR3A = F_CPU / 64 / 10000 - 1;   // 16MHz/64/1000-1 = 249
+	TCCR3B |= (1 << WGM32);
+	TCCR3B |= (1 << CS31) | (1 << CS30);
+	TIMSK3 |= (1 << OCIE3A);
+	sei();
 #endif
 }
 
