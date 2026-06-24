@@ -25,7 +25,7 @@ void setup() {
 void loop() {
 	if (f) {
 		f = false;
-		in.pr(p1);
+		in.fpr(p1);
 		p /= 10;
 		if (p < 25) idx = 0;
 		else if (p < 50) idx = 1;
