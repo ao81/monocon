@@ -131,6 +131,13 @@ public:
 	void fpr(int pin) {
 		p = ar(pin);
 	}
+
+	/* ジョイスティック */
+	int x = 0, y = 0;
+	void js(int pinX, int pinY) {
+		x = ar(pinX);
+		y = ar(pinY);
+	}
 };
 In in;
 
@@ -140,6 +147,8 @@ int& ph = in.ph;
 int& rm = in.rm;
 int& c = in.c;
 int& p = in.p;
+int& x = in.x;
+int& y = in.y;
 
 void disp(char a, char b) {
 	PORTA &= ~LAT1_BIT;
