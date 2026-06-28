@@ -194,19 +194,20 @@ int jsdir(int div = 4) {
 }
 
 //================ エッジ検出（押した/離した瞬間, デバウンス付き） ================
-// 立ち上がり(LOW→HIGH)・立ち下がり(HIGH→LOW)を検出する。
-// 生の値が ms 以上安定してから状態を確定するため、チャタリングで
-// 1押下が複数回 rise することはない。極性に依存せず rise/fall を使う。
-// rise/fall は確定した瞬間の1ループだけ true（押しっぱなしでは反応しない）。
-//   Edge btn;        // 既定 10ms デバウンス
-//   Edge btn(20);    // 安定待ちを 20ms に
+// リーディングエッジ＋ロックアウト方式：
+//   最初の変化で「即座に」確定し、その後 ms の間は次の変化を無視する。
+// これにより、
+//   ・押した瞬間に遅延ゼロで反応（短いタップも取りこぼさない）
+//   ・1エッジにつき rise/fall は確実に1回だけ（チャタリングを無視）
+// 押しっぱなしでは反応しない。極性に依存せず rise/fall を使う。
+//   Edge btn;        // 既定 10ms ロックアウト
+//   Edge btn(20);    // バウンスが激しいスイッチは長めに
 //   ... btn.f(d1);  if (btn.rise) { 押した瞬間の処理 }
-//   ※同じボタンの f() は1ループにつき1回だけ呼ぶこと
+//   ※ f() は loop で毎回呼ぶこと（delay でループを止めると取りこぼす）
 class Edge {
 	int prev = -1;            // 確定済みの状態
-	int last = -1;            // 直近の生読み値
-	unsigned long t = 0;      // 生値が最後に変化した時刻
-	unsigned long ms;         // 安定待ち時間
+	unsigned long t = 0;      // 最後に確定した時刻
+	unsigned long ms;         // ロックアウト時間
 public:
 	int  val  = 0;      // 確定状態 (HIGH/LOW)
 	bool rise = false;  // LOW→HIGH に確定した瞬間だけ true
@@ -216,20 +217,17 @@ public:
 		rise = false;
 		fall = false;
 		int r = dr(pin);
-		if (r != last) {        // 生値が動いたら計測リスタート
-			last = r;
-			t = millis();
-		}
-		if (prev < 0) {         // 初回は現在値で確定
+		if (prev < 0) {         // 初回は現在値で確定（誤発火なし）
 			prev = r;
 			val  = r;
 			return;
 		}
-		if ((millis() - t) >= ms && r != prev) {  // ms 安定 かつ 確定値と異なる
+		if (r != prev && (millis() - t) >= ms) {  // ロックアウト解除後の最初の変化
 			rise = (prev == LOW  && r == HIGH);
 			fall = (prev == HIGH && r == LOW);
 			prev = r;
 			val  = r;
+			t    = millis();
 		}
 	}
 };
