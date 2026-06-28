@@ -96,40 +96,117 @@ inline long deadband(long v, long center, long width) {
 }
 
 //================ 入力 ================
+// 全入力を In に集約した。デジタル入力は「読み出し1回」で
+// 確定レベル・立ち上がり・立ち下がりを同時に返す（旧 Edge クラスを内蔵）。
+//
+//   de e = in.d(d1);
+//   if (e.rise) { ... }   // 押した/光った瞬間（LOW→HIGH）
+//   if (e.fall) { ... }   // 離した/遮った瞬間（HIGH→LOW）
+//   int lv = e.level;     // トグルSW・フォトインタラプタは level だけ見ればよい
+//
+//   int v   = in.an(a1);        // 測距・フォトリフレクタなどアナログ全般
+//   Joy j   = in.joy(a1, a2);   // ジョイスティック。j.dir() で方向(0上,時計回り)
+//   long c  = in.enc(d2, d3);   // ロータリーエンコーダ。累積カウントを返す
+//
+// ※ in.d() / in.enc() は loop で毎回呼ぶこと（delay で止めると取りこぼす）。
+// ※ d() は同じピンを1ループにつき1回だけ呼ぶ（2回呼ぶと2回目は変化を見落とす）。
+
+// デジタル1点の読み出し結果
+struct de {
+	uint8_t level;   // 確定レベル (HIGH/LOW)
+	bool    rise;    // LOW→HIGH に確定した瞬間だけ true
+	bool    fall;    // HIGH→LOW に確定した瞬間だけ true
+};
+
+// ジョイスティックの読み出し結果
+struct Joy {
+	int x, y;
+	// div 方向へ分割して 0..div-1 を返す。上が0で時計回りに増加。
+	// 中央付近（半径≒141以内）は -1（入力なし）。
+	int dir(int div = 4) const {
+		long dx = x - 511, dy = y - 511;
+		if (dx * dx + dy * dy < 20000) return -1;
+		return (int)((atan2((double)dx, (double)dy) + 2 * PI + PI / div) / (2 * PI / div)) % div;
+	}
+};
+
 class In {
+	// ---- デジタル・チャンネル（ピンごとに独立した状態を持つ） ----
+	struct Dch {
+		uint8_t           pin;
+		volatile uint8_t* reg;     // 入力レジスタは初回だけ解決してキャッシュ
+		uint8_t           mask;    // ビットマスクも同様にキャッシュ
+		uint8_t           stable;  // 確定済みレベル
+		unsigned long     t;       // 最後に確定した時刻(ms)
+		bool              init;
+	};
+	static const uint8_t NCH = 8;  // 同時に追跡できるデジタルピン数
+	Dch ch[NCH] = {};
+
+	// pin に対応するチャンネルを返す。無ければ空きへ登録（reg/mask をここで確定）。
+	Dch* slot(uint8_t pin) {
+		Dch* freeCh = nullptr;
+		for (uint8_t i = 0; i < NCH; i++) {
+			if (ch[i].init && ch[i].pin == pin) return &ch[i];
+			if (!ch[i].init && !freeCh) freeCh = &ch[i];
+		}
+		if (!freeCh) return nullptr;   // プール不足
+		freeCh->pin = pin;
+		freeCh->reg = portInputRegister(digitalPinToPort(pin));
+		freeCh->mask = digitalPinToBitMask(pin);
+		freeCh->stable = (*freeCh->reg & freeCh->mask) ? HIGH : LOW;
+		freeCh->t = 0;
+		freeCh->init = true;
+		return freeCh;
+	}
+
+	// ---- エンコーダ（1系統。A/B のピン読みをキャッシュ） ----
+	uint8_t           est = 0;
+	long              ec = 0;
+	volatile uint8_t* erA = nullptr; uint8_t emA = 0;
+	volatile uint8_t* erB = nullptr; uint8_t emB = 0;
+
 public:
-	/* タクトスイッチ */
-	int sw;
-	void fsw(int pin) {
-		sw = dr(pin);
+	// デジタル入力＋エッジ検出（リーディングエッジ＋ロックアウト方式）。
+	// lock = チャタリングを無視する時間(ms)。バウンスが激しいSWは長めに。
+	de d(uint8_t pin, uint16_t lock = 10) {
+		Dch* c = slot(pin);
+		if (!c) return { LOW, false, false };   // プール不足時の安全値
+		uint8_t raw = (*c->reg & c->mask) ? HIGH : LOW;
+		de r = { c->stable, false, false };
+		if (raw == c->stable) return r;          // 変化なし: millis() も呼ばず即終了
+		unsigned long now = millis();
+		if (now - c->t < lock) return r;         // ロックアウト中は無視
+		r.rise = (c->stable == LOW && raw == HIGH);
+		r.fall = (c->stable == HIGH && raw == LOW);
+		r.level = raw;
+		c->stable = raw;
+		c->t = now;
+		return r;
 	}
 
-	/* トグルスイッチ */
-	int ts;
-	void fts(int pin) {
-		ts = dr(pin);
+	// アナログ入力（測距モジュール・フォトリフレクタなど共通）。
+	int an(uint8_t pin) {
+		return ar(pin);
 	}
 
-	/* フォトインタラプタ */
-	int ph;
-	void fph(int pin) {
-		ph = dr(pin);
+	// ジョイスティック（X/Y を一度に読む）。
+	Joy joy(uint8_t px, uint8_t py) {
+		Joy j;
+		j.x = ar(px);
+		j.y = ar(py);
+		return j;
 	}
 
-	/* 測距モジュール */
-	int rm;
-	void frm(int pin) {
-		rm = ar(pin);
-	}
-
-	/* ロータリーエンコーダ */
-	int a = 0, b = 0;
-	int pa = 0, pb = 0;
-	int c = 0;
-	uint8_t st = 0;
-	void fen(int pinA, int pinB, bool d = true) {
-		a = dr(pinA);
-		b = dr(pinB);
+	// ロータリーエンコーダ。判定点 AB=00 の 7状態テーブル。累積カウントを返す。
+	// dir=false で回転方向を反転。
+	long enc(uint8_t pa, uint8_t pb, bool dir = true) {
+		if (!erA) {
+			erA = portInputRegister(digitalPinToPort(pa)); emA = digitalPinToBitMask(pa);
+			erB = portInputRegister(digitalPinToPort(pb)); emB = digitalPinToBitMask(pb);
+		}
+		uint8_t a = (*erA & emA) ? 1 : 0;
+		uint8_t b = (*erB & emB) ? 1 : 0;
 		static const uint8_t table[7][4] = {
 			{ 0x00, 0x02, 0x04, 0x00 },
 			{ 0x00, 0x00, 0x00, 0x00 },
@@ -139,98 +216,18 @@ public:
 			{ 0x00, 0x00, 0x00, 0x00 },
 			{ 0x06, 0x06, 0x06, 0x00 },
 		};
-		uint8_t pin = (a << 1) | b;
-		st = table[st & 0x0f][pin];
-		uint8_t dir = st & 0x30;
-		if (dir == 0x10) {
-			if (d) {
-				c++;
-			} else {
-				c--;
-			}
-		} else if (dir == 0x20) {
-			if (d) {
-				c--;
-			} else {
-				c++;
-			}
-		}
-		pa = a;
-		pb = b;
+		est = table[est & 0x0f][(a << 1) | b];
+		uint8_t dd = est & 0x30;
+		if (dd == 0x10)      ec += dir ? 1 : -1;
+		else if (dd == 0x20) ec += dir ? -1 : 1;
+		return ec;
 	}
-
-	/* フォトリフレクタ */
-	int p = 0;
-	void fpr(int pin) {
-		p = ar(pin);
-	}
-
-	/* ジョイスティック */
-	int x = 0, y = 0;
-	void js(int pinX, int pinY) {
-		x = ar(pinX);
-		y = ar(pinY);
+	void encReset() {
+		ec = 0;
+		est = 0;
 	}
 };
 In in;
-
-int& sw = in.sw;
-int& ts = in.ts;
-int& ph = in.ph;
-int& rm = in.rm;
-int& cnt = in.c;
-int& p = in.p;
-int& x = in.x;
-int& y = in.y;
-
-//================ ジョイスティック方向判定 ================
-// 現在の x,y を div 方向へ分割して 0..div-1 を返す。
-// 上が0で時計回りに増加。中央付近（半径≒141以内）は -1（入力なし）。
-//   in.js(a1, a2);  int d = jsdir(4);   // 0上 1右 2下 3左
-int jsdir(int div = 4) {
-	long dx = x - 511, dy = y - 511;
-	if (dx * dx + dy * dy < 20000) return -1;
-	return (int)((atan2(dx, dy) + 2 * PI + PI / div) / (2 * PI / div)) % div;
-}
-
-//================ エッジ検出（押した/離した瞬間, デバウンス付き） ================
-// リーディングエッジ＋ロックアウト方式：
-//   最初の変化で「即座に」確定し、その後 ms の間は次の変化を無視する。
-// これにより、
-//   ・押した瞬間に遅延ゼロで反応（短いタップも取りこぼさない）
-//   ・1エッジにつき rise/fall は確実に1回だけ（チャタリングを無視）
-// 押しっぱなしでは反応しない。極性に依存せず rise/fall を使う。
-//   Edge btn;        // 既定 10ms ロックアウト
-//   Edge btn(20);    // バウンスが激しいスイッチは長めに
-//   ... btn.f(d1);  if (btn.rise) { 押した瞬間の処理 }
-//   ※ f() は loop で毎回呼ぶこと（delay でループを止めると取りこぼす）
-class Edge {
-	int prev = -1;            // 確定済みの状態
-	unsigned long t = 0;      // 最後に確定した時刻
-	unsigned long ms;         // ロックアウト時間
-public:
-	int  val  = 0;      // 確定状態 (HIGH/LOW)
-	bool rise = false;  // LOW→HIGH に確定した瞬間だけ true
-	bool fall = false;  // HIGH→LOW に確定した瞬間だけ true
-	Edge(unsigned long debounce = 10) : ms(debounce) {}
-	void f(int pin) {
-		rise = false;
-		fall = false;
-		int r = dr(pin);
-		if (prev < 0) {         // 初回は現在値で確定（誤発火なし）
-			prev = r;
-			val  = r;
-			return;
-		}
-		if (r != prev && (millis() - t) >= ms) {  // ロックアウト解除後の最初の変化
-			rise = (prev == LOW  && r == HIGH);
-			fall = (prev == HIGH && r == LOW);
-			prev = r;
-			val  = r;
-			t    = millis();
-		}
-	}
-};
 
 //================ ノンブロッキング・タイミング ================
 // 一定間隔 ms ごとに true を返す。delay() を使わず周期処理に使う。
@@ -289,7 +286,7 @@ void dispNum(int n) {
 	if (neg) n = -n;
 	if (n > 999) n = 999;
 	uint8_t bh = (n >= 100) ? seg[(n / 100) % 10] : 0x00;
-	uint8_t bt = (n >= 10)  ? seg[(n / 10) % 10]  : 0x00;
+	uint8_t bt = (n >= 10) ? seg[(n / 10) % 10] : 0x00;
 	uint8_t bo = seg[n % 10];
 	if (neg) {
 		if (n < 10)       bt = 0x40;   // 1桁: 中央に "-"
@@ -389,15 +386,15 @@ public:
 		idx++;
 	}
 };
-Melody melody;
+Melody mel;
 
 //================ フルカラーLED ================
 class Led {
 public:
 	void operator()(uint8_t m) {
 		digitalWrite(LED_R_PIN, (m & 1) ? HIGH : LOW);
-		digitalWrite(LED_G_PIN, (m & 2) ? HIGH : LOW);
-		digitalWrite(LED_B_PIN, (m & 4) ? HIGH : LOW);
+		digitalWrite(LED_B_PIN, (m & 2) ? HIGH : LOW);
+		digitalWrite(LED_G_PIN, (m & 4) ? HIGH : LOW);
 	}
 	void off() {
 		(*this)(0);
@@ -525,22 +522,6 @@ public:
 			br();
 		}
 	}
-	// void operator()(uint8_t m) {
-	// 	switch (m) {
-	// 	case CW:
-	// 		cw();
-	// 		break;
-	// 	case CCW:
-	// 		ccw();
-	// 		break;
-	// 	case BR:
-	// 		br();
-	// 		break;
-	// 	default:
-	// 		fr();
-	// 		break;
-	// 	}
-	// }
 };
 Dcm dcm;
 
