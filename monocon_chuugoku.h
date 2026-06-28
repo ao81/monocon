@@ -186,6 +186,41 @@ public:
 	}
 };
 
+//================ ノンブロッキング・タイミング ================
+// 一定間隔 ms ごとに true を返す。delay() を使わず周期処理に使う。
+//   Every t;  if (t(500)) { 0.5秒ごとの処理 }
+class Every {
+	unsigned long pre = 0;
+public:
+	bool operator()(unsigned long ms) {
+		unsigned long now = millis();
+		if (now - pre >= ms) {
+			pre = now;
+			return true;
+		}
+		return false;
+	}
+	void reset() { pre = millis(); }
+};
+
+// ワンショットタイマ。start(ms) 後、経過した瞬間に done() が一度だけ true。
+//   Timer t;  t.start(1000);  ... if (t.done()) { 1秒後の処理 }
+class Timer {
+	unsigned long lim = 0;
+	bool run = false;
+public:
+	void start(unsigned long ms) { lim = millis() + ms; run = true; }
+	void stop() { run = false; }
+	bool active() { return run; }
+	bool done() {
+		if (run && (long)(millis() - lim) >= 0) {
+			run = false;
+			return true;
+		}
+		return false;
+	}
+};
+
 //================ 7セグ（3桁） ================
 void disp(char a, char b, char c) {
 	static int pa = -1, pb = -1, pc = -1;
