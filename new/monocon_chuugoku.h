@@ -587,6 +587,10 @@ public:
 		return (pos++ == cur);
 	}
 
+	bool operator()() {
+		return on();
+	}
+
 	void next()    { cur++;   t0 = millis(); fresh = true; moved = true; }  // 次の番号へ
 	void to(int s) { cur = s; t0 = millis(); fresh = true; moved = true; }  // 指定番号へ
 	bool is(int s) { return cur == s; }                                     // 現在ステップ判定
