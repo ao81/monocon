@@ -286,6 +286,65 @@ void bzoff() {
 	noTone(BZ_PIN);
 }
 
+// 音階定数（Hz）
+#define NOTE_C4 262
+#define NOTE_D4 294
+#define NOTE_E4 330
+#define NOTE_F4 349
+#define NOTE_G4 392
+#define NOTE_A4 440
+#define NOTE_B4 494
+#define NOTE_C5 523
+#define NOTE_D5 587
+#define NOTE_E5 659
+#define NOTE_F5 698
+#define NOTE_G5 784
+#define NOTE_A5 880
+#define NOTE_C6 1047
+#define NOTE_REST 0
+
+// 正解音（上昇）／不正解音（下降）。短時間ブロッキングする一発フィードバック用。
+inline void bzWin() {
+	tone(BZ_PIN, NOTE_C5, 80); delay(90);
+	tone(BZ_PIN, NOTE_E5, 80); delay(90);
+	tone(BZ_PIN, NOTE_G5, 140); delay(150);
+	noTone(BZ_PIN);
+}
+inline void bzNg() {
+	tone(BZ_PIN, NOTE_G4, 120); delay(130);
+	tone(BZ_PIN, NOTE_C4, 220); delay(230);
+	noTone(BZ_PIN);
+}
+
+// 非ブロッキング・メロディ再生。loop() を止めずに鳴らす。
+//   const int n[] = { NOTE_C4, NOTE_E4, NOTE_G4 };
+//   const int d[] = { 200, 200, 400 };           // 各音の長さ(ms)
+//   melody.play(n, d, 3);   ... loop 内で melody.update();
+class Melody {
+	const int* ns = nullptr;
+	const int* ds = nullptr;
+	int len = 0, idx = 0;
+	unsigned long next = 0;
+	bool run = false;
+public:
+	void play(const int* notes, const int* durs, int n) {
+		ns = notes; ds = durs; len = n; idx = 0; run = true; next = 0;
+	}
+	void stop() { run = false; noTone(BZ_PIN); }
+	bool playing() { return run; }
+	void update() {
+		if (!run) return;
+		unsigned long now = millis();
+		if ((long)(now - next) < 0) return;
+		if (idx >= len) { run = false; noTone(BZ_PIN); return; }
+		if (ns[idx] > 0) tone(BZ_PIN, ns[idx]);
+		else noTone(BZ_PIN);
+		next = now + ds[idx] + 20;   // 音の間に小さな余白
+		idx++;
+	}
+};
+Melody melody;
+
 //================ フルカラーLED ================
 class Led {
 public:
