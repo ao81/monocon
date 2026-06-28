@@ -374,6 +374,7 @@ class Spm {
 	int8_t ix = 0;
 	long   ps = 0;
 	int    rem = 0;
+	unsigned long stepPre = 0;
 public:
 	void set(uint8_t s) {
 		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };  // SPM4..1
@@ -418,9 +419,40 @@ public:
 	}
 	void zero() {
 		ps = 0;
+		rem = 0;
+	}
+
+	// 絶対位置 t へ移動（直線軸）。最終到達位置が t になるよう残ステップを設定。
+	void to(long t) {
+		rem = (int)(t - ps);
+	}
+	// 円環軸（1周 period ステップ）で目標 target へ最短方向に回す。
+	void turn(long target, long period) {
+		long cur = ((ps % period) + period) % period;
+		long tgt = ((target % period) + period) % period;
+		long d = ((tgt - cur) % period + period) % period;
+		if (d > period / 2) d -= period;
+		mv((int)d);
+	}
+	// 速度制御つき非ブロッキング駆動。ms ミリ秒ごとに1ステップ進める。
+	//   spm.mv(2048);  ... loop 内で spm.step(2);   // 2ms/step
+	void step(unsigned long ms) {
+		if (rem == 0) return;
+		unsigned long now = millis();
+		if (now - stepPre < ms) return;
+		stepPre = now;
+		run();
 	}
 };
 Spm spm;
+
+// 円環軸での最短移動量を返す（snippets 互換, 既定 period=120）。
+//   戻り値: -period/2 〜 period/2
+int getmove(int from, int to, int period = 120) {
+	int d = ((to - from) % period + period) % period;
+	if (d > period / 2) d -= period;
+	return d;
+}
 
 //================ DCモータ (DRV8835) ================
 #define CW  0xff
