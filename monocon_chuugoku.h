@@ -284,22 +284,22 @@ public:
 		digitalWrite(DCM1_PIN, LOW);
 		digitalWrite(DCM2_PIN, LOW);
 	}
-	// void operator()(uint8_t m) {
-	// 	switch (m) {
-	// 	case CW:
-	// 		cw();
-	// 		break;
-	// 	case CCW:
-	// 		ccw();
-	// 		break;
-	// 	case BR:
-	// 		br();
-	// 		break;
-	// 	default:
-	// 		fr();
-	// 		break;
-	// 	}
-	// }
+	void operator()(uint8_t m, int spd = 0) {
+		switch (m) {
+		case CW:
+			cw(spd);
+			break;
+		case CCW:
+			ccw(spd);
+			break;
+		case BR:
+			br();
+			break;
+		default:
+			fr();
+			break;
+		}
+	}
 };
 Dcm dcm;
 
