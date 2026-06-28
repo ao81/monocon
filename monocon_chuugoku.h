@@ -167,6 +167,25 @@ int& p = in.p;
 int& x = in.x;
 int& y = in.y;
 
+//================ エッジ検出（押した/離した瞬間） ================
+// 立ち上がり(LOW→HIGH)・立ち下がり(HIGH→LOW)を検出する。
+// スイッチの極性に依存せず、必要な方(rise/fall)を使えばよい。
+//   Edge btn;  ... btn.f(d1);  if (btn.rise) { 押した瞬間の処理 }
+class Edge {
+	int prev = -1;
+public:
+	int  val  = 0;      // 現在値 (HIGH/LOW)
+	bool rise = false;  // LOW→HIGH になった瞬間だけ true
+	bool fall = false;  // HIGH→LOW になった瞬間だけ true
+	void f(int pin) {
+		val = dr(pin);
+		if (prev < 0) prev = val;
+		rise = (!prev &&  val);
+		fall = ( prev && !val);
+		prev = val;
+	}
+};
+
 //================ 7セグ（3桁） ================
 void disp(char a, char b, char c) {
 	static int pa = -1, pb = -1, pc = -1;
