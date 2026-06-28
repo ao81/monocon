@@ -478,6 +478,17 @@ public:
 		digitalWrite(DCM1_PIN, LOW);
 		digitalWrite(DCM2_PIN, LOW);
 	}
+	// 符号付き速度で駆動。spd>0:正転 spd<0:逆転 spd=0:ブレーキ。
+	// -255〜255 に自動クランプ。ジョイスティック値をそのまま渡せる。
+	void drive(int spd) {
+		if (spd > 0) {
+			cw(spd > 255 ? 255 : spd);
+		} else if (spd < 0) {
+			ccw(-spd > 255 ? 255 : -spd);
+		} else {
+			br();
+		}
+	}
 	// void operator()(uint8_t m) {
 	// 	switch (m) {
 	// 	case CW:
