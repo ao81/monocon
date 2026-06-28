@@ -567,6 +567,7 @@ void begin(void) {
 	led.off();
 	spm.off();
 	dcm.fr();
+	dispOff();
 
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
 
