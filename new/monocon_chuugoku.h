@@ -568,42 +568,39 @@ Dcm dm;
 //     }
 //   }
 class Seq {
-	int  cur = 0;            // 現在のステップ番号
-	int  pos = 0;            // このループで今いくつ目の on() か
-	unsigned long t0 = 0;    // このステップに入った時刻
-	bool fresh = true;       // 入口の1回だけ in() を true にする
-	bool moved = false;      // このループで遷移済みか（次ステップへの流れ込み防止）
-
+	int  cur = 0;
+	int  pos = 0;
+	unsigned long t0 = 0;
+	bool fresh = true;
+	bool moved = false;
+	bool exited = false;
 public:
-	// loop の先頭で1回呼ぶ。ステップ位置と遷移フラグを戻す
 	void top() {
 		pos = 0;
 		moved = false;
+		exited = false;
 	}
-
-	// 各ステップの if 条件に置く。記述順に自動採番され、現在のステップだけ true
 	bool on() {
-		if (moved) { pos++; return false; }   // 遷移済みなら以降のステップは動かさない
+		if (moved) { pos++; return false; }
 		return (pos++ == cur);
 	}
-
 	bool operator()() {
 		return on();
 	}
-
-	void next()    { cur++;   t0 = millis(); fresh = true; moved = true; }  // 次の番号へ
-	void to(int s) { cur = s; t0 = millis(); fresh = true; moved = true; }  // 指定番号へ
-	bool is(int s) { return cur == s; }                                     // 現在ステップ判定
+	void next()    { cur++;   t0 = millis(); fresh = true; moved = true; }
+	void to(int s) { cur = s; t0 = millis(); fresh = true; moved = true; }
+	bool is(int s) { return cur == s; }
 	int  now()     { return cur; }
-
-	// このステップに入って最初の呼び出しだけ true（入口の初期化に使う）
 	bool in() {
 		if (fresh) { fresh = false; return true; }
 		return false;
 	}
-
-	unsigned long elapsed()      { return millis() - t0; }       // 入ってからの経過ms
-	bool after(unsigned long ms) { return millis() - t0 >= ms; } // ms 経過したか
+	bool out() {
+		if (moved && !exited) { exited = true; return true; }
+		return false;
+	}
+	unsigned long elapsed()      { return millis() - t0; }
+	bool after(unsigned long ms) { return millis() - t0 >= ms; }
 };
 
 //================ Timer3 割り込み ================
