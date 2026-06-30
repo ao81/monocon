@@ -1,6 +1,6 @@
 <!-- markdownlint-disable -->
 
-### [snippets](./snippets.md)
+### [snippets](./snippets.md) (2026中国大会)
 
 ## 測距モジュール（GP2Y0E03）の接続方法
 |センサー側|名称|アナログ専用での扱い|Arduinoの接続先
