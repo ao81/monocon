@@ -512,6 +512,62 @@ public:
 };
 Dcm dcm;
 
+//================ シーケンス制御 ================
+// loop() の中にステップを順に並べるだけ。switch も break も enum も別関数も不要。
+// 記述した順に 0,1,2... と自動で番号が振られ、現在のステップの if だけが実行される。
+//
+//   Seq sq;
+//   void loop() {
+//     sq.top();                              // ← loop の先頭で必ず1回
+//     if (sq.on()) {                         // ステップ0
+//       if (sq.in()) led(0b001);             //   入った瞬間だけ
+//       if (sq.after(1000)) sq.next();       //   1秒たったら次へ
+//     }
+//     if (sq.on()) {                         // ステップ1
+//       if (sq.in()) bz(2000, 50);
+//       if (in.d(d1).ltoh) sq.next();        //   条件で次へ
+//     }
+//     if (sq.on()) {                         // ステップ2
+//       if (sq.in()) led.off();
+//       if (sq.after(2000)) sq.to(0);        //   先頭へ戻す（番号で指定）
+//     }
+//   }
+class Seq {
+	int  cur = 0;
+	int  pos = 0;
+	unsigned long t0 = 0;
+	bool fresh = true;
+	bool moved = false;
+	bool exited = false;
+public:
+	void top() {
+		pos = 0;
+		moved = false;
+		exited = false;
+	}
+	bool on() {
+		if (moved) { pos++; return false; }
+		return (pos++ == cur);
+	}
+	bool operator()() {
+		return on();
+	}
+	void next()    { cur++;   t0 = millis(); fresh = true; moved = true; }
+	void to(int s) { cur = s; t0 = millis(); fresh = true; moved = true; }
+	bool is(int s) { return cur == s; }
+	int  now()     { return cur; }
+	bool in() {
+		if (fresh) { fresh = false; return true; }
+		return false;
+	}
+	bool out() {
+		if (moved && !exited) { exited = true; return true; }
+		return false;
+	}
+	unsigned long elapsed()      { return millis() - t0; }
+	bool after(unsigned long ms) { return millis() - t0 >= ms; }
+};
+
 //================ Timer3 割り込み ================
 void isr();
 ISR(TIMER3_COMPA_vect) {
