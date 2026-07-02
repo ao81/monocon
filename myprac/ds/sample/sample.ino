@@ -11,11 +11,17 @@ void setup() {
 void loop() {
 	if (tc >= 5000) {
 		tc = 0;
-		int sok = in.sok(a1);
+		int s = sok(a3);
 		// Serial.println(sok); // 4~50
-		dispNum(sok);
-		int i = clampv(map(sok, 4, 50, 0, 5), 0, 4);
-		static const int l[5] = { B000, B001, B010, B100, B111 };
-		led(l[i]);
+		dispNum(s);
 	}
+
+	static bool t1 = false, t2 = false;
+	if (in.d(d2).htol) t1 = !t1;
+	if (in.d(d1).ltoh) t2 = !t2;
+	int l = 0b000;
+	if (t2) l |= 0b001;
+	if (t1) l |= 0b010;
+	if (in.d(d3)) l |= 0b100;
+	led(l);
 }
