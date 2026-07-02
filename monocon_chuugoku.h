@@ -232,6 +232,10 @@ public:
 };
 In in;
 
+int sok(int pin) {
+	return map(ar(pin), 10, 450, 50, 4);
+}
+
 //================ ノンブロッキング・タイミング ================
 // 一定間隔 ms ごとに true を返す。delay() を使わず周期処理に使う。
 //   Every t;  if (t(500)) { 0.5秒ごとの処理 }
@@ -604,10 +608,12 @@ public:
 };
 
 //================ Timer3 割り込み ================
+#ifdef timer3
 void isr();
 ISR(TIMER3_COMPA_vect) {
 	isr();
 }
+#endif
 
 void begin(void) {
 	pinMode(a1, INPUT);
@@ -647,6 +653,7 @@ void begin(void) {
 
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
 
+#ifdef timer3
 	cli();
 	TCCR3A = TCCR3B = TCNT3 = 0;
 	OCR3A = F_CPU / 64 / 10000 - 1; // 100μs
@@ -654,4 +661,5 @@ void begin(void) {
 	TCCR3B |= (1 << CS31) | (1 << CS30);
 	TIMSK3 |= (1 << OCIE3A);
 	sei();
+#endif
 }
