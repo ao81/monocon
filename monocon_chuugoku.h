@@ -11,6 +11,7 @@
 
 #pragma once
 
+//================ ピン定義 ================
 #define a1 A0
 #define a2 A1
 #define a3 A2
@@ -24,7 +25,7 @@
 #define SDI_PIN 7
 #define LAT_PIN 8
 
-#define BZ_PIN 5
+#define BZ_PIN    5
 #define LED_G_PIN 2
 #define LED_B_PIN 3
 #define LED_R_PIN 4
@@ -34,7 +35,7 @@
 #define SPM3_PIN 24
 #define SPM4_PIN 22
 
-// PWM出力に対応したピンに変更
+// PWM対応ピン
 #define DCM1_PIN 44
 #define DCM2_PIN 46
 
@@ -45,6 +46,8 @@
 #define SDI_BIT (1 << PH4)
 #define LAT_BIT (1 << PH5)
 
+//================ 低レベルI/O ================
+// shiftOut の高速版（PORTH直叩き, MSBファースト）
 inline void fsout(uint8_t v) {
 	for (uint8_t i = 0; i < 8; i++) {
 		if (v & 0x80) {
@@ -58,6 +61,7 @@ inline void fsout(uint8_t v) {
 	}
 }
 
+// analogRead の高速版
 inline int ar(uint8_t pin) {
 	if (pin >= A0) pin -= A0;
 	ADMUX = (1 << REFS0) | (pin & 0x07);
@@ -67,10 +71,12 @@ inline int ar(uint8_t pin) {
 	return ADC;
 }
 
+// digitalRead の高速版
 inline int dr(uint8_t pin) {
 	return (*portInputRegister(digitalPinToPort(pin)) & digitalPinToBitMask(pin)) ? HIGH : LOW;
 }
 
+// 7セグ用フォント (0-9, A-F)
 const uint8_t seg[16] = {
 	0x3f, 0x06, 0x5b, 0x4f, 0x66,
 	0x6d, 0x7d, 0x27, 0x7f, 0x6f,
@@ -78,48 +84,46 @@ const uint8_t seg[16] = {
 };
 
 //================ 汎用 ================
-// 範囲内に収める（Arduino の constrain と同義の関数版）
+// v を [lo, hi] に収める
 inline long clampv(long v, long lo, long hi) {
 	return v < lo ? lo : (v > hi ? hi : v);
 }
 
-// cur を target へ最大 step だけ近づける（ソフトスタート/ランプ用）
+// cur を target へ最大 step だけ近づける（ソフトスタート用）
 inline long toward(long cur, long target, long step) {
 	if (cur < target) return (cur + step > target) ? target : cur + step;
 	if (cur > target) return (cur - step < target) ? target : cur - step;
 	return cur;
 }
 
-// 中央±width 内なら center を返す不感帯処理（ジョイスティック等）
+// 中央±width 内なら center を返す不感帯処理
 inline long deadband(long v, long center, long width) {
 	return (v > center - width && v < center + width) ? center : v;
 }
 
 //================ 入力 ================
+// 使い方:
 //   de e = in.d(d1);
-//   if (e.ltoh) { ... }   // 押した/光った瞬間（LOW→HIGH）
-//   if (e.htol) { ... }   // 離した/遮った瞬間（HIGH→LOW）
-//   int lv = e.level;     // トグルSW・フォトインタラプタは level だけ見ればよい
-//
-//   int v   = in.an(a1);        // 測距・フォトリフレクタなどアナログ全般
-//   Joy j   = in.joy(a1, a2);   // ジョイスティック。j.dir() で方向(0上,時計回り)
-//   long c  = in.enc(d2, d3);   // ロータリーエンコーダ。累積カウントを返す
-//
-// ※ in.d() / in.enc() は loop で毎回呼ぶこと（delay で止めると取りこぼす）。
-// ※ d() は同じピンを1ループにつき1回だけ呼ぶ（2回呼ぶと2回目は変化を見落とす）。
+//   if (e.ltoh) { ... }        // 押した瞬間 (LOW→HIGH)
+//   if (e.htol) { ... }        // 離した瞬間 (HIGH→LOW)
+//   int lv = e.level;          // トグルSW等は level だけ見る
+//   int v  = in.an(a1);        // アナログ全般
+//   Joy j  = in.joy(a1, a2);   // j.dir() で方向 (0=上, 時計回り)
+//   long c = in.enc(d2, d3);   // エンコーダ累積カウント
+// 注意:
+//   in.d() / in.enc() は loop で毎回呼ぶ（delay で止めない）
+//   d() は同じピンを1ループ1回だけ呼ぶ
 
 struct de {
-	uint8_t level;   // レベル (HIGH/LOW)
-	bool    ltoh;    // LOW→HIGH に確定した瞬間だけ true
-	bool    htol;    // HIGH→LOW に確定した瞬間だけ true
+	uint8_t level;   // 現在レベル (HIGH/LOW)
+	bool    ltoh;    // LOW→HIGH の瞬間だけ true
+	bool    htol;    // HIGH→LOW の瞬間だけ true
 	operator int() const { return level; }
 };
 
-// ジョイスティックの読み出し結果
 struct Joy {
 	int x, y;
-	// div 方向へ分割して 0..div-1 を返す。上が0で時計回りに増加。
-	// 中央付近（半径≒141以内）は -1（入力なし）。
+	// div 分割で 0..div-1 を返す。上=0, 時計回り。中央付近(半径≒141)は -1。
 	int dir(int div = 4) const {
 		long dx = x - 511, dy = y - 511;
 		if (dx * dx + dy * dy < 20000) return -1;
@@ -128,26 +132,25 @@ struct Joy {
 };
 
 class In {
-	// ---- デジタルチャンネル（ピンごとに独立した状態を持つ） ----
+	// デジタルチャンネル（ピンごとに独立した状態）
 	struct Dch {
 		uint8_t           pin;
-		volatile uint8_t* reg;     // 入力レジスタは初回だけ解決してキャッシュ
-		uint8_t           mask;    // ビットマスクも同様にキャッシュ
+		volatile uint8_t* reg;     // 入力レジスタ（初回だけ解決）
+		uint8_t           mask;
 		uint8_t           stable;  // 確定済みレベル
 		unsigned long     t;       // 最後に確定した時刻(ms)
 		bool              init;
 	};
-	static const uint8_t NCH = 8;  // 同時に追跡できるデジタルピン数
+	static const uint8_t NCH = 8;
 	Dch ch[NCH] = {};
 
-	// pin に対応するチャンネルを返す。無ければ空きへ登録（reg/mask をここで確定）。
 	Dch* slot(uint8_t pin) {
 		Dch* freeCh = nullptr;
 		for (uint8_t i = 0; i < NCH; i++) {
 			if (ch[i].init && ch[i].pin == pin) return &ch[i];
 			if (!ch[i].init && !freeCh) freeCh = &ch[i];
 		}
-		if (!freeCh) return nullptr;   // プール不足
+		if (!freeCh) return nullptr;
 		freeCh->pin = pin;
 		freeCh->reg = portInputRegister(digitalPinToPort(pin));
 		freeCh->mask = digitalPinToBitMask(pin);
@@ -157,22 +160,21 @@ class In {
 		return freeCh;
 	}
 
-	// ---- エンコーダ（1系統。A/B のピン読みをキャッシュ） ----
+	// エンコーダ（1系統）
 	uint8_t           est = 0;
 	volatile uint8_t* erA = nullptr; uint8_t emA = 0;
 	volatile uint8_t* erB = nullptr; uint8_t emB = 0;
 
 public:
-	// デジタル入力＋エッジ検出（リーディングエッジ＋ロックアウト方式）。
-	// lock = チャタリングを無視する時間(ms)。バウンスが激しいSWは長めに。
+	// デジタル入力＋エッジ検出。lock = チャタリング無視時間(ms)。
 	de d(uint8_t pin, uint16_t lock = 10) {
 		Dch* c = slot(pin);
-		if (!c) return { LOW, false, false };   // プール不足時の安全値
+		if (!c) return { LOW, false, false };
 		uint8_t raw = (*c->reg & c->mask) ? HIGH : LOW;
 		de r = { c->stable, false, false };
-		if (raw == c->stable) return r;          // 変化なし: millis() も呼ばず即終了
+		if (raw == c->stable) return r;
 		unsigned long now = millis();
-		if (now - c->t < lock) return r;         // ロックアウト中は無視
+		if (now - c->t < lock) return r;
 		r.ltoh = (c->stable == LOW && raw == HIGH);
 		r.htol = (c->stable == HIGH && raw == LOW);
 		r.level = raw;
@@ -181,12 +183,12 @@ public:
 		return r;
 	}
 
-	// アナログ入力（測距モジュール・フォトリフレクタなど共通）。
+	// アナログ入力
 	int an(uint8_t pin) {
 		return ar(pin);
 	}
 
-	// ジョイスティック（X/Y を一度に読む）。
+	// ジョイスティック (X/Y 一括読み)
 	Joy joy(uint8_t px, uint8_t py) {
 		Joy j;
 		j.x = ar(px);
@@ -194,9 +196,9 @@ public:
 		return j;
 	}
 
-	long c = 0;
+	long c = 0;   // エンコーダ累積カウント
 
-	// エンコーダ1ステップ分をデコードし、-1/0/+1 の増分を返す（ec は触らない）。
+	// 1ステップ分をデコードして -1/0/+1 を返す（c は触らない）
 	int encDelta(uint8_t pa, uint8_t pb, bool dir) {
 		if (!erA) {
 			erA = portInputRegister(digitalPinToPort(pa)); emA = digitalPinToBitMask(pa);
@@ -204,6 +206,7 @@ public:
 		}
 		uint8_t a = (*erA & emA) ? 1 : 0;
 		uint8_t b = (*erB & emB) ? 1 : 0;
+		// 判定点 AB=00 の7状態テーブル
 		static const uint8_t table[7][4] = {
 			{ 0x00, 0x02, 0x04, 0x00 },
 			{ 0x00, 0x00, 0x00, 0x00 },
@@ -220,42 +223,40 @@ public:
 		return 0;
 	}
 
-	// 判定点 AB=00 の 7状態テーブル。累積カウントを返す。
-	// dir=false で回転方向を反転。
+	// 累積カウントを返す。dir=false で回転方向を反転。
 	long enc(uint8_t pa, uint8_t pb, bool dir = true) {
 		c += encDelta(pa, pb, dir);
 		return c;
 	}
 
-	// 範囲 [lo, hi] に固定して返す。端で止まり、それ以上は増えない。
+	// [lo, hi] で止まる版（端で空回りしない）
 	long encClamp(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
 		c += encDelta(pa, pb, dir);
-		c = clampv(c, lo, hi);   // カウンタ自体を丸める（戻すときの空回しを防ぐ）
+		c = clampv(c, lo, hi);
 		return c;
 	}
 
-	// 範囲 [lo, hi] を循環する。hi の次は lo、lo の手前は hi に戻る。
+	// [lo, hi] を循環する版。hi の次は lo に戻る。
 	long encLoop(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
 		c += encDelta(pa, pb, dir);
 		long span = hi - lo + 1;
-		if (span < 1) span = 1;    // lo > hi の誤指定への保険
+		if (span < 1) span = 1;
 		c = lo + ((c - lo) % span + span) % span;
 		return c;
 	}
 };
 In in;
 
+// 測距モジュール: アナログ値 → 距離cm (4〜50cm にクランプ)
 int sok(int pin) {
-	return map(ar(pin), 10, 450, 50, 4);
+	return (int)clampv(map(ar(pin), 10, 450, 50, 4), 4, 50);
 }
 
 //================ ノンブロッキング・タイミング ================
-// 一定間隔 ms ごとに true を返す。delay() を使わず周期処理に使う。
+// 一定間隔 ms ごとに true。
 //   iv t;  if (t(500)) { 0.5秒ごとの処理 }
-// iv(interval)
 class iv {
 	unsigned long pre = 0;
-
 public:
 	bool operator()(unsigned long ms) {
 		unsigned long now = millis();
@@ -270,7 +271,6 @@ public:
 
 // ワンショットタイマ。start(ms) 後、経過した瞬間に done() が一度だけ true。
 //   ti t;  t.start(1000);  ... if (t.done()) { 1秒後の処理 }
-// ti(timer)
 class ti {
 	unsigned long lim = 0;
 	bool run = false;
@@ -285,9 +285,16 @@ public:
 		}
 		return false;
 	}
+	// 残り時間(ms)。停止中・経過後は 0。カウントダウン表示用。
+	unsigned long remain() {
+		if (!run) return 0;
+		long r = (long)(lim - millis());
+		return r > 0 ? (unsigned long)r : 0;
+	}
 };
 
-//================ 7セグ（3桁） ================
+//================ 7セグ (3桁) ================
+// 生パターンを直接送る。前回と同じなら送信しない。
 void disp(char a, char b, char c) {
 	static int pa = -1, pb = -1, pc = -1;
 	if (pa != (uint8_t)a || pb != (uint8_t)b || pc != (uint8_t)c) {
@@ -302,24 +309,23 @@ void disp(char a, char b, char c) {
 	}
 }
 
-//================ 7セグ 数値表示ヘルパ ================
-// 整数表示 (-99〜999)。先頭ゼロは消灯し、負数は符号付きで右詰め表示。
+// 整数表示 (-99〜999)。先頭ゼロ消灯・負数は符号付き右詰め。範囲外はクランプ。
 void dispNum(int n) {
 	bool neg = n < 0;
 	if (neg) n = -n;
+	if (neg && n > 99) n = 99;   // 負数は2桁まで（符号消失を防ぐ）
 	if (n > 999) n = 999;
 	uint8_t bh = (n >= 100) ? seg[(n / 100) % 10] : 0x00;
 	uint8_t bt = (n >= 10) ? seg[(n / 10) % 10] : 0x00;
 	uint8_t bo = seg[n % 10];
 	if (neg) {
-		if (n < 10)       bt = 0x40;   // 1桁: 中央に "-"
-		else if (n < 100) bh = 0x40;   // 2桁: 左に "-"
-		// 3桁の負数は桁あふれのため符号は省略
+		if (n < 10) bt = 0x40;   // 1桁: 中央に "-"
+		else        bh = 0x40;   // 2桁: 左に "-"
 	}
 	disp(bh, bt, bo);
 }
 
-// 小数点付き表示。point=小数部の桁数 (1 or 2)。
+// 小数点付き表示。point = 小数部の桁数 (1 or 2)。
 //   dispDec(234, 1) → "23.4"   dispDec(50, 2) → "0.50"
 void dispDec(int v, int point = 1) {
 	if (v < 0) v = 0;
@@ -354,7 +360,7 @@ void bzoff() {
 	noTone(BZ_PIN);
 }
 
-// 音階定数（Hz）
+// 音階定数 (Hz)
 #define NOTE_C4 262
 #define NOTE_D4 294
 #define NOTE_E4 330
@@ -371,10 +377,10 @@ void bzoff() {
 #define NOTE_C6 1047
 #define NOTE_REST 0
 
-// 非ブロッキング・メロディ再生。loop() を止めずに鳴らす。
+// 非ブロッキング・メロディ再生。
 //   const int n[] = { NOTE_C4, NOTE_E4, NOTE_G4 };
-//   const int d[] = { 200, 200, 400 };           // 各音の長さ(ms)
-//   melody.play(n, d, 3);   ... loop 内で melody.update();
+//   const int d[] = { 200, 200, 400 };   // 各音の長さ(ms)
+//   mel.play(n, d, 3);   ... loop 内で mel.update();
 class Melody {
 	const int* ns = nullptr;
 	const int* ds = nullptr;
@@ -395,25 +401,30 @@ public:
 		unsigned long now = millis();
 		if ((long)(now - next) < 0) return;
 		if (idx >= len) { run = false; noTone(BZ_PIN); return; }
-		if (ns[idx] > 0) tone(BZ_PIN, ns[idx]);
+		// tone に長さを渡し自動停止させる → 音間に実際の無音20msが入る
+		if (ns[idx] > 0) tone(BZ_PIN, ns[idx], ds[idx]);
 		else noTone(BZ_PIN);
-		next = now + ds[idx] + 20;   // 音の間に小さな余白
+		next = now + ds[idx] + 20;
 		idx++;
 	}
 };
 Melody mel;
 
 //================ フルカラーLED ================
+#define G 0b100
+#define B 0b010
+#define R 0b001
+#define GB 0b110
+#define GR 0b101
+#define BR 0b011
+#define GBR 0b111
+
 class Led {
 public:
 	void operator()(uint8_t m) {
 		digitalWrite(LED_R_PIN, (m & 1) ? HIGH : LOW);
 		digitalWrite(LED_B_PIN, (m & 2) ? HIGH : LOW);
 		digitalWrite(LED_G_PIN, (m & 4) ? HIGH : LOW);
-	}
-
-	void off() {
-		(*this)(0);
 	}
 };
 Led led;
@@ -425,7 +436,7 @@ class Spm {
 	unsigned long stepPre = 0;
 
 public:
-	int rem = 0;
+	long rem = 0;   // 残ステップ数
 
 	void set(uint8_t s) {
 		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };  // SPM4..1
@@ -447,6 +458,7 @@ public:
 		ps--;
 	}
 
+	// 全相OFF（脱励磁）
 	void off() {
 		digitalWrite(SPM1_PIN, LOW);
 		digitalWrite(SPM2_PIN, LOW);
@@ -454,10 +466,17 @@ public:
 		digitalWrite(SPM4_PIN, LOW);
 	}
 
-	void mv(int n) {
+	// 相対移動をキューに積む（正=CW, 負=CCW）
+	void mv(long n) {
 		rem += n;
 	}
 
+	// 残移動を打ち切る（励磁は保持）
+	void stop() {
+		rem = 0;
+	}
+
+	// 1ステップ進める。速度制御なしで最速駆動したいとき用。
 	void run() {
 		if (rem > 0) {
 			cw();
@@ -481,21 +500,30 @@ public:
 		rem = 0;
 	}
 
-	// 絶対位置 t へ移動（直線軸）。最終到達位置が t になるよう残ステップを設定。
+	// 絶対位置 t へ移動（直線軸）
 	void to(long t) {
-		rem = (int)(t - ps);
+		rem = t - ps;
 	}
 
-	// 円環軸（1周 period ステップ）で目標 target へ最短方向に回す。
+	// 円環軸（1周 period ステップ）で target へ最短方向に回す（rem に加算）
 	void turn(long target, long period) {
 		long cur = ((ps % period) + period) % period;
 		long tgt = ((target % period) + period) % period;
 		long d = ((tgt - cur) % period + period) % period;
 		if (d > period / 2) d -= period;
-		mv((int)d);
+		mv(d);
 	}
 
-	// 速度制御つき非ブロッキング駆動。ms ミリ秒ごとに1ステップ進める。
+	// 円環軸で target へ最短方向。rem を代入し直す版（毎ループ呼んでよい）
+	void seek(long target, long period) {
+		long cur = ((ps % period) + period) % period;
+		long tgt = ((target % period) + period) % period;
+		long d = ((tgt - cur) % period + period) % period;
+		if (d > period / 2) d -= period;
+		rem = d;
+	}
+
+	// 速度制御つき非ブロッキング駆動。ms ミリ秒ごとに1ステップ。
 	//   spm.mv(2048);  ... loop 内で spm.step(2);   // 2ms/step
 	void step(unsigned long ms) {
 		if (rem == 0) return;
@@ -504,20 +532,10 @@ public:
 		stepPre = now;
 		run();
 	}
-
-	// 円環軸で目標へ最短方向。残ステップを「設定し直す」版（毎ループ呼んでよい）。
-	void seek(long target, long period) {
-		long cur = ((ps % period) + period) % period;
-		long tgt = ((target % period) + period) % period;
-		long d = ((tgt - cur) % period + period) % period;
-		if (d > period / 2) d -= period;
-		rem = (int)d;          // mv の加算ではなく代入
-	}
 };
 Spm sm;
 
-// 円環軸での最短移動量を返す（snippets 互換, 既定 period=2048）。
-//   戻り値: -period/2 〜 period/2
+// 円環軸での最短移動量 (-period/2 〜 period/2)
 int getmove(int from, int to, int period = 2048) {
 	int d = ((to - from) % period + period) % period;
 	if (d > period / 2) d -= period;
@@ -525,12 +543,9 @@ int getmove(int from, int to, int period = 2048) {
 }
 
 //================ DCモータ (DRV8835) ================
-#define CW  0xff
-#define CCW 0xfe
-#define BR  0xfd
-#define FR  0xfc
-
 class Dcm {
+	int cs = 0;   // ramp 用の現在速度
+
 public:
 	void cw(int spd) {
 		digitalWrite(DCM1_PIN, LOW);
@@ -552,8 +567,7 @@ public:
 		digitalWrite(DCM2_PIN, LOW);
 	}
 
-	// 符号付き速度で駆動。spd>0:正転 spd<0:逆転 spd=0:ブレーキ。
-	// -255〜255 に自動クランプ。ジョイスティック値をそのまま渡せる。
+	// 符号付き速度。spd>0:正転 spd<0:逆転 spd=0:ブレーキ。±255 に自動クランプ。
 	void drive(int spd) {
 		if (spd > 0) {
 			cw(spd > 255 ? 255 : spd);
@@ -563,32 +577,42 @@ public:
 			br();
 		}
 	}
+
+	// ソフトスタート付き drive。target へ毎回 step ずつ近づける。
+	// loop 内で iv 等と組み合わせて周期的に呼ぶ。
+	//   if (t(20)) dm.ramp(200, 10);   // 20msごとに10ずつ加速
+	void ramp(int target, int step) {
+		cs = (int)toward(cs, target, step);
+		drive(cs);
+	}
+
+	// ramp の現在速度
+	int speed() { return cs; }
 };
 Dcm dm;
 
 //================ シーケンス制御 ================
-// loop() の中にステップを順に並べるだけ。switch も break も enum も別関数も不要。
-// 記述した順に 0,1,2... と自動で番号が振られ、現在のステップの if だけが実行される。
+// loop の中にステップを順に並べる。記述順に 0,1,2... と番号が振られ、
+// 現在ステップの if だけが実行される。
 //
 //   Seq sq;
 //   void loop() {
-//     sq.top();                              // ← loop の先頭で必ず1回
-//     if (sq.on()) {                         // ステップ0
-//       if (sq.in()) led(0b001);             //   入った瞬間だけ
-//       if (sq.after(1000)) sq.next();       //   1秒たったら次へ
+//     sq.top();                          // loop 先頭で必ず1回
+//     if (sq.on()) {                     // ステップ0
+//       if (sq.in()) led(C_RED);         //   入った瞬間だけ
+//       if (sq.after(1000)) sq.next();   //   1秒たったら次へ
 //     }
-//     if (sq.on()) {                         // ステップ1
-//       if (sq.in()) bz(2000, 50);
-//       if (in.d(d1).ltoh) sq.next();        //   条件で次へ
+//     if (sq.on()) {                     // ステップ1
+//       if (in.d(d1).ltoh) sq.next();    //   条件で次へ
 //     }
-//     if (sq.on()) {                         // ステップ2
-//       if (sq.in()) led.off();
-//       if (sq.after(2000)) sq.to(0);        //   先頭へ戻す（番号で指定）
+//     if (sq.on()) {                     // ステップ2
+//       if (sq.after(2000)) sq.to(0);    //   先頭へ戻る
 //     }
 //   }
 class Seq {
 	int  cur = 0;
 	int  pos = 0;
+	int  count = 0;
 	unsigned long t0 = 0;
 	bool moved = false;
 	bool exited = false;
@@ -596,6 +620,7 @@ public:
 	bool fresh = true;
 
 	void top() {
+		if (pos > count) count = pos;
 		pos = 0;
 		moved = false;
 		exited = false;
@@ -604,13 +629,23 @@ public:
 		if (moved) { pos++; return false; }
 		return (pos++ == cur);
 	}
-	bool operator()() {
-		return on();
+	bool operator()() { return on(); }
+
+	void next() {
+		cur++;
+		if (count > 0 && cur >= count) cur = 0;
+		t0 = millis(); fresh = true; moved = true;
 	}
-	void next() { cur++;   t0 = millis(); fresh = true; moved = true; }
+	void prev() {
+		cur--;
+		if (cur < 0) cur = (count > 0) ? count - 1 : 0;
+		t0 = millis(); fresh = true; moved = true;
+	}
+
 	void to(int s) { cur = s; t0 = millis(); fresh = true; moved = true; }
 	bool is(int s) { return cur == s; }
 	int  now() { return cur; }
+	int  steps() { return count; }   // 計測済みのステップ総数
 	bool in() {
 		if (fresh) { fresh = false; return true; }
 		return false;
@@ -624,6 +659,8 @@ public:
 };
 
 //================ Timer3 割り込み ================
+// 使うときは #include より前に #define timer3 を書き、void isr() を実装する。
+// 100μs 周期で isr() が呼ばれる。
 #ifdef timer3
 void isr();
 ISR(TIMER3_COMPA_vect) {
@@ -631,6 +668,7 @@ ISR(TIMER3_COMPA_vect) {
 }
 #endif
 
+//================ 初期化 ================
 void begin(void) {
 	pinMode(a1, INPUT);
 	pinMode(a2, INPUT);
@@ -660,19 +698,19 @@ void begin(void) {
 	pinMode(DCM2_PIN, OUTPUT);
 	pinMode(PH_PIN, INPUT);
 
-	led.off();
 	sm.off();
 	dm.fr();
 	dispOff();
 
 	randomSeed(millis());
 
+	// ADC 分解能を維持したまま変換を高速化 (分周比16)
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
 
 #ifdef timer3
 	cli();
 	TCCR3A = TCCR3B = TCNT3 = 0;
-	OCR3A = F_CPU / 64 / 10000 - 1; // 100μs
+	OCR3A = F_CPU / 64 / 10000 - 1;   // 100μs
 	TCCR3B |= (1 << WGM32);
 	TCCR3B |= (1 << CS31) | (1 << CS30);
 	TIMSK3 |= (1 << OCIE3A);
