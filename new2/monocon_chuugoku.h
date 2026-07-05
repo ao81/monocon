@@ -367,14 +367,14 @@ public:
 		Ech* e = eslot(pa, pb);
 		if (e) e->c = v;
 	}
+
+	// 測距モジュール: アナログ値 → 距離cm (loCm〜hiCm にクランプ)
+	// 較正値がずれていたら raw の実測値で adLo/adHi を差し替える。
+	int sok(int pin, int adLo = 10, int adHi = 450, int loCm = 4, int hiCm = 50) {
+		return (int)clampv(map(ar(pin), adLo, adHi, hiCm, loCm), loCm, hiCm);
+	}
 };
 In in;
-
-// 測距モジュール: アナログ値 → 距離cm (loCm〜hiCm にクランプ)
-// 較正値がずれていたら raw の実測値で adLo/adHi を差し替える。
-int sok(int pin, int adLo = 10, int adHi = 450, int loCm = 4, int hiCm = 50) {
-	return (int)clampv(map(ar(pin), adLo, adHi, hiCm, loCm), loCm, hiCm);
-}
 
 //================ ノンブロッキング・タイミング ================
 // 一定間隔 ms ごとに true。
@@ -592,8 +592,7 @@ public:
 		if ((long)(now - next) < 0) return;
 
 		if (idx >= len) {
-			if (rep) { idx = 0; }
-			else { run = false; noTone(BZ_PIN); return; }
+			if (rep) { idx = 0; } else { run = false; noTone(BZ_PIN); return; }
 		}
 
 		if (ns[idx] > 0) tone(BZ_PIN, ns[idx]);
