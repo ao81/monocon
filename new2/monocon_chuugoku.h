@@ -579,7 +579,6 @@ class Melody {
 	bool rep = false;
 
 public:
-	// rep=true でループ再生（stop() を呼ぶまで繰り返す）
 	void play(const int* notes, const int* durs, int n, bool repeat = false) {
 		ns = notes; ds = durs; len = n; idx = 0; run = true; next = 0; rep = repeat;
 	}
@@ -591,11 +590,13 @@ public:
 		if (!run) return;
 		unsigned long now = millis();
 		if ((long)(now - next) < 0) return;
+
 		if (idx >= len) {
-			if (rep) { idx = 0; } else { run = false; noTone(BZ_PIN); return; }
+			if (rep) { idx = 0; }
+			else { run = false; noTone(BZ_PIN); return; }
 		}
-		// tone に長さを渡し自動停止させる → 音間に実際の無音20msが入る
-		if (ns[idx] > 0) tone(BZ_PIN, ns[idx], ds[idx]);
+
+		if (ns[idx] > 0) tone(BZ_PIN, ns[idx]);
 		else noTone(BZ_PIN);
 		next = now + ds[idx];
 		idx++;
