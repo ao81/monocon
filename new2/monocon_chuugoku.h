@@ -612,20 +612,35 @@ Melody mel;
 #define BR 0b011
 #define GBR 0b111
 
+// ISR と loop で共有するので volatile
+volatile uint8_t ledMask = 0;   // 色ビット (G/B/R)
+volatile uint8_t ledBri  = 0;   // 明るさ 0〜255
+
 class Led {
 public:
-	// m: 色ビット (G/B/R の組合せ)、bri: 明るさ 0〜100%
-	void operator()(uint8_t m, int bri = 100) {
-		bri = (int)clampv(bri, 0, 100);
-		int duty = bri * 255 / 100;
-
-		analogWrite(LED_R_PIN, (m & 1) ? duty : 0);
-		analogWrite(LED_B_PIN, (m & 2) ? duty : 0);
-		analogWrite(LED_G_PIN, (m & 4) ? duty : 0);
-	}
-	void off() { (*this)(0); }
+        // m: 色ビット (G/B/R の組合せ)、bri: 明るさ 0〜100%
+        void operator()(uint8_t m, int bri = 100) {
+                bri = (int)clampv(bri, 0, 100);
+                ledMask = m;
+                ledBri  = (uint8_t)(bri * 255 / 100);
+        }
+        void off() {
+                ledMask = 0;
+                ledBri  = 0;
+        }
 };
 Led led;
+
+// 1スロットぶんのLED更新。Timer3割り込みから毎回呼ぶ。
+// dispRefresh と同じ 0〜15 のPWMカウンタ方式。
+inline void ledRefresh() {
+        static uint8_t pc = 0;
+        bool on = (((ledBri + 8) >> 4) > pc);
+        digitalWrite(LED_R_PIN, (on && (ledMask & 1)) ? HIGH : LOW);
+        digitalWrite(LED_B_PIN, (on && (ledMask & 2)) ? HIGH : LOW);
+        digitalWrite(LED_G_PIN, (on && (ledMask & 4)) ? HIGH : LOW);
+        pc = (pc + 1) & 15;
+}
 
 //================ ステッピングモータ (28BYJ-48, フルステップ2相励磁) ================
 // 1回転 = 2048ステップ。1ステップ = 360 / 2048 ≒ 0.176度。
@@ -924,6 +939,7 @@ void isr();
 
 ISR(TIMER3_COMPA_vect) {
 	dispRefresh();
+ ledRefresh();
 	sm.isrTick();
 #ifdef timer3
 	isr();
