@@ -137,6 +137,17 @@ inline int dr(uint8_t pin) {
 	return (*portInputRegister(digitalPinToPort(pin)) & digitalPinToBitMask(pin)) ? HIGH : LOW;
 }
 
+// digitalWrite の高速版
+inline void dw(uint8_t pin, uint8_t val) {
+        volatile uint8_t* out = portOutputRegister(digitalPinToPort(pin));
+        uint8_t mask = digitalPinToBitMask(pin);
+        uint8_t s = SREG;
+        cli();
+        if (val) *out |= mask;
+        else     *out &= ~mask;
+        SREG = s;
+}
+
 // 7セグ用フォント (0-9, A-F)
 const uint8_t seg[16] = {
 	0x3f, 0x06, 0x5b, 0x4f, 0x66,
