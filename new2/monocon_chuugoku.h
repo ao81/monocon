@@ -892,15 +892,17 @@ public:
 	bool fresh = true;
 
 	void top() {
-		if (pos > count) count = pos;
-		pos = 0;
-		moved = false;
-		exited = false;
-	}
-	bool on() {
-		if (moved) { pos++; return false; }
-		return (pos++ == cur);
-	}
+                if (pos > count) count = pos;
+                if (count > 0 && cur >= count) cur = 0;   // 初回パスで最終ステップを
+                                                          // next() したときの巻き戻し
+                pos = 0;
+                moved = false;
+                exited = false;
+        }
+        bool on() {
+                if (moved) { pos++; return false; }
+                return (pos++ == cur);
+        }
 	bool operator()() { return on(); }
 
 	void next() {
