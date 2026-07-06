@@ -4,75 +4,13 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/〇〇/〇〇
+// 作成年月日: 2026/07/07
 /**********************************************/
-
-// これ以下のコメント文は後に全て削除すること
 
 #pragma once
 
-#include <util/atomic.h>   // ATOMIC_BLOCK (ISRと共有する変数の保護)
+#include <util/atomic.h>
 
-/*================ API チートシート ================
-【入力】loop で毎回呼ぶ。delay で止めない。
-	de e = in.d(d1);              // e.ltoh 押した瞬間 / e.htol 離した瞬間 / e.level 現在
-	in.held(d1, 3000)             // 3秒長押しした瞬間に一度だけ true
-	in.an(a1)                     // アナログ値 0..1023
-	in.joy(a1, a2).dir(4)         // 方向 0..3 (上=0, 時計回り)。中央は -1
-	in.enc(d2, d3)                // エンコーダ累積 (複数系統OK)
-	in.encClamp(d2,d3, 0, 9)      // 端で止まる版
-	in.encLoop(d2,d3, 0, 9)       // 循環する版
-	in.encSet(d2,d3, 0)           // カウントをリセット
-	sok(a3)                       // 測距 cm (4..50)
-
-【7セグ】
-	dispn(123)                    // 整数 -99..999
-	dispn(12, true)               // ゼロ埋め "012"
-	dispn(1.5)                    // 小数 (桁は自動)
-	disp(seg[1], 0x40, seg[2])    // 生パターン。0x80=ドット 0x40=マイナス
-	disp(a,b,c, 255,64,255)       // 桁ごとの明るさ 0..255
-	dispOff()
-
-【LED・ブザー】
-	led(R); led(GBR, 50); led.off()
-	bz(440); bz(na4, 100); bzoff()
-	mel.play(notes, durs, n);        // 非ブロッキング再生。loop で mel.update()
-	mel.play(notes, durs, n, true);  // ループ再生 (BGM)
-
-【ステッピングモータ】移動量を決めて run するだけ。
-	sm.mv(512)                    // 相対 512 ステップ (1回転=2048)
-	sm.to(0) / sm.toDeg(90.0)     // 絶対位置 / 絶対角度
-	sm.seek(t) / sm.seek(t, true) // 円環上を最短 / CW固定 で t へ
-	sm.run(2)                     // 以後 Timer3 が 2ms/step で勝手に動かす
-	sm.run(1, 5, 100)             // 台形加減速: 5ms→1ms、100ステップで加減速
-	sm.moving() / sm.pos() / sm.zero() / sm.stop() / sm.off()
-	sm.divStep(i, 12)             // 12分割の i 番目の絶対ステップ
-	※ run を使わない場合は loop で sm.step(2) を呼ぶ (従来方式)
-
-【DCモータ】
-	dm.drive(200) / dm.drive(-200) / dm.drive(0)=ブレーキ / dm.fr()=フリー
-	if (t(20)) dm.ramp(200, 10);  // ソフトスタート
-
-【時間】
-	iv t;  if (t(500)) {...}      // 500msごと。t.wait()/t.go() で一時停止
-	ti t;  t.start(1000); if (t.done()) {...}   // ワンショット。t.remain()
-	Sw w;  w.start(); w.ms();     // ストップウォッチ。w.stop() で停止
-	blink(500)                    // 500msごとに true/false 反転 (点滅用)
-
-【乱数】
-	rnd(4)                        // 0..3
-	rndDiff(4)                    // 0..3、ただし直前と同じ値は出ない
-
-【シーケンス】
-	sq.top() を loop 先頭で1回。以後 if (sq.on()) がステップ 0,1,2...
-	sq.in() 入った瞬間 / sq.after(ms) 経過判定 / sq.next() / sq.to(n)
-
-【Timer3 ISR】
-	#include より前に #define timer3 を書き、void isr() を実装すると
-	100μs 周期で呼ばれる。
-==================================================*/
-
-//================ ピン定義 ================
 #define a1 A0
 #define a2 A1
 #define a3 A2
@@ -96,19 +34,15 @@
 #define SPM3_PIN 24
 #define SPM4_PIN 22
 
-// PWM対応ピン
 #define DCM1_PIN 44
 #define DCM2_PIN 46
 
 #define PH_PIN 36
 
-// ピン6/7/8 = PORTH(PH3/PH4/PH5)
 #define SCK_BIT (1 << PH3)
 #define SDI_BIT (1 << PH4)
 #define LAT_BIT (1 << PH5)
 
-//================ 低レベルI/O ================
-// shiftOut の高速版（PORTH直叩き, MSBファースト）
 inline void fsout(uint8_t v) {
 	for (uint8_t i = 0; i < 8; i++) {
 		if (v & 0x80) {
@@ -122,7 +56,6 @@ inline void fsout(uint8_t v) {
 	}
 }
 
-// analogRead の高速版
 inline int ar(uint8_t pin) {
 	if (pin >= A0) pin -= A0;
 	ADMUX = (1 << REFS0) | (pin & 0x07);
@@ -132,12 +65,10 @@ inline int ar(uint8_t pin) {
 	return ADC;
 }
 
-// digitalRead の高速版
 inline int dr(uint8_t pin) {
 	return (*portInputRegister(digitalPinToPort(pin)) & digitalPinToBitMask(pin)) ? HIGH : LOW;
 }
 
-// digitalWrite の高速版
 inline void dw(uint8_t pin, uint8_t val) {
 	volatile uint8_t* out = portOutputRegister(digitalPinToPort(pin));
 	uint8_t mask = digitalPinToBitMask(pin);
@@ -148,46 +79,36 @@ inline void dw(uint8_t pin, uint8_t val) {
 	SREG = s;
 }
 
-
-
-// 7セグ用フォント (0-9, A-F)
 const uint8_t seg[16] = {
 	0x3f, 0x06, 0x5b, 0x4f, 0x66,
 	0x6d, 0x7d, 0x27, 0x7f, 0x6f,
 	0x77, 0x7c, 0x58, 0x5e, 0x79, 0x71,
 };
-#define SEG_DOT   0x80   // 小数点。seg[n] | SEG_DOT で点灯
-#define SEG_MINUS 0x40   // マイナス記号 (中央バーのみ)
+#define SEG_DOT   0x80
+#define SEG_MINUS 0x40
 
-//================ 汎用 ================
-// v を [lo, hi] に収める
 inline long clampv(long v, long lo, long hi) {
 	return v < lo ? lo : (v > hi ? hi : v);
 }
 
-// cur を target へ最大 step だけ近づける（ソフトスタート用）
 inline long toward(long cur, long target, long step) {
 	if (cur < target) return (cur + step > target) ? target : cur + step;
 	if (cur > target) return (cur - step < target) ? target : cur - step;
 	return cur;
 }
 
-// 中央±width 内なら center を返す不感帯処理
 inline long deadband(long v, long center, long width) {
 	return (v > center - width && v < center + width) ? center : v;
 }
 
-// ms ごとに true/false が切り替わる（点滅用）
 inline bool blink(unsigned long ms) {
 	return (millis() / ms) & 1;
 }
 
-// 0..n-1 の乱数
 inline long rnd(long n) {
 	return random(n);
 }
 
-// 0..n-1 の乱数。ただし直前に返した値と同じにはならない。
 inline long rndDiff(long n) {
 	static long last = -1;
 	long v;
@@ -198,20 +119,16 @@ inline long rndDiff(long n) {
 	return v;
 }
 
-//================ 入力 ================
-// in.d() / in.enc() は loop で毎回呼ぶ（delay で止めない）。
-// d() は同じピンを1ループ1回だけ呼ぶ。
-
 struct de {
-	uint8_t level;   // 現在レベル (HIGH/LOW)
-	bool    ltoh;    // LOW→HIGH の瞬間だけ true
-	bool    htol;    // HIGH→LOW の瞬間だけ true
+	uint8_t level;
+	bool    ltoh;
+	bool    htol;
 	operator int() const { return level; }
 };
 
 struct Joy {
 	int x, y;
-	// div 分割で 0..div-1 を返す。上=0, 時計回り。中央付近(半径≒141)は -1。
+
 	int dir(int div = 4) const {
 		long dx = x - 511, dy = y - 511;
 		if (dx * dx + dy * dy < 20000) return -1;
@@ -220,14 +137,14 @@ struct Joy {
 };
 
 class In {
-	// デジタルチャンネル（ピンごとに独立した状態）
+
 	struct Dch {
 		uint8_t           pin;
-		volatile uint8_t* reg;     // 入力レジスタ（初回だけ解決）
+		volatile uint8_t* reg;
 		uint8_t           mask;
-		uint8_t           stable;  // 確定済みレベル
-		unsigned long     t;       // 最後に確定した時刻(ms)
-		bool              fired;   // held() 発火済みフラグ
+		uint8_t           stable;
+		unsigned long     t;
+		bool              fired;
 		bool              init;
 	};
 	static const uint8_t NCH = 8;
@@ -250,7 +167,6 @@ class In {
 		return freeCh;
 	}
 
-	// エンコーダチャンネル（ピンペアごとに独立した状態＋カウント）
 	struct Ech {
 		uint8_t           pa, pb;
 		volatile uint8_t* ra; uint8_t ma;
@@ -279,7 +195,7 @@ class In {
 	}
 
 public:
-	// デジタル入力＋エッジ検出。lock = チャタリング無視時間(ms)。
+
 	de d(uint8_t pin, uint16_t lock = 10) {
 		Dch* c = slot(pin);
 		if (!c) return { LOW, false, false };
@@ -305,8 +221,6 @@ public:
 		return d(pin).ltoh;
 	}
 
-	// 長押し検出。lv の状態が ms 続いた瞬間に一度だけ true。
-	// 同じピンの d() と併用する（d() を loop で毎回呼んでいれば正しく動く）。
 	bool held(uint8_t pin, unsigned long ms, uint8_t lv = HIGH) {
 		Dch* c = slot(pin);
 		if (!c) return false;
@@ -319,7 +233,6 @@ public:
 		return false;
 	}
 
-	// ジョイスティック (X/Y 一括読み)
 	Joy joy(uint8_t px, uint8_t py) {
 		Joy j;
 		j.x = ar(px);
@@ -327,13 +240,12 @@ public:
 		return j;
 	}
 
-	// 1ステップ分をデコードして -1/0/+1 を返す（カウントは触らない）
 	int encDelta(uint8_t pa, uint8_t pb, bool dir = true) {
 		Ech* e = eslot(pa, pb);
 		if (!e) return 0;
 		uint8_t a = (*e->ra & e->ma) ? 1 : 0;
 		uint8_t b = (*e->rb & e->mb) ? 1 : 0;
-		// 判定点 AB=00 の7状態テーブル
+
 		static const uint8_t table[7][4] = {
 			{ 0x00, 0x02, 0x04, 0x00 },
 			{ 0x00, 0x00, 0x00, 0x00 },
@@ -350,7 +262,6 @@ public:
 		return 0;
 	}
 
-	// 累積カウントを返す。dir=false で回転方向を反転。ピンペアごとに独立。
 	long enc(uint8_t pa, uint8_t pb, bool dir = true) {
 		Ech* e = eslot(pa, pb);
 		if (!e) return 0;
@@ -358,7 +269,6 @@ public:
 		return e->c;
 	}
 
-	// [lo, hi] で止まる版（端で空回りしない）
 	long encClamp(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
 		Ech* e = eslot(pa, pb);
 		if (!e) return lo;
@@ -367,7 +277,6 @@ public:
 		return e->c;
 	}
 
-	// [lo, hi] を循環する版。hi の次は lo に戻る。
 	long encLoop(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
 		Ech* e = eslot(pa, pb);
 		if (!e) return lo;
@@ -378,19 +287,16 @@ public:
 		return e->c;
 	}
 
-	// カウントを任意の値にする（原点合わせ・リセット用）
 	void encSet(uint8_t pa, uint8_t pb, long v = 0) {
 		Ech* e = eslot(pa, pb);
 		if (e) e->c = v;
 	}
 
-	// 生のAD値の中央値を返す。較正時はこれを7セグに出して読む。
-	// n回読んで中央値を取るので、単発の外れ値(ノイズ)に強い。
 	int sokRaw(uint8_t pin, uint8_t n = 5) {
 		int v[9];
 		if (n > 9) n = 9;
 		for (uint8_t i = 0; i < n; i++) v[i] = ar(pin);
-		for (uint8_t i = 1; i < n; i++) {          // 挿入ソート
+		for (uint8_t i = 1; i < n; i++) {
 			int t = v[i];
 			int8_t j = i - 1;
 			while (j >= 0 && v[j] > t) { v[j + 1] = v[j]; j--; }
@@ -404,19 +310,16 @@ public:
 		long ad = sokRaw(pin);
 		long den = adNear - adFar;
 		if (den == 0) den = 1;
-		// 四捨五入つき直線補間 (mm単位で計算)
+
 		long mm = farMm + ((ad - adFar) * (long)(nearMm - farMm) + den / 2) / den;
-		return (int)clampv(mm, nearMm, farMm) / 1;   // 0.1cm = mm
+		return (int)clampv(mm, nearMm, farMm) / 1;
 	}
 
-	// 測距モジュール: アナログ値 → 距離cm (loCm〜hiCm にクランプ)
-	// 較正値がずれていたら raw の実測値で adLo/adHi を差し替える。
 	int sok(uint8_t pin, int adNear = 450, int adFar = 10,
 		int nearMm = 40, int farMm = 500) {
 		return (sok10(pin, adNear, adFar, nearMm, farMm) + 5) / 10;
 	}
 
-	// フォトリフレクタ
 	bool ref(uint8_t pin, int th, bool writeHigh = false) {
 		int v = ar(pin);
 		return writeHigh ? (v > th) : (v < th);
@@ -424,9 +327,6 @@ public:
 };
 In in;
 
-//================ ノンブロッキング・タイミング ================
-// 一定間隔 ms ごとに true。
-//   iv t;  if (t(500)) { 0.5秒ごとの処理 }
 class iv {
 	unsigned long pre = 0;
 	unsigned long pausedAt = 0;
@@ -458,8 +358,6 @@ public:
 	bool isWait() { return paused; }
 };
 
-// ワンショットタイマ。start(ms) 後、経過した瞬間に done() が一度だけ true。
-//   ti t;  t.start(1000);  ... if (t.done()) { 1秒後の処理 }
 class ti {
 	unsigned long lim = 0;
 	bool run = false;
@@ -474,7 +372,7 @@ public:
 		}
 		return false;
 	}
-	// 残り時間(ms)。停止中・経過後は 0。カウントダウン表示用。
+
 	unsigned long remain() {
 		if (!run) return 0;
 		long r = (long)(lim - millis());
@@ -482,9 +380,6 @@ public:
 	}
 };
 
-// ストップウォッチ。反応時間・経過時間の計測用。
-//   Sw w;  w.start();  ... dispn((int)(w.ms() / 10));   // 10ms単位で表示
-//   w.stop();   // 止めた後も ms() は確定値を返し続ける
 class Sw {
 	unsigned long t0 = 0;
 	unsigned long fix = 0;
@@ -498,23 +393,17 @@ public:
 	unsigned long operator()() { return ms(); }
 };
 
-//================ 7セグ (3桁) ================
-// 各桁の表示状態。ISR と loop の両方から触るので volatile。
-volatile uint8_t segPat[3] = { 0, 0, 0 };         // 点灯パターン
-volatile uint8_t segBri[3] = { 255, 255, 255 };   // 明るさ 0〜255
+volatile uint8_t segPat[3] = { 0, 0, 0 };
+volatile uint8_t segBri[3] = { 255, 255, 255 };
 
-// パターンと明るさを設定する。実際の点灯は dispRefresh が割り込みで行う。
-//   ba/bb/bc: 各桁の明るさ 0〜255 (省略時は255=最大)
 void disp(char a, char b, char c, uint8_t ba = 255, uint8_t bb = 255, uint8_t bc = 255) {
 	segPat[0] = (uint8_t)a; segBri[0] = ba;
 	segPat[1] = (uint8_t)b; segBri[1] = bb;
 	segPat[2] = (uint8_t)c; segBri[2] = bc;
 }
 
-// 1スロットぶんの表示更新。Timer3割り込みから毎回呼ぶ。
-// pc が 0〜15 を巡回し、各桁の明るさに応じて点灯/消灯を切り替える。
 inline void dispRefresh() {
-	static uint8_t pc = 0;   // PWMカウンタ 0〜15
+	static uint8_t pc = 0;
 	uint8_t a = (((segBri[0] + 8) >> 4) > pc) ? segPat[0] : 0;
 	uint8_t b = (((segBri[1] + 8) >> 4) > pc) ? segPat[1] : 0;
 	uint8_t c = (((segBri[2] + 8) >> 4) > pc) ? segPat[2] : 0;
@@ -526,8 +415,6 @@ inline void dispRefresh() {
 	pc = (pc + 1) & 15;
 }
 
-// 整数をそのまま表示 (-99〜999)。先頭ゼロ消灯・負数は符号付き。
-// pad=true で先頭ゼロを表示する（007 のような表示。負数では無効）。
 void dispn(int n, bool pad = false) {
 	bool neg = n < 0;
 	if (neg) n = -n;
@@ -543,11 +430,6 @@ void dispn(int n, bool pad = false) {
 	disp(bh, bt, bo);
 }
 
-// 小数を自動桁数で表示。値の大きさで小数点位置が変わる。
-//   dispn(0.5)  → "0.50"    dispn(23.4) → "23.4"
-//   dispn(123.0)→ "123"     dispn(-1.5) → "-1.5"
-// 正:  <10 で2桁, <100 で1桁, それ以上は整数(最大999)
-// 負:  <10 で1桁, それ以上は整数(最小-99)
 void dispn(double f) {
 	bool neg = f < 0;
 	double a = neg ? -f : f;
@@ -588,12 +470,10 @@ inline void dispn(T n, bool pad = false) {
 	dispn((int)n, pad);
 }
 
-// 全消灯
 void dispOff() {
 	disp(0, 0, 0);
 }
 
-//================ ブザー ================
 void bz(int f) {
 	tone(BZ_PIN, f);
 }
@@ -606,7 +486,6 @@ void bzoff() {
 	noTone(BZ_PIN);
 }
 
-// 音階定数 (Hz)
 #define nc4 262
 #define nd4 294
 #define ne4 330
@@ -624,10 +503,6 @@ void bzoff() {
 #define nc6 1047
 #define nr  0
 
-// 非ブロッキング・メロディ再生。
-//   const int n[] = { nc4, ne4, ng4 };
-//   const int d[] = { 200, 200, 400 };   // 各音の長さ(ms)
-//   mel.play(n, d, 3);   ... loop 内で mel.update();
 class Melody {
 	const int* ns = nullptr;
 	const int* ds = nullptr;
@@ -661,7 +536,6 @@ public:
 };
 Melody mel;
 
-//================ フルカラーLED ================
 #define G 0b100
 #define B 0b010
 #define R 0b001
@@ -670,13 +544,12 @@ Melody mel;
 #define BR 0b011
 #define GBR 0b111
 
-// ISR と loop で共有するので volatile
-volatile uint8_t ledMask = 0;   // 色ビット (G/B/R)
-volatile uint8_t ledBri = 0;   // 明るさ 0〜255
+volatile uint8_t ledMask = 0;
+volatile uint8_t ledBri = 0;
 
 class Led {
 public:
-	// m: 色ビット (G/B/R の組合せ)、bri: 明るさ 0〜100%
+
 	void operator()(uint8_t m, int bri = 100) {
 		bri = (int)clampv(bri, 0, 100);
 		ledMask = m;
@@ -689,8 +562,6 @@ public:
 };
 Led led;
 
-// 1スロットぶんのLED更新。Timer3割り込みから毎回呼ぶ。
-// dispRefresh と同じ 0〜15 のPWMカウンタ方式。
 inline void ledRefresh() {
 	static uint8_t pc = 0;
 	bool on = (((ledBri + 8) >> 4) > pc);
@@ -700,37 +571,21 @@ inline void ledRefresh() {
 	pc = (pc + 1) & 15;
 }
 
-//================ ステッピングモータ (28BYJ-48, フルステップ2相励磁) ================
-// 1回転 = 2048ステップ。1ステップ = 360 / 2048 ≒ 0.176度。
-// ps は「電源を入れた位置」を0とした絶対ステップ数。物理的な原点ではない。
-// 絶対角度が必要な課題では、フォトインタラプタで原点を出して zero() を呼ぶ。
-//
-// 基本の使い方 (ISR駆動):
-//   setup:  sm.run(2);            // 2ms/step。1回呼べば以後有効
-//   loop:   sm.mv(512);           // 移動量を入れるだけで勝手に動く
-// 台形加減速 (速く回したいとき):
-//   sm.run(1, 5, 100);            // 5ms/stepから1ms/stepへ100ステップかけて加速。
-//                                 // 停止前も残り100ステップで自動減速する
-// 従来方式 (loop駆動) も残してある:
-//   loop:   sm.step(2);           // run() を使っていないときだけ
-// 注意: run() と step()/stepNow()/drive() を同時に使わない（二重駆動になる）。
 const long SPR = 2048;
 
 class Spm {
-	volatile int8_t ix = 0;     // 現在の励磁相 (0..3)
-	volatile long   ps = 0;     // 電源投入位置を0とした絶対ステップ
-	unsigned long stepPre = 0;  // step(ms) の前回ステップ時刻
+	volatile int8_t ix = 0;
+	volatile long   ps = 0;
+	unsigned long stepPre = 0;
 
-	// --- ISR駆動用。単位はすべて100μs（Timer3の1周期） ---
-	volatile uint16_t ivFast = 0;    // 最高速時の間隔。0 = ISR駆動オフ
-	volatile uint16_t ivSlow = 0;    // 起動時・停止直前の間隔
-	volatile uint16_t rampN = 0;     // 加減速に使うステップ数。0 = 加減速なし
-	volatile uint16_t ivCur = 0;     // 現在の間隔
-	volatile uint16_t isrCnt = 0;    // 間隔カウンタ
+	volatile uint16_t ivFast = 0;
+	volatile uint16_t ivSlow = 0;
+	volatile uint16_t rampN = 0;
+	volatile uint16_t ivCur = 0;
+	volatile uint16_t isrCnt = 0;
 
-	// 励磁相を s(0..3) に設定する。内部用。
 	void phase(uint8_t s) {
-		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };  // SPM4..1
+		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };
 		uint8_t b = tbl[s & 3];
 		dw(SPM1_PIN, (b & 1) ? HIGH : LOW);
 		dw(SPM2_PIN, (b & 2) ? HIGH : LOW);
@@ -740,11 +595,10 @@ class Spm {
 	}
 
 public:
-	volatile long rem = 0;   // 残りステップ数。正=CW, 負=CCW。
+	volatile long rem = 0;
 
-	// --- 1ステップだけ動かす（rem は使わない）---
-	void cw() { phase((ix + 3) & 3); ps++; }   // 時計回りに1相
-	void ccw() { phase((ix + 1) & 3); ps--; }   // 反時計回りに1相
+	void cw() { phase((ix + 3) & 3); ps++; }
+	void ccw() { phase((ix + 1) & 3); ps--; }
 
 	void drive(int spd) {
 		if (spd == 0) return;
@@ -756,7 +610,6 @@ public:
 		else ccw();
 	}
 
-	// 全相OFF。保持トルクが消え、手で回せる状態になる。
 	void off() {
 		dw(SPM1_PIN, LOW);
 		dw(SPM2_PIN, LOW);
@@ -764,14 +617,10 @@ public:
 		dw(SPM4_PIN, LOW);
 	}
 
-	// --- 移動量を指定する（rem に反映）---
-	// rem/ps は4バイトで ISR とも共有するため、読み書きは割り込み禁止で行う。
-	void mv(long n) { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem += n; } }        // 相対。今の位置から n ステップ
-	void to(long t) { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem = t - ps; } }    // 絶対。ステップ番号 t へ（最短方向ではない）
-	void stop() { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem = 0; } }         // 残り移動を打ち切る（励磁は保持）
+	void mv(long n) { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem += n; } }
+	void to(long t) { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem = t - ps; } }
+	void stop() { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem = 0; } }
 
-	// 円環軸で目標ステップ target へ最短方向に向ける。
-	// rem を代入し直すので毎ループ呼んでよい。
 	void seek(long target) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			long cur = ((ps % SPR) + SPR) % SPR;
@@ -782,34 +631,25 @@ public:
 		}
 	}
 
-	// 方向固定版。cw=true でCW固定(正回転)、false でCCW固定(逆回転)。
-	// 最短方向を無視して、指定した向きだけで target まで回す。
-	// 既に target にいるときは、CW/CCW どちらでも動かさない(rem=0)。
 	void seek(long target, bool cw) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			long cur = ((ps % SPR) + SPR) % SPR;
 			long tgt = ((target % SPR) + SPR) % SPR;
-			long d = ((tgt - cur) % SPR + SPR) % SPR;   // CW方向の距離 0..SPR-1
-			if (cw)          rem = d;            // CW固定
-			else if (d == 0) rem = 0;            // 既に目標。逆方向でも動かさない
-			else             rem = d - SPR;      // CCW固定(負の値になる)
+			long d = ((tgt - cur) % SPR + SPR) % SPR;
+			if (cw)          rem = d;
+			else if (d == 0) rem = 0;
+			else             rem = d - SPR;
 		}
 	}
 
-	// n分割したときの i 番目の位置を絶対ステップで返す。
-	// 2048がnで割り切れなくても、毎回この式で出せば累積ズレが起きない。
 	long divStep(long i, long n = 12) {
 		return lround((double)i * SPR / n);
 	}
 
-	// --- 実際に動かす ---
-	// rem に従って1ステップ動かす。速度制限なし（呼ぶたびに動く）。
 	void stepNow() {
 		if (rem > 0) { cw();  rem--; } else if (rem < 0) { ccw(); rem++; }
 	}
 
-	// ms ミリ秒ごとに1ステップ動かす非ブロッキング版。loop 内で呼ぶ。
-	//   sm.mv(2048); ... loop で sm.step(2);   // 2ms/step で1回転
 	void step(unsigned long ms) {
 		if (rem == 0) return;
 		unsigned long now = millis();
@@ -818,17 +658,10 @@ public:
 		stepNow();
 	}
 
-	// --- ISR駆動（Timer3 が代わりに step してくれる版）---
-	// run(fast) を1回呼ぶと、以後 rem がある限り fast ms/step で勝手に動く。
-	// run(fast, slow, ramp) にすると、slow ms/step から fast ms/step へ
-	// ramp ステップかけて加速し、残り ramp ステップで減速する（台形駆動）。
-	// 速い速度で回すと脱調する場合に使う。
-	//   sm.run(2);            // 一定速 2ms/step
-	//   sm.run(1, 5, 100);    // 5ms → 1ms を100ステップで加減速
 	void run(unsigned long fast, unsigned long slow = 0, uint16_t ramp = 0) {
 		if (slow < fast) { slow = fast; ramp = 0; }
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			ivFast = (uint16_t)(fast * 10);   // 100μs単位に変換
+			ivFast = (uint16_t)(fast * 10);
 			ivSlow = (uint16_t)(slow * 10);
 			rampN = ramp;
 			ivCur = ivSlow;
@@ -837,47 +670,43 @@ public:
 	}
 	void runOff() { ivFast = 0; }
 
-	// Timer3 ISR から毎回呼ばれる。ユーザは直接呼ばない。
 	void isrTick() {
 		if (ivFast == 0) return;
-		if (rem == 0) { ivCur = ivSlow; return; }   // 停止中は加速状態を初期化
+		if (rem == 0) { ivCur = ivSlow; return; }
 		if (++isrCnt < ivCur) return;
 		isrCnt = 0;
 		stepNow();
 		if (rampN == 0) { ivCur = ivFast; return; }
-		// 加速: 1ステップごとに間隔を縮める
+
 		uint16_t dec = (ivSlow - ivFast) / rampN;
 		if (dec == 0) dec = 1;
 		uint16_t acc = (ivCur > ivFast + dec) ? ivCur - dec : ivFast;
-		// 減速: 残りステップに比例して間隔を戻す
+
 		long r = (rem >= 0) ? rem : -rem;
 		uint16_t brk = ivFast;
 		if (r < (long)rampN) {
 			brk = ivFast + (uint16_t)(((uint32_t)(ivSlow - ivFast) * (rampN - r)) / rampN);
 		}
-		ivCur = (acc > brk) ? acc : brk;   // 遅い方（大きい間隔）を採用
+		ivCur = (acc > brk) ? acc : brk;
 	}
 
-	// --- 状態 ---
-	bool moving() { long r; ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { r = rem; } return r != 0; }   // 移動中か
-	long pos() { long p; ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { p = ps; } return p; }        // 現在の絶対ステップ
-	void zero() { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { ps = 0; rem = 0; } }   // 現在位置を原点(0)にする
+	bool moving() { long r; ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { r = rem; } return r != 0; }
+	long pos() { long p; ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { p = ps; } return p; }
+	void zero() { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { ps = 0; rem = 0; } }
 
-	// --- 角度で扱う版（2048が360で割り切れないので float+丸めで誤差を抑える）---
 	static long  degToStep(float deg) { return lround(deg * SPR / 360.0); }
 	static float stepToDeg(long s) { return s * 360.0 / SPR; }
-	void  toDeg(float deg) { to(degToStep(deg)); }     // 絶対角度へ
-	void  seekDeg(float deg) { seek(degToStep(deg)); }   // 最短方向で角度へ
-	float posDeg() { return stepToDeg(pos()); }   // 現在角度
+	void  toDeg(float deg) { to(degToStep(deg)); }
+	void  seekDeg(float deg) { seek(degToStep(deg)); }
+	float posDeg() { return stepToDeg(pos()); }
 };
 Spm sm;
 
-//================ DCモータ (DRV8835) ================
 class Dcm {
-	int cs = 0;   // ramp 用の現在速度
+	int cs = 0;
 
 public:
-void cw(int spd) {
+	void cw(int spd) {
 		TCCR5A &= ~_BV(COM5C1);
 		dw(DCM1_PIN, LOW);
 		TCCR5A |= _BV(COM5A1);
@@ -903,7 +732,6 @@ void cw(int spd) {
 		dw(DCM2_PIN, LOW);
 	}
 
-	// 符号付き速度。spd>0:正転 spd<0:逆転 spd=0:ブレーキ。±255 に自動クランプ。
 	void drive(int spd) {
 		if (spd > 0) {
 			cw(spd > 255 ? 255 : spd);
@@ -915,37 +743,15 @@ void cw(int spd) {
 		cs = (int)clampv(spd, -255, 255);
 	}
 
-	// ソフトスタート付き drive。target へ毎回 step ずつ近づける。
-	// loop 内で iv 等と組み合わせて周期的に呼ぶ。
-	//   if (t(20)) dm.ramp(200, 10);   // 20msごとに10ずつ加速
 	void ramp(int target, int step) {
 		cs = (int)toward(cs, target, step);
 		drive(cs);
 	}
 
-	// ramp の現在速度
 	int speed() { return cs; }
 };
 Dcm dm;
 
-//================ シーケンス制御 ================
-// loop の中にステップを順に並べる。記述順に 0,1,2... と番号が振られ、
-// 現在ステップの if だけが実行される。
-//
-//   Seq sq;
-//   void loop() {
-//     sq.top();                          // loop 先頭で必ず1回
-//     if (sq.on()) {                     // ステップ0
-//       if (sq.in()) led(R);             //   入った瞬間だけ
-//       if (sq.after(1000)) sq.next();   //   1秒たったら次へ
-//     }
-//     if (sq.on()) {                     // ステップ1
-//       if (in.d(d1).ltoh) sq.next();    //   条件で次へ
-//     }
-//     if (sq.on()) {                     // ステップ2
-//       if (sq.after(2000)) sq.to(0);    //   先頭へ戻る
-//     }
-//   }
 class Seq {
 	int  cur = 0;
 	int  pos = 0;
@@ -958,8 +764,8 @@ public:
 
 	void top() {
 		if (pos > count) count = pos;
-		if (count > 0 && cur >= count) cur = 0;   // 初回パスで最終ステップを
-		// next() したときの巻き戻し
+		if (count > 0 && cur >= count) cur = 0;
+
 		pos = 0;
 		moved = false;
 		exited = false;
@@ -984,7 +790,7 @@ public:
 	void to(int s) { cur = s; t0 = millis(); fresh = true; moved = true; }
 	bool is(int s) { return cur == s; }
 	int  now() { return cur; }
-	int  steps() { return count; }   // 計測済みのステップ総数
+	int  steps() { return count; }
 	bool in() {
 		if (fresh) { fresh = false; return true; }
 		return false;
@@ -997,9 +803,6 @@ public:
 	bool after(unsigned long ms) { return millis() - t0 >= ms; }
 };
 
-//================ Timer3 割り込み ================
-// 使うときは #include より前に #define timer3 を書き、void isr() を実装する。
-// 100μs 周期で isr() が呼ばれる。
 #ifdef timer3
 void isr();
 #endif
@@ -1013,7 +816,6 @@ ISR(TIMER3_COMPA_vect) {
 #endif
 }
 
-//================ 初期化 ================
 void begin(void) {
 	pinMode(a1, INPUT);
 	pinMode(a2, INPUT);
@@ -1049,12 +851,11 @@ void begin(void) {
 
 	randomSeed(ar(A15) ^ micros());
 
-	// ADC 分解能を維持したまま変換を高速化 (分周比16)
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
 
 	cli();
 	TCCR3A = TCCR3B = TCNT3 = 0;
-	OCR3A = F_CPU / 64 / 10000 - 1;   // 100μs
+	OCR3A = F_CPU / 64 / 10000 - 1;
 	TCCR3B |= (1 << WGM32);
 	TCCR3B |= (1 << CS31) | (1 << CS30);
 	TIMSK3 |= (1 << OCIE3A);
