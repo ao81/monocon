@@ -706,11 +706,14 @@ class Dcm {
 	int cs = 0;
 
 public:
+	int8_t now = 0;
+
 	void cw(int spd) {
 		TCCR5A &= ~_BV(COM5C1);
 		dw(DCM1_PIN, LOW);
 		TCCR5A |= _BV(COM5A1);
 		OCR5A = spd;
+		now = (spd > 0) ? 1 : 0;
 	}
 
 	void ccw(int spd) {
@@ -718,18 +721,21 @@ public:
 		dw(DCM2_PIN, LOW);
 		TCCR5A |= _BV(COM5C1);
 		OCR5C = spd;
+		now = (spd > 0) ? -1 : 0;
 	}
 
 	void br() {
 		TCCR5A &= ~(_BV(COM5A1) | _BV(COM5C1));
 		dw(DCM1_PIN, HIGH);
 		dw(DCM2_PIN, HIGH);
+		now = 0;
 	}
 
 	void fr() {
 		TCCR5A &= ~(_BV(COM5A1) | _BV(COM5C1));
 		dw(DCM1_PIN, LOW);
 		dw(DCM2_PIN, LOW);
+		now = 0;
 	}
 
 	void drive(int spd) {
