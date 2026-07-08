@@ -4,46 +4,46 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/07
+// 作成年月日: 2026/07/08
 /**********************************************/
 
 #pragma once
 
 #include <util/atomic.h>
 
-#define a1 A0
-#define a2 A1
-#define a3 A2
-#define a4 A3
-#define d1 10
-#define d2 11
-#define d3 12
-#define d4 13
+constexpr uint8_t a1 = A0;
+constexpr uint8_t a2 = A1;
+constexpr uint8_t a3 = A2;
+constexpr uint8_t a4 = A3;
+constexpr uint8_t d1 = 10;
+constexpr uint8_t d2 = 11;
+constexpr uint8_t d3 = 12;
+constexpr uint8_t d4 = 13;
 
-#define SCK_PIN 6
-#define SDI_PIN 7
-#define LAT_PIN 8
+constexpr uint8_t SCK_PIN = 6;
+constexpr uint8_t SDI_PIN = 7;
+constexpr uint8_t LAT_PIN = 8;
 
-#define BZ_PIN    5
-#define LED_G_PIN 2
-#define LED_B_PIN 3
-#define LED_R_PIN 4
+constexpr uint8_t BZ_PIN = 5;
+constexpr uint8_t LED_G_PIN = 2;
+constexpr uint8_t LED_B_PIN = 3;
+constexpr uint8_t LED_R_PIN = 4;
 
-#define SPM1_PIN 28
-#define SPM2_PIN 26
-#define SPM3_PIN 24
-#define SPM4_PIN 22
+constexpr uint8_t SPM1_PIN = 28;
+constexpr uint8_t SPM2_PIN = 26;
+constexpr uint8_t SPM3_PIN = 24;
+constexpr uint8_t SPM4_PIN = 22;
 
-#define DCM1_PIN 44
-#define DCM2_PIN 46
+constexpr uint8_t DCM1_PIN = 44;
+constexpr uint8_t DCM2_PIN = 46;
 
-#define PH_PIN 36
+constexpr uint8_t PH_PIN = 36;
 
-#define SCK_BIT (1 << PH3)
-#define SDI_BIT (1 << PH4)
-#define LAT_BIT (1 << PH5)
+constexpr uint8_t SCK_BIT = (1 << PH3);
+constexpr uint8_t SDI_BIT = (1 << PH4);
+constexpr uint8_t LAT_BIT = (1 << PH5);
 
-inline void fsout(uint8_t v) {
+void fsout(uint8_t v) {
 	for (uint8_t i = 0; i < 8; i++) {
 		if (v & 0x80) {
 			PORTH |= SDI_BIT;
@@ -56,7 +56,7 @@ inline void fsout(uint8_t v) {
 	}
 }
 
-inline int ar(uint8_t pin) {
+int ar(uint8_t pin) {
 	if (pin >= A0) pin -= A0;
 	ADMUX = (1 << REFS0) | (pin & 0x07);
 	ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 1) << MUX5);
@@ -65,11 +65,11 @@ inline int ar(uint8_t pin) {
 	return ADC;
 }
 
-inline int dr(uint8_t pin) {
+int dr(uint8_t pin) {
 	return (*portInputRegister(digitalPinToPort(pin)) & digitalPinToBitMask(pin)) ? HIGH : LOW;
 }
 
-inline void dw(uint8_t pin, uint8_t val) {
+void dw(uint8_t pin, uint8_t val) {
 	volatile uint8_t* out = portOutputRegister(digitalPinToPort(pin));
 	uint8_t mask = digitalPinToBitMask(pin);
 	uint8_t s = SREG;
@@ -84,32 +84,32 @@ const uint8_t seg[16] = {
 	0x6d, 0x7d, 0x27, 0x7f, 0x6f,
 	0x77, 0x7c, 0x58, 0x5e, 0x79, 0x71,
 };
-#define SEG_DOT   0x80
-#define SEG_MINUS 0x40
+constexpr uint8_t SEG_DOT = 0x80;
+constexpr uint8_t SEG_MINUS = 0x40;
 
-inline long clampv(long v, long lo, long hi) {
+long clampv(long v, long lo, long hi) {
 	return v < lo ? lo : (v > hi ? hi : v);
 }
 
-inline long toward(long cur, long target, long step) {
+long toward(long cur, long target, long step) {
 	if (cur < target) return (cur + step > target) ? target : cur + step;
 	if (cur > target) return (cur - step < target) ? target : cur - step;
 	return cur;
 }
 
-inline long deadband(long v, long center, long width) {
+long deadband(long v, long center, long width) {
 	return (v > center - width && v < center + width) ? center : v;
 }
 
-inline bool blink(unsigned long ms) {
+bool blink(unsigned long ms) {
 	return (millis() / ms) & 1;
 }
 
-inline long rnd(long n) {
+long rnd(long n) {
 	return random(n);
 }
 
-inline long rndDiff(long n) {
+long rndDiff(long n) {
 	static long last = -1;
 	long v;
 	do {
@@ -123,7 +123,10 @@ struct de {
 	uint8_t level;
 	bool    ltoh;
 	bool    htol;
-	operator int() const { return level; }
+
+	operator int() const {
+		return level;
+	}
 };
 
 struct Joy {
@@ -169,8 +172,10 @@ class In {
 
 	struct Ech {
 		uint8_t           pa, pb;
-		volatile uint8_t* ra; uint8_t ma;
-		volatile uint8_t* rb; uint8_t mb;
+		volatile uint8_t* ra;
+		uint8_t           ma;
+		volatile uint8_t* rb;
+		uint8_t           mb;
 		uint8_t           est;
 		long              c;
 		bool              init;
@@ -185,9 +190,12 @@ class In {
 			if (!ec[i].init && !freeCh) freeCh = &ec[i];
 		}
 		if (!freeCh) return nullptr;
-		freeCh->pa = pa; freeCh->pb = pb;
-		freeCh->ra = portInputRegister(digitalPinToPort(pa)); freeCh->ma = digitalPinToBitMask(pa);
-		freeCh->rb = portInputRegister(digitalPinToPort(pb)); freeCh->mb = digitalPinToBitMask(pb);
+		freeCh->pa = pa;
+		freeCh->pb = pb;
+		freeCh->ra = portInputRegister(digitalPinToPort(pa));
+		freeCh->ma = digitalPinToBitMask(pa);
+		freeCh->rb = portInputRegister(digitalPinToPort(pb));
+		freeCh->mb = digitalPinToBitMask(pb);
 		freeCh->est = 0;
 		freeCh->c = 0;
 		freeCh->init = true;
@@ -299,7 +307,10 @@ public:
 		for (uint8_t i = 1; i < n; i++) {
 			int t = v[i];
 			int8_t j = i - 1;
-			while (j >= 0 && v[j] > t) { v[j + 1] = v[j]; j--; }
+			while (j >= 0 && v[j] > t) {
+				v[j + 1] = v[j];
+				j--;
+			}
 			v[j + 1] = t;
 		}
 		return v[n / 2];
@@ -331,6 +342,7 @@ class iv {
 	unsigned long pre = 0;
 	unsigned long pausedAt = 0;
 	bool paused = false;
+
 public:
 	bool operator()(unsigned long ms) {
 		if (paused) return false;
@@ -341,7 +353,9 @@ public:
 		}
 		return false;
 	}
-	void reset() { pre = millis(); }
+	void reset() {
+		pre = millis();
+	}
 
 	void wait() {
 		if (paused) return;
@@ -355,16 +369,29 @@ public:
 		paused = false;
 	}
 
-	bool isWait() { return paused; }
+	bool isWait() {
+		return paused;
+	}
 };
 
 class ti {
 	unsigned long lim = 0;
 	bool run = false;
+
 public:
-	void start(unsigned long ms) { lim = millis() + ms; run = true; }
-	void stop() { run = false; }
-	bool active() { return run; }
+	void start(unsigned long ms) {
+		lim = millis() + ms;
+		run = true;
+	}
+
+	void stop() {
+		run = false;
+	}
+
+	bool active() {
+		return run;
+	}
+
 	bool done() {
 		if (run && (long)(millis() - lim) >= 0) {
 			run = false;
@@ -384,25 +411,51 @@ class Sw {
 	unsigned long t0 = 0;
 	unsigned long fix = 0;
 	bool run = false;
+
 public:
-	void start() { t0 = millis(); run = true; }
-	void stop() { if (run) { fix = millis() - t0; run = false; } }
-	void reset() { run = false; fix = 0; }
-	bool running() { return run; }
-	unsigned long ms() { return run ? millis() - t0 : fix; }
-	unsigned long operator()() { return ms(); }
+	void start() {
+		t0 = millis();
+		run = true;
+	}
+
+	void stop() {
+		if (run) {
+			fix = millis() - t0;
+			run = false;
+		}
+	}
+
+	void reset() {
+		run = false;
+		fix = 0;
+	}
+
+	bool running() {
+		return run;
+	}
+
+	unsigned long ms() {
+		return run ? millis() - t0 : fix;
+	}
+
+	unsigned long operator()() {
+		return ms();
+	}
 };
 
 volatile uint8_t segPat[3] = { 0, 0, 0 };
 volatile uint8_t segBri[3] = { 255, 255, 255 };
 
 void disp(char a, char b, char c, uint8_t ba = 255, uint8_t bb = 255, uint8_t bc = 255) {
-	segPat[0] = (uint8_t)a; segBri[0] = ba;
-	segPat[1] = (uint8_t)b; segBri[1] = bb;
-	segPat[2] = (uint8_t)c; segBri[2] = bc;
+	segPat[0] = (uint8_t)a;
+	segBri[0] = ba;
+	segPat[1] = (uint8_t)b;
+	segBri[1] = bb;
+	segPat[2] = (uint8_t)c;
+	segBri[2] = bc;
 }
 
-inline void dispRefresh() {
+void dispRefresh() {
 	static uint8_t pc = 0;
 	uint8_t a = (((segBri[0] + 8) >> 4) > pc) ? segPat[0] : 0;
 	uint8_t b = (((segBri[1] + 8) >> 4) > pc) ? segPat[1] : 0;
@@ -461,12 +514,12 @@ void dispn(double f) {
 	}
 }
 
-inline void dispn(float f) {
+void dispn(float f) {
 	dispn((double)f);
 }
 
 template <typename T>
-inline void dispn(T n, bool pad = false) {
+void dispn(T n, bool pad = false) {
 	dispn((int)n, pad);
 }
 
@@ -486,22 +539,22 @@ void bzoff() {
 	noTone(BZ_PIN);
 }
 
-#define nc4 262
-#define nd4 294
-#define ne4 330
-#define nf4 349
-#define ng4 392
-#define na4 440
-#define nb4 494
-#define nc5 523
-#define nd5 587
-#define ne5 659
-#define nf5 698
-#define ng5 784
-#define na5 880
-#define nb5 988
-#define nc6 1047
-#define nr  0
+constexpr int nc4 = 262;
+constexpr int nd4 = 294;
+constexpr int ne4 = 330;
+constexpr int nf4 = 349;
+constexpr int ng4 = 392;
+constexpr int na4 = 440;
+constexpr int nb4 = 494;
+constexpr int nc5 = 523;
+constexpr int nd5 = 587;
+constexpr int ne5 = 659;
+constexpr int nf5 = 698;
+constexpr int ng5 = 784;
+constexpr int na5 = 880;
+constexpr int nb5 = 988;
+constexpr int nc6 = 1047;
+constexpr int nr = 0;
 
 class Melody {
 	const int* ns = nullptr;
@@ -513,11 +566,23 @@ class Melody {
 
 public:
 	void play(const int* notes, const int* durs, int n, bool repeat = false) {
-		ns = notes; ds = durs; len = n; idx = 0; run = true; next = 0; rep = repeat;
+		ns = notes;
+		ds = durs;
+		len = n;
+		idx = 0;
+		run = true;
+		next = 0;
+		rep = repeat;
 	}
 
-	void stop() { run = false; noTone(BZ_PIN); }
-	bool playing() { return run; }
+	void stop() {
+		run = false;
+		noTone(BZ_PIN);
+	}
+
+	bool playing() {
+		return run;
+	}
 
 	void update() {
 		if (!run) return;
@@ -525,7 +590,13 @@ public:
 		if ((long)(now - next) < 0) return;
 
 		if (idx >= len) {
-			if (rep) { idx = 0; } else { run = false; noTone(BZ_PIN); return; }
+			if (rep) {
+				idx = 0;
+			} else {
+				run = false;
+				noTone(BZ_PIN);
+				return;
+			}
 		}
 
 		if (ns[idx] > 0) tone(BZ_PIN, ns[idx]);
@@ -536,13 +607,13 @@ public:
 };
 Melody mel;
 
-#define G 0b100
-#define B 0b010
-#define R 0b001
-#define GB 0b110
-#define GR 0b101
-#define BR 0b011
-#define GBR 0b111
+constexpr uint8_t G = 0b100;
+constexpr uint8_t B = 0b010;
+constexpr uint8_t R = 0b001;
+constexpr uint8_t GB = 0b110;
+constexpr uint8_t GR = 0b101;
+constexpr uint8_t BR = 0b011;
+constexpr uint8_t GBR = 0b111;
 
 volatile uint8_t ledMask = 0;
 volatile uint8_t ledBri = 0;
@@ -562,7 +633,7 @@ public:
 };
 Led led;
 
-inline void ledRefresh() {
+void ledRefresh() {
 	static uint8_t pc = 0;
 	bool on = (((ledBri + 8) >> 4) > pc);
 	dw(LED_R_PIN, (on && (ledMask & 1)) ? HIGH : LOW);
@@ -597,8 +668,15 @@ class Spm {
 public:
 	volatile long rem = 0;
 
-	void cw() { phase((ix + 3) & 3); ps++; }
-	void ccw() { phase((ix + 1) & 3); ps--; }
+	void cw() {
+		phase((ix + 3) & 3);
+		ps++;
+	}
+
+	void ccw() {
+		phase((ix + 1) & 3);
+		ps--;
+	}
 
 	void drive(int spd) {
 		if (spd == 0) return;
@@ -617,9 +695,23 @@ public:
 		dw(SPM4_PIN, LOW);
 	}
 
-	void mv(long n) { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem += n; } }
-	void to(long t) { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem = t - ps; } }
-	void stop() { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { rem = 0; } }
+	void mv(long n) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			rem += n;
+		}
+	}
+
+	void to(long t) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			rem = t - ps;
+		}
+	}
+
+	void stop() {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			rem = 0;
+		}
+	}
 
 	void seek(long target) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -647,7 +739,13 @@ public:
 	}
 
 	void stepNow() {
-		if (rem > 0) { cw();  rem--; } else if (rem < 0) { ccw(); rem++; }
+		if (rem > 0) {
+			cw();
+			rem--;
+		} else if (rem < 0) {
+			ccw();
+			rem++;
+		}
 	}
 
 	void step(unsigned long ms) {
@@ -659,7 +757,10 @@ public:
 	}
 
 	void run(unsigned long fast, unsigned long slow = 0, uint16_t ramp = 0) {
-		if (slow < fast) { slow = fast; ramp = 0; }
+		if (slow < fast) {
+			slow = fast;
+			ramp = 0;
+		}
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			ivFast = (uint16_t)(fast * 10);
 			ivSlow = (uint16_t)(slow * 10);
@@ -668,15 +769,23 @@ public:
 			isrCnt = 0;
 		}
 	}
-	void runOff() { ivFast = 0; }
+	void runOff() {
+		ivFast = 0;
+	}
 
 	void isrTick() {
 		if (ivFast == 0) return;
-		if (rem == 0) { ivCur = ivSlow; return; }
+		if (rem == 0) {
+			ivCur = ivSlow;
+			return;
+		}
 		if (++isrCnt < ivCur) return;
 		isrCnt = 0;
 		stepNow();
-		if (rampN == 0) { ivCur = ivFast; return; }
+		if (rampN == 0) {
+			ivCur = ivFast;
+			return;
+		}
 
 		uint16_t dec = (ivSlow - ivFast) / rampN;
 		if (dec == 0) dec = 1;
@@ -690,15 +799,48 @@ public:
 		ivCur = (acc > brk) ? acc : brk;
 	}
 
-	bool moving() { long r; ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { r = rem; } return r != 0; }
-	long pos() { long p; ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { p = ps; } return p; }
-	void zero() { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { ps = 0; rem = 0; } }
+	bool moving() {
+		long r;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			r = rem;
+		}
+		return r != 0;
+	}
 
-	static long  degToStep(float deg) { return lround(deg * SPR / 360.0); }
-	static float stepToDeg(long s) { return s * 360.0 / SPR; }
-	void  toDeg(float deg) { to(degToStep(deg)); }
-	void  seekDeg(float deg) { seek(degToStep(deg)); }
-	float posDeg() { return stepToDeg(pos()); }
+	long pos() {
+		long p;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			p = ps;
+		}
+		return p;
+	}
+
+	void zero() {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			ps = 0;
+			rem = 0;
+		}
+	}
+
+	static long degToStep(float deg) {
+		return lround(deg * SPR / 360.0);
+	}
+
+	static float stepToDeg(long s) {
+		return s * 360.0 / SPR;
+	}
+
+	void toDeg(float deg) {
+		to(degToStep(deg));
+	}
+
+	void seekDeg(float deg) {
+		seek(degToStep(deg));
+	}
+
+	float posDeg() {
+		return stepToDeg(pos());
+	}
 };
 Spm sm;
 
@@ -754,7 +896,9 @@ public:
 		drive(cs);
 	}
 
-	int speed() { return cs; }
+	int speed() {
+		return cs;
+	}
 };
 Dcm dm;
 
@@ -765,6 +909,7 @@ class Seq {
 	unsigned long t0 = 0;
 	bool moved = false;
 	bool exited = false;
+
 public:
 	bool fresh = true;
 
@@ -777,36 +922,75 @@ public:
 		exited = false;
 	}
 	bool on() {
-		if (moved) { pos++; return false; }
+		if (moved) {
+			pos++;
+			return false;
+		}
 		return (pos++ == cur);
 	}
-	bool operator()() { return on(); }
+
+	bool operator()() {
+		return on();
+	}
 
 	void next() {
 		cur++;
 		if (count > 0 && cur >= count) cur = 0;
-		t0 = millis(); fresh = true; moved = true;
+		t0 = millis();
+		fresh = true;
+		moved = true;
 	}
+
 	void prev() {
 		cur--;
 		if (cur < 0) cur = (count > 0) ? count - 1 : 0;
-		t0 = millis(); fresh = true; moved = true;
+		t0 = millis();
+		fresh = true;
+		moved = true;
 	}
 
-	void to(int s) { cur = s; t0 = millis(); fresh = true; moved = true; }
-	bool is(int s) { return cur == s; }
-	int  now() { return cur; }
-	int  steps() { return count; }
+	void to(int s) {
+		cur = s;
+		t0 = millis();
+		fresh = true;
+		moved = true;
+	}
+
+	bool is(int s) {
+		return cur == s;
+	}
+
+	int now() {
+		return cur;
+	}
+
+	int steps() {
+		return count;
+	}
+
 	bool in() {
-		if (fresh) { fresh = false; return true; }
+		if (fresh) {
+			fresh = false;
+			return true;
+		}
 		return false;
 	}
+
 	bool out() {
-		if (moved && !exited) { exited = true; return true; }
+		if (moved && !exited) {
+			exited = true;
+			return true;
+		}
 		return false;
 	}
-	unsigned long elapsed() { return millis() - t0; }
-	bool after(unsigned long ms) { return millis() - t0 >= ms; }
+
+	unsigned long elapsed() {
+		return millis() - t0;
+	}
+
+	bool after(unsigned long ms) {
+		return millis() - t0 >= ms;
+	}
 };
 
 #ifdef timer3
