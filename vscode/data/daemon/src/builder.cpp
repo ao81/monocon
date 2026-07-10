@@ -1028,16 +1028,34 @@ namespace Builder {
 			out.compile.elfFile = it->second.elfFile;
 		}
 		// --- ポート決定 ---
-		std::string port = req.port;
-		if (port.empty()) {
+		// まずキャッシュから読む (通常はこれで即決まる)。
+		auto readCachedPort = []() -> std::string {
 			std::lock_guard<std::mutex> lk(g_state.portMtx);
-			port = g_state.cachedArduinoPort;
-			if (port.empty() && !g_state.cachedPorts.empty()) {
-				port = g_state.cachedPorts.front();
+			if (!g_state.cachedArduinoPort.empty()) return g_state.cachedArduinoPort;
+			if (!g_state.cachedPorts.empty()) return g_state.cachedPorts.front();
+			return "";
+		};
+
+		std::string port = req.port;
+		if (port.empty()) port = readCachedPort();
+
+		// キャッシュが空 = 「Arduino を挿した直後でまだ列挙が終わっていない」
+		// 可能性が高い。ここで諦めず、その場で再スキャン + 短いリトライを行う。
+		//   - USB ドライバ列挙 (CH340/FTDI 等) は初回 1-3 秒かかることがある
+		//   - レジストリ監視スレッドの発火を待たずに自前でポーリングする
+		// 合計最大 ~2.4 秒待つ (200ms × 12 回)。見つかった時点で即抜ける。
+		if (port.empty()) {
+			constexpr int kMaxTries = 12;
+			for (int i = 0; i < kMaxTries && port.empty(); ++i) {
+				refreshComPorts();               // レジストリを即再スキャン
+				port = readCachedPort();
+				if (!port.empty()) break;
+				std::this_thread::sleep_for(std::chrono::milliseconds(200));
 			}
 		}
 		if (port.empty()) {
-			out.errorMessage = "No COM port detected";
+			out.errorMessage = "No COM port detected "
+				"(Arduino を挿し直すか、ケーブル / ドライバを確認してください)";
 			return out;
 		}
 		out.port = port;
