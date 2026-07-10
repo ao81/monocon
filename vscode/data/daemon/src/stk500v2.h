@@ -26,6 +26,7 @@ namespace Stk500v2 {
 		double totalMs = 0;
 		size_t bytesWritten = 0;
 		size_t pagesWritten = 0;
+		size_t retries = 0;         // ページ書込リトライ回数 (0 なら理想)
 	};
 
 	// Intel HEX ファイルを読み込み、フラッシュイメージを返す。

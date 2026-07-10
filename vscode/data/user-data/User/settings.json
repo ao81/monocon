@@ -264,6 +264,12 @@
 	"editor.suggest.snippetsPreventQuickSuggestions": false,
 	"window.menuBarVisibility": "compact",
 
+	// =========================================================
+	// vscode-neovim
+	// nvim / init.lua のパスは start.bat で設定される PATH / XDG_CONFIG_HOME に
+	// 依存する。vscode-neovim は setting 上の ${env:X} を解決しないため、ここで
+	// 絶対パスを書くと portable モードを壊す。start.bat 経由で起動すること。
+	// =========================================================
 	"vscode-neovim.ctrlKeysForNormalMode": [
 		"a",
 		"b",

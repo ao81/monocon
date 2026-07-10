@@ -1065,7 +1065,8 @@ namespace Builder {
 			<< " prog=" << stats.progMs << "ms"
 			<< " leave=" << stats.leaveMs << "ms\n"
 			<< "  pages=" << stats.pagesWritten
-			<< " bytes=" << stats.bytesWritten << "\n";
+			<< " bytes=" << stats.bytesWritten
+			<< " retries=" << stats.retries << "\n";
 		out.avrdudeOutput = oss.str();
 		if (!stats.success) {
 			out.errorMessage = stats.errorMessage;

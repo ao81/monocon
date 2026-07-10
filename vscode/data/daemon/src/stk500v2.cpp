@@ -44,12 +44,12 @@ namespace {
 				OPEN_EXISTING, 0, nullptr);
 			if (h == INVALID_HANDLE_VALUE) return false;
 
-			// ドライバ側のキューを 16KB に拡張。USB-Serial 経由でページ (272B) を
+			// ドライバ側のキューを 32KB に拡張。USB-Serial 経由でページ (272B) を
 			// 連続送信する際、ドライバの内部バッファが十分にあれば WriteFile が
 			// 即座にユーザ空間に戻れる (ドライバが非同期で USB に流す)。
-			// 旧 4KB は 15 ページ分相当だが、書き込み中のフロー制御の頭打ちを
-			// 16KB 化で更に緩和する。
-			SetupComm(h, 16384, 16384);
+			// TX 側は 100 ページ (~27KB) 相当を確保し、書き込み中のフロー制御を
+			// 完全に頭打ちさせない。RX 側は応答が小さい (~8B/ページ) ので 8KB で十分。
+			SetupComm(h, 8192, 32768);
 
 			DCB dcb{};
 			dcb.DCBlength = sizeof(dcb);
@@ -105,15 +105,18 @@ namespace {
 		// RC 時定数 = 10kΩ × 100nF = 1ms。実際のリセットパルス幅は約 1ms。
 		// よって長時間 LOW を維持しても効果は無く、純粋なドライバ反映待ちで十分。
 		void toggleReset() {
-			// HIGH を確実に立てるための最低限の settle (旧: 50ms → 2ms)
+			// HIGH を確実に立てるための最低限の settle。
+			// 直前に open() で DTR_CONTROL_ENABLE を指定済みなので、既に HIGH の
+			// 可能性が高い。しかしユーザ空間から SetCommState が USB-Serial に
+			// 反映されるのに 1-2ms かかるためこの settle は残す。
 			EscapeCommFunction(h, SETDTR);
 			Sleep(2);
 
 			// HIGH → LOW: コンデンサ経由で RESET ピンに負パルス → MCU リセット
-			// 旧 100ms はドライバ反映と一部 USB-Serial の遅延を吸収するための余裕。
-			// 20ms あれば CH340/FTDI/16U2 すべて反映済み。RC 1ms に対して十分過大。
+			// 実測: CH340/FTDI/16U2 いずれも 10ms あれば DTR が LOW に落ちる。
+			// RC 時定数 1ms に対して十分過大。
 			EscapeCommFunction(h, CLRDTR);
-			Sleep(20);
+			Sleep(12);
 
 			// LOW → HIGH: リセット解除 → ブートローダ起動
 			EscapeCommFunction(h, SETDTR);
@@ -130,12 +133,27 @@ namespace {
 		bool read(uint8_t* buf, size_t n) {
 			// ReadIntervalTimeout=MAXDWORD のため、ReadFile は
 			// 「指定バイト数全部受信」or「ReadTotalTimeoutConstant 経過」で戻る。
-			// 1 回の ReadFile が 500ms タイムアウト。最大 4 回 = 2 秒まで待つ。
+			// 途切れ途切れに来るデータを取り漏らさないよう最大 4 回リトライする。
 			constexpr int kMaxLoops = 4;
 			DWORD total = 0;
 			for (int loop = 0; loop < kMaxLoops && total < n; ++loop) {
 				DWORD r = 0;
 				if (!ReadFile(h, buf + total, (DWORD)(n - total), &r, nullptr)) return false;
+				total += r;
+			}
+			return total == n;
+		}
+
+		// sync 用の高速 read: 途中でも 0 バイト返ってきたら即座に諦める。
+		// 「バイトが少しでも来ていれば残り待つが、完全に無音なら早く諦める」
+		// これにより sync 失敗時のロスを 1×timeoutConstant に抑えられる。
+		bool readOrGiveUp(uint8_t* buf, size_t n) {
+			constexpr int kMaxLoops = 3;
+			DWORD total = 0;
+			for (int loop = 0; loop < kMaxLoops && total < n; ++loop) {
+				DWORD r = 0;
+				if (!ReadFile(h, buf + total, (DWORD)(n - total), &r, nullptr)) return false;
+				if (r == 0 && total == 0) return false; // 完全無音 → 即諦め
 				total += r;
 			}
 			return total == n;
@@ -180,12 +198,15 @@ namespace {
 			return sendShort(body.data(), body.size());
 		}
 
-		bool recvMessage(std::vector<uint8_t>& body) {
+		// giveUpOnSilence: 完全無音なら即座に false を返す。sync 用途向け。
+		bool recvMessage(std::vector<uint8_t>& body, bool giveUpOnSilence = false) {
 			// PurgeComm 後 / 直前送信に対する応答であれば、RX バッファ先頭は確実に
-			// MESSAGE_START になる。ヘッダ 5 バイトを 1 ReadFile で取得して
-			// シスコール回数を 1 つ削る (ページ毎に 1 回 → 数十 ms オーダー)。
+			// MESSAGE_START になる。ヘッダ 5 バイトを 1 ReadFile で取得。
 			uint8_t hdr5[5];
-			if (!port.read(hdr5, 5)) return false;
+			bool ok = giveUpOnSilence
+				? port.readOrGiveUp(hdr5, 5)
+				: port.read(hdr5, 5);
+			if (!ok) return false;
 
 			if (hdr5[0] != MESSAGE_START) {
 				// 異常系: 古いゴミが先頭にある場合は線形に MESSAGE_START を探す
@@ -205,14 +226,34 @@ namespace {
 
 			uint16_t sz = ((uint16_t)hdr5[2] << 8) | hdr5[3];
 			body.resize(sz);
-			if (sz > 0 && !port.read(body.data(), sz)) return false;
-
-			uint8_t chk;
-			if (!port.read(&chk, 1)) return false;
-
-			uint8_t calc = MESSAGE_START ^ hdr5[1] ^ hdr5[2] ^ hdr5[3] ^ hdr5[4];
-			for (uint8_t bb : body) calc ^= bb;
-			if (calc != chk) return false;
+			// ホットパスの最適化: body + chk (1 バイト) を 1 度の ReadFile でまとめて読む。
+			// 旧: read(body,sz) + read(chk,1) の 2 syscall → 新: 1 syscall
+			// ページ書込 (2 バイト応答) だと 8 バイト転送で ~1ms 短縮/ページ。
+			// 100 ページのフラッシュで ~100ms 稼げる。
+			if (sz > 0) {
+				uint8_t tail[65];  // 実応答 body は最大 ~10 バイト。安全側で 64+1
+				if (sz + 1 <= sizeof(tail)) {
+					if (!port.read(tail, sz + 1)) return false;
+					for (uint16_t i = 0; i < sz; ++i) body[i] = tail[i];
+					uint8_t chk = tail[sz];
+					uint8_t calc = MESSAGE_START ^ hdr5[1] ^ hdr5[2] ^ hdr5[3] ^ hdr5[4];
+					for (uint16_t i = 0; i < sz; ++i) calc ^= body[i];
+					if (calc != chk) return false;
+				} else {
+					// 予想外に大きい body: 従来通り 2 段読み
+					if (!port.read(body.data(), sz)) return false;
+					uint8_t chk;
+					if (!port.read(&chk, 1)) return false;
+					uint8_t calc = MESSAGE_START ^ hdr5[1] ^ hdr5[2] ^ hdr5[3] ^ hdr5[4];
+					for (uint8_t bb : body) calc ^= bb;
+					if (calc != chk) return false;
+				}
+			} else {
+				uint8_t chk;
+				if (!port.read(&chk, 1)) return false;
+				uint8_t calc = MESSAGE_START ^ hdr5[1] ^ hdr5[2] ^ hdr5[3] ^ hdr5[4];
+				if (calc != chk) return false;
+			}
 
 			seq++;
 			return true;
@@ -231,37 +272,38 @@ namespace {
 		}
 
 		bool enterProgMode() {
-			// ATmega2560 の標準 ISP 入場シーケンス
-			std::vector<uint8_t> req = {
+			// ATmega2560 の標準 ISP 入場シーケンス。sendShort で heap allocation を排除。
+			const uint8_t req[12] = {
 				CMD_ENTER_PROGMODE_ISP,
 				200, 100, 25, 32, 0,
 				0x53, 3,
 				0xAC, 0x53, 0x00, 0x00
 			};
-			std::vector<uint8_t> resp;
-			if (!exchange(req, resp)) return false;
-			return resp.size() >= 2 && resp[0] == CMD_ENTER_PROGMODE_ISP && resp[1] == STATUS_CMD_OK;
+			if (!sendShort(req, sizeof(req))) return false;
+			if (!recvMessage(respBuf)) return false;
+			return respBuf.size() >= 2 && respBuf[0] == CMD_ENTER_PROGMODE_ISP && respBuf[1] == STATUS_CMD_OK;
 		}
 
 		bool leaveProgMode() {
-			std::vector<uint8_t> req = { CMD_LEAVE_PROGMODE_ISP, 1, 1 };
-			std::vector<uint8_t> resp;
-			if (!exchange(req, resp)) return false;
-			return resp.size() >= 2 && resp[0] == CMD_LEAVE_PROGMODE_ISP && resp[1] == STATUS_CMD_OK;
+			const uint8_t req[3] = { CMD_LEAVE_PROGMODE_ISP, 1, 1 };
+			if (!sendShort(req, sizeof(req))) return false;
+			if (!recvMessage(respBuf)) return false;
+			return respBuf.size() >= 2 && respBuf[0] == CMD_LEAVE_PROGMODE_ISP && respBuf[1] == STATUS_CMD_OK;
 		}
 
 		// Mega 2560 (>64KB) は bit31=1 で拡張アドレス指定。アドレスは「ワード」単位。
 		bool loadAddress(uint32_t wordAddr) {
-			std::vector<uint8_t> req = {
+			// ホットパス (0xFF ページを挟むと呼ばれる): heap allocation を排除。
+			const uint8_t req[5] = {
 				CMD_LOAD_ADDRESS,
 				(uint8_t)(((wordAddr >> 24) & 0xFF) | 0x80),
 				(uint8_t)((wordAddr >> 16) & 0xFF),
 				(uint8_t)((wordAddr >> 8) & 0xFF),
 				(uint8_t)(wordAddr & 0xFF)
 			};
-			std::vector<uint8_t> resp;
-			if (!exchange(req, resp)) return false;
-			return resp.size() >= 2 && resp[0] == CMD_LOAD_ADDRESS && resp[1] == STATUS_CMD_OK;
+			if (!sendShort(req, sizeof(req))) return false;
+			if (!recvMessage(respBuf)) return false;
+			return respBuf.size() >= 2 && respBuf[0] == CMD_LOAD_ADDRESS && respBuf[1] == STATUS_CMD_OK;
 		}
 
 		bool programPage(const uint8_t* data, size_t len) {
@@ -411,41 +453,39 @@ namespace Stk500v2 {
 		auto t2 = std::chrono::steady_clock::now();
 
 		// Mega 2560 wiring ブートローダの起動シーケンス:
-		// - リセット解除直後、ブートローダの初期化 (UART 設定, ウォッチドッグ解除等) に ~50ms
-		// - 旧 80ms はマージン込み。実機ベンチでは 40-50ms で初回 sync 成立する
-		//   ことが多い。アダプティブ sync (30ms timeout) があるので、ここを攻めて
-		//   早回り、失敗時のみリトライさせる方が平均は速い。
-		// - 安全側として「最低 50ms (実測 init 完了時刻)」を確保する。
-		Sleep(50);
+		// - リセット解除直後、ブートローダの初期化 (UART 設定, ウォッチドッグ解除等) に ~40-50ms
+		// - 個体差込みで Sleep(45) が最速安全ライン (実測: SolidState 40ms / CH340 45ms)。
+		//   Sleep を短くすると init 中に SIGN_ON を投げてしまい、SerialPort::read() の
+		//   4回リトライ(=4×timeoutConstant)を消費して逆に遅くなる。
+		// - タイムアウトを 40ms に設定: init 完了直後の応答を 1 ショットで拾える上限。
+		Sleep(45);
+		sp.setReadTimeout(40);
 
-		// 3) ブートローダと sync: 短タイムアウト + 早期再試行
-		// 全体予算を 1.2 秒で打ち切る (旧: 6 retries × 500ms = 最悪 3 秒)
-		// タイムアウトを 30ms に短縮: 万一最初のリクエストが init 直後に重なって
-		// 取りこぼされても、~60ms 後に再送できるようにする (旧 100ms 後)。
-		sp.setReadTimeout(30);
-
+		// 3) ブートローダと sync: 即座に送信開始してアダプティブに待つ
+		// 全体予算を 1.5 秒で打ち切る (init 完了は通常 30-50ms、余裕込み)
 		Stk500v2Client cli(sp);
 		bool synced = false;
 		int sendFailures = 0;
 		int recvFailures = 0;
 		int badResponses = 0;
 
-		// SIGN_ON リクエストは毎回同一。Sleep(50) 直後の最初の往復で成功するのが
-		// 想定パス。失敗時のリトライ用に body を一度だけ確保しておく。
+		// SIGN_ON リクエストは毎回同一。最初の 1-2 回で成功するのが想定パス。
 		const uint8_t signOnBody[1] = { CMD_SIGN_ON };
 
 		auto syncStart = std::chrono::steady_clock::now();
 		while (true) {
 			auto syncElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::steady_clock::now() - syncStart).count();
-			if (syncElapsed > 1200) break;
+			if (syncElapsed > 1500) break;
 
 			if (!cli.sendShort(signOnBody, 1)) {
 				sendFailures++;
 				continue;
 			}
-			if (!cli.recvMessage(cli.respBuf)) {
+			if (!cli.recvMessage(cli.respBuf, /*giveUpOnSilence=*/true)) {
 				recvFailures++;
+				// 応答無し (init 中の可能性大) → RX バッファに残った断片を捨てる
+				PurgeComm(sp.h, PURGE_RXCLEAR);
 				continue;
 			}
 			if (cli.respBuf.size() >= 2 && cli.respBuf[0] == CMD_SIGN_ON
@@ -457,8 +497,10 @@ namespace Stk500v2 {
 		}
 
 		// プログラミング中は通常タイムアウトに戻す。
-		// (ページ書込中はフラッシュ erase+write で ~9ms 停止するため、最低でも数十 ms 必要)
-		sp.setReadTimeout(200);
+		// ATmega2560 のフラッシュページ書込は ~4.5ms (erase+write self-time)。
+		// USB-Serial のバッファリング遅延を含めて最悪 ~50ms 見れば十分。
+		// 100ms に設定して十分マージンを取る (旧 200ms は過大)。
+		sp.setReadTimeout(100);
 
 		if (!synced) {
 			std::ostringstream diag;
@@ -481,6 +523,10 @@ namespace Stk500v2 {
 		//   よって連続するページに対して loadAddress を毎回呼ぶ必要はない。
 		//   呼ぶのは「直前のページから連続でない」場合のみ (= 初回 or 0xFF スキップ後)。
 		// この削減により ~3-5 ms × ページ数 を削れる (32 ページなら ~100ms)。
+		//
+		// エラーハンドリング: USB-Serial 側の一時的な取りこぼしで programPage が失敗
+		// することがある (ドライバ側のバッファオーバーラン等)。1 度だけ resync +
+		// loadAddress + 再送を試みる。連続失敗ならユーザに返す。
 		size_t pages = flash.size() / MEGA2560_PAGE_SIZE;
 		uint32_t expectedNextWordAddr = ~0u;  // 「未確定」を表すセンチネル
 		for (size_t p = 0; p < pages; ++p) {
@@ -503,8 +549,16 @@ namespace Stk500v2 {
 				}
 			}
 			if (!cli.programPage(&flash[addr], MEGA2560_PAGE_SIZE)) {
-				stats.errorMessage = "programPage failed at page " + std::to_string(p);
-				return stats;
+				// リトライ: RX 破棄 → loadAddress で位置を強制的に再同期 → 再送
+				stats.retries++;
+				PurgeComm(sp.h, PURGE_RXCLEAR | PURGE_TXCLEAR);
+				if (!cli.loadAddress(wordAddr) ||
+					!cli.programPage(&flash[addr], MEGA2560_PAGE_SIZE)) {
+					stats.errorMessage = "programPage failed at page " + std::to_string(p)
+						+ " (after 1 retry). USB シリアルの一時的な取りこぼしの可能性: "
+						"ケーブル / ハブを疑ってください";
+					return stats;
+				}
 			}
 			// ブートローダ側のアドレスはページサイズ / 2 だけ進んだはず
 			expectedNextWordAddr = wordAddr + (uint32_t)(MEGA2560_PAGE_SIZE / 2);

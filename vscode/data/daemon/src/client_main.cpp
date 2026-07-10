@@ -37,27 +37,49 @@ namespace {
 	}
 
 	// daemon を DETACHED で起動 (親終了に巻き込まれない)
+	//
+	// 重要: VS Code のタスクターミナル (cmd.exe) が Job Object 内で走っている場合、
+	//   親の Job が JOB_OBJECT_LIMIT_BREAKAWAY_OK を許可していないと、
+	//   CREATE_BREAKAWAY_FROM_JOB は ERROR_ACCESS_DENIED (5) で失敗する。
+	//   その場合は BREAKAWAY_FROM_JOB を外して再試行する。
+	//   daemon 側は自身で自プロセスを保護 (Job 外に脱出できないが、親 VS Code が
+	//   終わっても Job が消えるまでは生きる) するのでこれで問題ない。
 	bool spawnDaemon(const std::string& daemonExe) {
 		if (!Utils::fileExists(daemonExe)) {
 			std::cerr << ">>> daemon executable not found: " << daemonExe << "\n";
 			return false;
 		}
-		STARTUPINFOA si{};
-		si.cb = sizeof(si);
-		PROCESS_INFORMATION pi{};
-		std::string cmd = "\"" + daemonExe + "\" --daemonize";
 
-		BOOL ok = CreateProcessA(
-			nullptr, cmd.data(), nullptr, nullptr, FALSE,
-			DETACHED_PROCESS | CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB,
-			nullptr, nullptr, &si, &pi);
-		if (!ok) {
-			std::cerr << ">>> CreateProcess failed: " << GetLastError() << "\n";
-			return false;
+		auto tryCreate = [&](DWORD flags) -> bool {
+			STARTUPINFOA si{};
+			si.cb = sizeof(si);
+			PROCESS_INFORMATION pi{};
+			std::string cmd = "\"" + daemonExe + "\" --daemonize";
+			BOOL ok = CreateProcessA(
+				nullptr, cmd.data(), nullptr, nullptr, FALSE,
+				flags, nullptr, nullptr, &si, &pi);
+			if (!ok) return false;
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			return true;
+		};
+
+		// 1st try: 完全にデタッチ (推奨パス)
+		if (tryCreate(DETACHED_PROCESS | CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB)) {
+			return true;
 		}
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-		return true;
+		DWORD err1 = GetLastError();
+
+		// 2nd try: Job 制約下でも走れるように BREAKAWAY を外す
+		if (tryCreate(DETACHED_PROCESS | CREATE_NO_WINDOW)) {
+			return true;
+		}
+		DWORD err2 = GetLastError();
+
+		std::cerr << ">>> CreateProcess failed: "
+			<< err1 << " (with breakaway), "
+			<< err2 << " (without breakaway)\n";
+		return false;
 	}
 
 	// パイプ接続:
