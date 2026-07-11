@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/09
+// 作成年月日: 2026/07/11
 /**********************************************/
 
 #pragma once
@@ -119,7 +119,7 @@ class In {
 		bool              fired;
 		bool              init;
 	};
-	static const uint8_t NCH = 8;
+	static const uint8_t NCH = 12;
 	Dch ch[NCH] = {};
 
 	Dch* slot(uint8_t pin) {
@@ -149,7 +149,7 @@ class In {
 		long              c;
 		bool              init;
 	};
-	static const uint8_t NEC = 4;
+	static const uint8_t NEC = 6;
 	Ech ec[NEC] = {};
 
 	Ech* eslot(uint8_t pa, uint8_t pb) {
