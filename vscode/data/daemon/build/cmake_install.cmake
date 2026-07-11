@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon
+# Install script for directory: C:/Users/ao/Desktop/monocon_vscode/monocon/vscode/data/daemon
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,7 +34,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/_deps/nlohmann_json-build/cmake_install.cmake")
+  include("C:/Users/ao/Desktop/monocon_vscode/monocon/vscode/data/daemon/build/_deps/nlohmann_json-build/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -103,7 +103,7 @@ endif()
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/install_local_manifest.txt"
+  file(WRITE "C:/Users/ao/Desktop/monocon_vscode/monocon/vscode/data/daemon/build/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -119,6 +119,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/ao/Desktop/monokon_vscode/monokon/vscode/data/daemon/build/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "C:/Users/ao/Desktop/monocon_vscode/monocon/vscode/data/daemon/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
