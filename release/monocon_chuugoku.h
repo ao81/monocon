@@ -784,6 +784,10 @@ long rnd(long n) {
 	return random(n);
 }
 
+long rnd(long n, long m) {
+	return random(n, m + 1);
+}
+
 long rndDiff(long n) {
 	static long last = -1;
 	long v;
@@ -898,6 +902,10 @@ public:
 	unsigned long operator()() {
 		return ms();
 	}
+
+	operator unsigned long() {
+		return ms();
+	}
 };
 
 class Seq {
@@ -920,7 +928,14 @@ public:
 		exited = false;
 	}
 
-	bool on() {
+	bool on(bool isTop = false) {
+		if (isTop) {
+			if (pos > count) count = pos;
+			if (count > 0 && cur >= count) cur = 0;
+			pos = 0;
+			moved = false;
+			exited = false;
+		}
 		if (moved) {
 			pos++;
 			return false;
@@ -928,8 +943,12 @@ public:
 		return (pos++ == cur);
 	}
 
-	bool operator()() {
-		return on();
+	bool operator()(bool isTop = false) {
+		return on(isTop);
+	}
+
+	operator bool() {
+		return (*this)();
 	}
 
 	void next() {
