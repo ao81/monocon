@@ -460,6 +460,13 @@ public:
 		}
 	}
 
+	void off() {
+		for (uint8_t i = 0; i < 3; i++) {
+			segPattern[i] = 0;
+			segOpacity[i] = 0;
+		}
+	}
+
 	void s(const char* s, uint8_t oa = 255, uint8_t ob = 255, uint8_t oc = 255) {
 		for (uint8_t i = 0; i < 3; i++) {
 			segPattern[i] = toPattern(s[i]);
