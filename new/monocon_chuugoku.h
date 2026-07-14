@@ -179,7 +179,7 @@ private:
 	friend void TIMER3_COMPA_vect(void);
 
 public:
-	void operator()(char a, char b, char c, uint8_t oa = 255, uint8_t ob = 255, uint8_t oc = 255) {
+	void operator()(uint8_t a, uint8_t b, uint8_t c, uint8_t oa = 255, uint8_t ob = 255, uint8_t oc = 255) {
 		for (uint8_t i = 0; i < 3; i++) {
 			segPattern[i] = (i == 0 ? a : (i == 1 ? b : c));
 			segOpacity[i] = (i == 0 ? oa : (i == 1 ? ob : oc));
@@ -220,7 +220,7 @@ public:
 		(*this)(g[0], g[1], g[2]);
 	}
 
-	void n(double f, bool zero = false, bool left = false) {
+	void f(double f, bool zero = false, bool left = false) {
 		bool neg = f < 0;
 		double a = neg ? -f : f;
 		if (neg) {
@@ -232,56 +232,41 @@ public:
 			(*this)(SEG_MINUS, p1, seg[v % 10]);
 			return;
 		}
-		if (zero) {
-			int v, dot;
-			if (a < 9.995) {
-				v = (int)(a * 100 + 0.5);
-				dot = 0;
-			} else if (a < 99.95) {
-				v = (int)(a * 10 + 0.5);
-				dot = 1;
-			} else {
-				v = (int)(a + 0.5);
-				dot = -1;
-			}
-			if (v > 999) v = 999;
+		int v, dot;
+		if (a < 9.995) {
+			v = (int)(a * 100 + 0.5);
+			dot = 0;
+		} else if (a < 99.95) {
+			v = (int)(a * 10 + 0.5);
+			dot = 1;
+		} else {
+			v = (int)(a + 0.5);
+			dot = -1;
+		}
+		if (v > 999) v = 999;
+		if (!zero && dot == 0 && v % 10 == 0) {
+			v /= 10;
+			dot = 1;
+		}
+		if (dot != 1) {
 			uint8_t p0 = seg[(v / 100) % 10];
 			uint8_t p1 = seg[(v / 10) % 10];
 			if (dot == 0) p0 |= SEG_DOT;
-			if (dot == 1) p1 |= SEG_DOT;
 			(*this)(p0, p1, seg[v % 10]);
 			return;
 		}
-		uint8_t g0, g1;
-		if (a < 9.95) {
-			int v = (int)(a * 10 + 0.5);
-			g0 = seg[(v / 10) % 10] | SEG_DOT;
-			g1 = seg[v % 10];
-		} else if (a < 99.5) {
-			int v = (int)(a + 0.5);
-			g0 = seg[(v / 10) % 10];
-			g1 = seg[v % 10];
+		uint8_t g0 = seg[(v / 10) % 10] | SEG_DOT;
+		uint8_t g1 = seg[v % 10];
+		if (v >= 100) {
+			(*this)(seg[(v / 100) % 10], g0, g1);
+		} else if (left) {
+			(*this)(g0, g1, 0x00);
 		} else {
-			int v = (int)(a + 0.5);
-			if (v > 999) v = 999;
-			(*this)(seg[(v / 100) % 10], seg[(v / 10) % 10], seg[v % 10]);
-			return;
+			(*this)(0x00, g0, g1);
 		}
-		if (left) (*this)(g0, g1, 0x00);
-		else (*this)(0x00, g0, g1);
-	}
-
-	void n(float f, bool zero = false, bool left = false) {
-		n((double)f, zero, left);
-	}
-
-	template <typename T>
-	void n(T v, bool zero = false, bool left = false) {
-		n((int)v, zero, left);
 	}
 };
 Disp dp;
-#define s(a, ...) s(#a, ##__VA_ARGS__)
 
 #ifdef useir
 void ir();
