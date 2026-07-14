@@ -33,7 +33,7 @@ void loop() {
 	}
 
 	{
-		if (aa >= 100) {
+		if (aa >= 1000) {
 			aa = 0;
 			in sk = an.sok(a1);
 			dp.n(sk);
