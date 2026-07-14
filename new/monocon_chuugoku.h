@@ -392,7 +392,11 @@ private:
 
 public:
 	void operator()(uint8_t color, uint8_t opacity = 100) {
+		static uint8_t pc = 255, po = 255;
 		opacity = clamp(opacity, 0, 100);
+		if (color == pc && opacity == po) return;
+		pc = color;
+		po = opacity;
 		ledOpacity = (uint8_t)(opacity * 255 / 100);
 		ledColor = color;
 	}
@@ -453,28 +457,25 @@ private:
 	friend void TIMER3_COMPA_vect(void);
 
 public:
-	void operator()(uint8_t a, uint8_t b, uint8_t c, uint8_t oa = 255, uint8_t ob = 255, uint8_t oc = 255) {
-		for (uint8_t i = 0; i < 3; i++) {
-			segPattern[i] = (i == 0 ? a : (i == 1 ? b : c));
-			segOpacity[i] = (i == 0 ? oa : (i == 1 ? ob : oc));
-		}
+	Disp& operator()(uint8_t a, uint8_t b, uint8_t c) {
+		static int16_t pp[3] = { -1, -1, -1 };
+		if (a == pp[0] && b == pp[1] && c == pp[2]) return *this;
+		pp[0] = a; pp[1] = b; pp[2] = c;
+		segPattern[0] = a;
+		segPattern[1] = b;
+		segPattern[2] = c;
+		return *this;
 	}
 
-	void off() {
-		for (uint8_t i = 0; i < 3; i++) {
-			segPattern[i] = 0;
-			segOpacity[i] = 0;
-		}
+	Disp& off() {
+		return (*this)(0, 0, 0);
 	}
 
-	void s(const char* s, uint8_t oa = 255, uint8_t ob = 255, uint8_t oc = 255) {
-		for (uint8_t i = 0; i < 3; i++) {
-			segPattern[i] = toPattern(s[i]);
-			segOpacity[i] = (i == 0 ? oa : (i == 1 ? ob : oc));
-		}
+	Disp& s(const char* s) {
+		return (*this)(toPattern(s[0]), toPattern(s[1]), toPattern(s[2]));
 	}
 
-	void n(int x, bool zero = false, bool left = false) {
+	Disp& n(int x, bool zero = false, bool left = false) {
 		bool neg = x < 0;
 		if (neg) x = -x;
 		if (neg && x > 99) x = 99;
@@ -499,9 +500,10 @@ public:
 			for (uint8_t i = 0; i < len; i++) g[off + i] = content[i];
 		}
 		(*this)(g[0], g[1], g[2]);
+		return *this;
 	}
 
-	void f(double f, bool zero = false, bool left = false) {
+	Disp& f(double f, bool zero = false, bool left = false) {
 		bool neg = f < 0;
 		double a = neg ? -f : f;
 		if (neg) {
@@ -511,7 +513,7 @@ public:
 			uint8_t p1 = seg[(v / 10) % 10];
 			if (dot) p1 |= SEG_DOT;
 			(*this)(SEG_MINUS, p1, seg[v % 10]);
-			return;
+			return *this;
 		}
 		int v, dot;
 		if (a < 9.995) {
@@ -534,7 +536,7 @@ public:
 			uint8_t p1 = seg[(v / 10) % 10];
 			if (dot == 0) p0 |= SEG_DOT;
 			(*this)(p0, p1, seg[v % 10]);
-			return;
+			return *this;
 		}
 		uint8_t g0 = seg[(v / 10) % 10] | SEG_DOT;
 		uint8_t g1 = seg[v % 10];
@@ -545,6 +547,22 @@ public:
 		} else {
 			(*this)(0x00, g0, g1);
 		}
+		return *this;
+	}
+
+	Disp& o(uint8_t oa, uint8_t ob = 0xFF, uint8_t oc = 0xFF) {
+		if (ob == 0xFF) ob = oa;
+		if (oc == 0xFF) oc = ob;
+		static int16_t po[3] = { -1, -1, -1 };
+		uint8_t v[3] = { oa, ob, oc };
+		for (uint8_t i = 0; i < 3; i++) {
+			uint8_t x = (uint8_t)(clamp(v[i], 0, 100) * 255 / 100);
+			if (x != po[i]) {
+				po[i] = x;
+				segOpacity[i] = x;
+			}
+		}
+		return *this;
 	}
 };
 Disp dp;

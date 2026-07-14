@@ -36,7 +36,7 @@ void loop() {
 		if (aa >= 1000) {
 			aa = 0;
 			in sk = an.sok(a1);
-			dp.n(sk);
+			dp.n(sk).o(100, 100, 10);
 		}
 	}
 
