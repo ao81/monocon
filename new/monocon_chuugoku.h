@@ -606,6 +606,19 @@ public:
 };
 Dcm dm;
 
+// 圧電ブザー
+void bz(int f) {
+	tone(BZ_PIN, f);
+}
+
+void bz(int f, unsigned long t) {
+	tone(BZ_PIN, f, t);
+}
+
+void bzoff() {
+	noTone(BZ_PIN);
+}
+
 #ifdef useir
 void ir();
 #endif
