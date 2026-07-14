@@ -155,16 +155,25 @@ private:
 	}
 
 	void update() {
-		static uint8_t pc = 0;
-		uint8_t a = (((segOpacity[0] + 8) >> 4) > pc) ? segPattern[0] : 0;
-		uint8_t b = (((segOpacity[1] + 8) >> 4) > pc) ? segPattern[1] : 0;
-		uint8_t c = (((segOpacity[2] + 8) >> 4) > pc) ? segPattern[2] : 0;
+		static uint8_t acc[3] = { 0, 0, 0 };
+
+		uint8_t p0 = acc[0];
+		acc[0] += segOpacity[0];
+		uint8_t a = (acc[0] < p0) ? segPattern[0] : 0;
+
+		uint8_t p1 = acc[1];
+		acc[1] += segOpacity[1];
+		uint8_t b = (acc[1] < p1) ? segPattern[1] : 0;
+
+		uint8_t p2 = acc[2];
+		acc[2] += segOpacity[2];
+		uint8_t c = (acc[2] < p2) ? segPattern[2] : 0;
+		
 		PORTH &= ~LAT_BIT;
 		fsout(a);
 		fsout(b);
 		fsout(c);
 		PORTH |= LAT_BIT;
-		pc = (pc + 1) & 15;
 	}
 
 	friend void TIMER3_COMPA_vect(void);
