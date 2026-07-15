@@ -4,35 +4,61 @@ void setup() {
 	begin();
 }
 
-di sw1(d3), sw2(d2), ph(d4), ts(d1);
+di sw1(d3), sw2(d2), ts(d1), ph(d4);
 enc en(a3, a4);
-pr p(a2);
-sok so(a1);
+pr r(a2);
 
 void loop() {
-#if 1
-	if (ts == H) {
-		uint8_t l = 0;
-		if (sw1 == L) l |= B;
-		if (sw2 == L) l |= R;
-		if (ph == H) l |= G;
-		led(l, 10);
+	static Seq q;
+	static int n = 1;
+	static int now = 0;
 
-		dp.off();
+	if (ts == L) q.to(0);
 
-	} else {
-		static const uint8_t color[3] = { G, B, R };
-		static int idx = 0;
-		idx = en.loopTo(0, 2);
-		led(color[idx]);
-
-		dp.n(so.cm);
-
-		if (!p) bz(2000);
-		else bz.off();
+	if (q) {
+		n += en.delta();
+		if (n < 1) n = 1;
+		if (n > 99) n = 99;
+		dp.n(n);
+		led(B);
+		dm.fr();
+		if (ts == H) q.to(1);
+		now = 0;
 	}
-#else
-	if (sw1 == L) led(G);
-	else led(0);
-#endif
+	if (q) {
+		if (q.in()) now = 0;
+		led(R);
+		dm.fr();
+		dp.off();
+		if (sw1.htol()) q.next();
+	}
+	if (q) {
+		dm.cw(100);
+		led(G);
+		if (ph.ltoh()) {
+			if (r == H) now++;
+			else {
+				bz(800, 100);
+				led(R);
+			}
+		}
+		dp.n(now);
+		if (now >= n) {
+			q.next();
+		}
+	}
+	if (q) {
+		if (q.in()) {
+			dm.br();
+			led(R);
+			bz(1500, 300);
+			dp.s("end");
+		}
+		if (sw2.htol()) {
+			now = 0;
+			dm.br();
+			bz.off();
+			q.to(0);
+		}
+	}
 }
