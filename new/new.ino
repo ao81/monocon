@@ -10,6 +10,7 @@ pr p(a2);
 sok so(a1);
 
 void loop() {
+#if 1
 	if (ts == H) {
 		uint8_t l = 0;
 		if (sw1 == L) l |= B;
@@ -27,7 +28,11 @@ void loop() {
 
 		dp.n(so.cm);
 
-		if (!p) bz(1000);
+		if (!p) bz(2000);
 		else bz.off();
 	}
+#else
+	if (sw1 == L) led(G);
+	else led(0);
+#endif
 }
