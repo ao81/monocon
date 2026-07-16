@@ -4,7 +4,7 @@ void setup() {
 	begin();
 }
 
-vr v(a3, 0, 500);
+Vr v(a3, 0, 500);
 Iv t;
 
 void loop() {

@@ -257,15 +257,15 @@ public:
 	}
 };
 
-class di : public InEdge {
+class Di : public InEdge {
 private:
 	volatile uint8_t* reg;
 	uint8_t mask;
-	static di* list[8];
+	static Di* list[8];
 	static uint8_t nList;
 
 public:
-	explicit di(uint8_t pin, uint16_t lock = 10)
+	explicit Di(uint8_t pin, uint16_t lock = 10)
 		: InEdge(lock),
 		reg(portInputRegister(digitalPinToPort(pin))),
 		mask(digitalPinToBitMask(pin)) {
@@ -277,7 +277,7 @@ public:
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
-			di* const p = list[i];
+			Di* const p = list[i];
 			p->pollWith((*p->reg & p->mask) ? HIGH : LOW, now);
 		}
 	}
@@ -288,15 +288,15 @@ public:
 	}
 };
 
-class pr : public InEdge {
+class Pr : public InEdge {
 private:
 	int th;
 	volatile int _raw;
-	static pr* list[8];
+	static Pr* list[8];
 	static uint8_t nList;
 
 public:
-	explicit pr(uint8_t pin, int threshold = 950, uint16_t lock = 10)
+	explicit Pr(uint8_t pin, int threshold = 950, uint16_t lock = 10)
 		: InEdge(lock), th(threshold), _raw(0) {
 		adcReg(pin, &_raw);
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -307,7 +307,7 @@ public:
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
-			pr* const p = list[i];
+			Pr* const p = list[i];
 			const int value = atomicReadInt(&p->_raw);
 			p->pollWith(value > p->th ? HIGH : LOW, now);
 		}
@@ -328,12 +328,12 @@ constexpr int32_t slopeQ8[3] = {
 	(static_cast<int32_t>(sokMm[3] - sokMm[2]) << 8) / (sokAd[2] - sokAd[3])
 };
 
-class sok {
+class Sok {
 private:
 	int ring[5];
 	uint8_t ri;
 	uint8_t sampleCount;
-	static sok* list[2];
+	static Sok* list[2];
 	static uint8_t nList;
 
 	void serviceOne() {
@@ -371,7 +371,7 @@ public:
 	int mm;
 	float cm;
 
-	explicit sok(uint8_t pin)
+	explicit Sok(uint8_t pin)
 		: ri(0), sampleCount(0), _raw(0), raw(0), mm(0), cm(0.0f) {
 		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
 		adcReg(pin, &_raw);
@@ -386,7 +386,7 @@ public:
 	}
 };
 
-class vr {
+class Vr {
 private:
 	int inputMin;
 	int inputMax;
@@ -394,7 +394,7 @@ private:
 public:
 	volatile int raw;
 
-	explicit vr(uint8_t pin, int minValue = 0, int maxValue = 512)
+	explicit Vr(uint8_t pin, int minValue = 0, int maxValue = 512)
 		: inputMin(minValue),
 		inputMax(maxValue),
 		raw(0) {
@@ -425,12 +425,12 @@ public:
 	}
 };
 
-class joy {
+class Js {
 public:
 	volatile int x;
 	volatile int y;
 
-	joy(uint8_t px, uint8_t py) : x(0), y(0) {
+	Js(uint8_t px, uint8_t py) : x(0), y(0) {
 		adcReg(px, &x);
 		adcReg(py, &y);
 	}
@@ -486,7 +486,7 @@ public:
 };
 
 
-class enc {
+class Enc {
 private:
 	volatile uint8_t* ra;
 	volatile uint8_t* rb;
@@ -498,7 +498,7 @@ private:
 	int32_t last;
 	bool direction;
 
-	static enc* list[4];
+	static Enc* list[4];
 	static uint8_t nList;
 
 	inline void poll() {
@@ -533,7 +533,7 @@ private:
 	}
 
 public:
-	enc(uint8_t pa, uint8_t pb, bool d = true)
+	Enc(uint8_t pa, uint8_t pb, bool d = true)
 		: ra(portInputRegister(digitalPinToPort(pa))),
 		rb(portInputRegister(digitalPinToPort(pb))),
 		ma(digitalPinToBitMask(pa)), mb(digitalPinToBitMask(pb)),
@@ -1555,14 +1555,14 @@ namespace board_detail {
 
 volatile uint32_t tms = 0;
 
-di* di::list[8] = {};
-uint8_t di::nList = 0;
-pr* pr::list[8] = {};
-uint8_t pr::nList = 0;
-sok* sok::list[2] = {};
-uint8_t sok::nList = 0;
-enc* enc::list[4] = {};
-uint8_t enc::nList = 0;
+Di* Di::list[8] = {};
+uint8_t Di::nList = 0;
+Pr* Pr::list[8] = {};
+uint8_t Pr::nList = 0;
+Sok* Sok::list[2] = {};
+uint8_t Sok::nList = 0;
+Enc* Enc::list[4] = {};
+uint8_t Enc::nList = 0;
 
 Led led;
 Disp dp;
@@ -1630,7 +1630,7 @@ ISR(ADC_vect) {
 }
 
 ISR(TIMER1_COMPA_vect) {
-	enc::isrPollAll();
+	Enc::isrPollAll();
 #ifdef useir
 	ir();
 #endif
@@ -1652,9 +1652,9 @@ inline void board_detail::service() {
 	}
 	if (!due) return;
 
-	di::serviceAll(now);
-	pr::serviceAll(now);
-	sok::serviceAll();
+	Di::serviceAll(now);
+	Pr::serviceAll(now);
+	Sok::serviceAll();
 	bz.update();
 	led.serviceTick();
 	dp.serviceTick();
@@ -1663,8 +1663,8 @@ inline void board_detail::service() {
 void serialEventRun() {
 	board_detail::service();
 	const uint8_t epoch = ++board_detail::loopEpoch;
-	di::expireAll(epoch);
-	pr::expireAll(epoch);
+	Di::expireAll(epoch);
+	Pr::expireAll(epoch);
 }
 
 void yield() {
