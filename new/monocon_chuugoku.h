@@ -964,6 +964,13 @@ private:
 	int continuousFrequency;
 	volatile uint32_t remainingMs;
 	volatile bool timedActive;
+	const int* melodyNotes;
+	const int* melodyDurations;
+	int melodyLength;
+	int melodyIndex;
+	uint32_t melodyNext;
+	bool melodyRunning;
+	bool melodyRepeat;
 
 	// 周波数からTimer3のTOP値を求める。
 	static uint16_t topForFrequency(int f) {
@@ -1012,10 +1019,15 @@ private:
 
 public:
 	// ブザーを停止状態で初期化する。
-	Bz() : continuousFrequency(-1), remainingMs(0), timedActive(false) {}
+	Bz()
+		: continuousFrequency(-1), remainingMs(0), timedActive(false),
+		melodyNotes(nullptr), melodyDurations(nullptr), melodyLength(0),
+		melodyIndex(0), melodyNext(0), melodyRunning(false),
+		melodyRepeat(false) {}
 
 	// 指定周波数で連続発音する。
 	void operator()(int f) {
+		melodyRunning = false;
 		if (f <= 0) { off(); return; }
 		if (!timedActive && f == continuousFrequency) return;
 		continuousFrequency = f;
@@ -1028,15 +1040,68 @@ public:
 			(*this)(f);
 			return;
 		}
+		melodyRunning = false;
 		continuousFrequency = -1;
 		start(f, durationMs, true);
 	}
 
-	// ブザー出力を停止する。
-	void off() {
+	// 音階と長さの配列を指定してメロディー再生を開始する。
+	void play(const int* notes, const int* durations, int length,
+		bool repeat = false) {
+		if (!notes || !durations || length <= 0) {
+			stop();
+			return;
+		}
+		melodyNotes = notes;
+		melodyDurations = durations;
+		melodyLength = length;
+		melodyIndex = 0;
+		melodyNext = monoconMillis();
+		melodyRunning = true;
+		melodyRepeat = repeat;
+	}
+
+	// メロディーとブザー出力を停止する。
+	void stop() {
+		melodyRunning = false;
 		continuousFrequency = -1;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			stopFromIsr();
+		}
+	}
+
+	// ブザー出力を停止する。
+	void off() { stop(); }
+
+	// メロディーが再生中か確認する。
+	bool playing() const { return melodyRunning; }
+
+	// 経過時間に応じて次の音または休符へ進める。
+	void update() {
+		if (!melodyRunning) return;
+		const uint32_t now = monoconMillis();
+		if (static_cast<int32_t>(now - melodyNext) < 0) return;
+
+		if (melodyIndex >= melodyLength) {
+			if (melodyRepeat) melodyIndex = 0;
+			else {
+				stop();
+				return;
+			}
+		}
+
+		const int frequency = melodyNotes[melodyIndex];
+		const int duration = melodyDurations[melodyIndex];
+		++melodyIndex;
+		melodyNext = now + static_cast<uint32_t>(duration > 0 ? duration : 0);
+		continuousFrequency = -1;
+
+		if (frequency > 0) {
+			start(frequency, 0, false);
+		} else {
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				stopFromIsr();
+			}
 		}
 	}
 
@@ -1563,6 +1628,7 @@ inline void monocon_detail::service() {
 	di::serviceAll(now);
 	pr::serviceAll(now);
 	sok::serviceAll();
+	bz.update();
 	led.serviceTick();
 	dp.serviceTick();
 }
