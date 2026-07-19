@@ -189,7 +189,7 @@ namespace {
 	void printUsage() {
 		std::cout <<
 			"Usage:\n"
-			"  arduino-build-cli.exe upload <SketchDir> [Port] [--workspace <Dir>] [--full-upload]\n"
+			"  arduino-build-cli.exe upload <SketchDir> [Port] [--workspace <Dir>]\n"
 			"  arduino-build-cli.exe build  <SketchDir>        [--workspace <Dir>]\n"
 			"  arduino-build-cli.exe ping\n"
 			"  arduino-build-cli.exe ports\n"
@@ -197,21 +197,18 @@ namespace {
 			"  arduino-build-cli.exe kill        (force: 全 daemon プロセスを強制終了)\n"
 			"\n"
 			"  --workspace <Dir>: ビルド出力先のワークスペースルートを指定\n"
-			"  --full-upload: 直前イメージとの差分ページキャッシュを使わない\n"
 			"     省略時は SketchDir から .vscode/ を持つフォルダを上に探索\n"
 			"     ビルド出力先: <Workspace>/.vscode/build/<相対パス>/\n";
 	}
 
 	// --workspace <path> を抽出して、それ以外の位置引数だけ vector で返す
 	std::vector<std::string> parsePositional(int argc, char* argv[],
-		std::string& workspaceOut, bool& forceFullUploadOut) {
+		std::string& workspaceOut) {
 		std::vector<std::string> positional;
 		for (int i = 1; i < argc; ++i) {
 			std::string a = argv[i];
 			if (a == "--workspace" && i + 1 < argc) {
 				workspaceOut = argv[++i];
-			} else if (a == "--full-upload") {
-				forceFullUploadOut = true;
 			} else {
 				positional.push_back(a);
 			}
@@ -221,8 +218,7 @@ namespace {
 
 	int handleSubcommand(int argc, char* argv[]) {
 		std::string workspaceDir;
-		bool forceFullUpload = false;
-		auto pos = parsePositional(argc, argv, workspaceDir, forceFullUpload);
+		auto pos = parsePositional(argc, argv, workspaceDir);
 		if (pos.empty()) { printUsage(); return 1; }
 		std::string cmd = pos[0];
 
@@ -257,7 +253,6 @@ namespace {
 			json p = { {"sketchDir", pos[1]} };
 			if (pos.size() >= 3) p["port"] = pos[2];
 			if (!workspaceDir.empty()) p["workspaceDir"] = workspaceDir;
-			if (forceFullUpload) p["forceFullUpload"] = true;
 			resp = sendRpc(hPipe, "upload", p, 300);
 		} else {
 			printUsage();
@@ -334,9 +329,7 @@ namespace {
 				}
 				std::cout << "Compile " << label
 					<< " in " << cr.value("buildTimeMs", 0.0) << " ms\n";
-				std::cout << "Upload "
-					<< (r.value("cached", false) ? "(cached) " : "")
-					<< "to " << r.value("port", "") << " in "
+				std::cout << "Upload to " << r.value("port", "") << " in "
 					<< r.value("uploadTimeMs", 0.0) << " ms\n";
 				std::cout << "Total client time: " << sw.elapsedMilliseconds() << " ms\n";
 

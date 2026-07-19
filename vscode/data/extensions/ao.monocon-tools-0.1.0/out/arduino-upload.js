@@ -290,7 +290,6 @@ async function runUpload(context) {
                 throw new Error(`書き込みタスクが終了コード ${exitCode} で失敗しました。`);
             }
             log("Arduinoへの書き込みが完了しました。");
-            vscode.window.showInformationMessage("Arduinoへの書き込みが完了しました。");
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);

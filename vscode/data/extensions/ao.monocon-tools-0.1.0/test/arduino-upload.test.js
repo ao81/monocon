@@ -13,6 +13,7 @@ function loadExtension(vscode) {
     const extensionPath = path.resolve(__dirname, '../out/extension.js');
     const uploadPath = path.resolve(__dirname, '../out/arduino-upload.js');
     const foldersPath = path.resolve(__dirname, '../out/task-folders.js');
+    const statusPath = path.resolve(__dirname, '../out/upload-status.js');
     const originalLoad = Module._load;
     Module._load = function (request, parent, isMain) {
         if (request === 'vscode') {
@@ -23,6 +24,7 @@ function loadExtension(vscode) {
     delete require.cache[extensionPath];
     delete require.cache[uploadPath];
     delete require.cache[foldersPath];
+    delete require.cache[statusPath];
     try {
         return require(extensionPath);
     }
@@ -34,8 +36,10 @@ function loadExtension(vscode) {
 function createVscodeMock(options = {}) {
     const commands = new Map();
     const processListeners = new Set();
+    const startListeners = new Set();
     const taskListeners = new Set();
     const messages = { info: [], warning: [], error: [] };
+    const statusItems = [];
     let executeCount = 0;
     let fetchCount = 0;
     let terminateCount = 0;
@@ -59,6 +63,7 @@ function createVscodeMock(options = {}) {
     };
     const vscode = {
         ProgressLocation: { Notification: 15 },
+        StatusBarAlignment: { Left: 1, Right: 2 },
         commands: {
             registerCommand(name, callback) {
                 commands.set(name, callback);
@@ -80,6 +85,10 @@ function createVscodeMock(options = {}) {
                 processListeners.add(listener);
                 return disposable(() => processListeners.delete(listener));
             },
+            onDidStartTask(listener) {
+                startListeners.add(listener);
+                return disposable(() => startListeners.delete(listener));
+            },
             onDidEndTask(listener) {
                 taskListeners.add(listener);
                 return disposable(() => taskListeners.delete(listener));
@@ -92,6 +101,9 @@ function createVscodeMock(options = {}) {
                         terminateCount++;
                     }
                 };
+                for (const listener of startListeners) {
+                    listener({ execution });
+                }
                 if (!options.hangingTask) {
                     setTimeout(() => {
                         for (const listener of processListeners) {
@@ -108,6 +120,18 @@ function createVscodeMock(options = {}) {
         window: {
             createOutputChannel() {
                 return { appendLine() {}, dispose() {} };
+            },
+            createStatusBarItem() {
+                const item = {
+                    text: '',
+                    tooltip: '',
+                    visible: false,
+                    show() { this.visible = true; },
+                    hide() { this.visible = false; },
+                    dispose() { this.visible = false; }
+                };
+                statusItems.push(item);
+                return item;
             },
             async withProgress(_settings, callback) {
                 return callback({ report() {} });
@@ -148,6 +172,7 @@ function createVscodeMock(options = {}) {
         commands,
         messages,
         monitorStartSettings,
+        statusItems,
         get executeCount() { return executeCount; },
         get fetchCount() { return fetchCount; },
         get terminateCount() { return terminateCount; }
@@ -211,4 +236,16 @@ test('reopens the serial monitor with reset control lines disabled', async () =>
     assert.equal(mock.monitorStartSettings[0].port, 'COM3');
     assert.equal(mock.monitorStartSettings[0].dtr, false);
     assert.equal(mock.monitorStartSettings[0].rts, false);
+});
+
+test('shows a completion popup and keeps the result in the status bar', async () => {
+    const mock = createVscodeMock();
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.messages.info.includes('Arduinoへの書き込みが完了しました。'), true);
+    assert.equal(mock.statusItems.length, 1);
+    assert.equal(mock.statusItems[0].text, '$(check) Arduino: 書き込み完了');
+    assert.equal(mock.statusItems[0].visible, true);
 });

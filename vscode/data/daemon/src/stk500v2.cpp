@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 
 namespace {
@@ -18,6 +19,7 @@ namespace {
 	constexpr uint8_t CMD_ENTER_PROGMODE_ISP = 0x10;
 	constexpr uint8_t CMD_LEAVE_PROGMODE_ISP = 0x11;
 	constexpr uint8_t CMD_PROGRAM_FLASH_ISP = 0x13;
+	constexpr uint8_t CMD_READ_FLASH_ISP = 0x14;
 
 	constexpr uint8_t STATUS_CMD_OK = 0x00;
 
@@ -325,6 +327,25 @@ namespace {
 			return respBuf.size() >= 2 && respBuf[0] == CMD_PROGRAM_FLASH_ISP
 				&& respBuf[1] == STATUS_CMD_OK;
 		}
+
+		bool readFlashPage(uint8_t* data, size_t len) {
+			if (len == 0 || len > MEGA2560_PAGE_SIZE) return false;
+			const uint8_t req[] = {
+				CMD_READ_FLASH_ISP,
+				(uint8_t)((len >> 8) & 0xFF),
+				(uint8_t)(len & 0xFF),
+				0x20
+			};
+			if (!sendShort(req, sizeof(req)) || !recvMessage(respBuf)) return false;
+			if (respBuf.size() != len + 3
+				|| respBuf[0] != CMD_READ_FLASH_ISP
+				|| respBuf[1] != STATUS_CMD_OK
+				|| respBuf[len + 2] != STATUS_CMD_OK) {
+				return false;
+			}
+			std::memcpy(data, respBuf.data() + 2, len);
+			return true;
+		}
 	};
 
 } // anonymous namespace
@@ -342,6 +363,7 @@ namespace Stk500v2 {
 		flash.assign(MEGA2560_FLASH_SIZE, 0xFF);
 		uint32_t baseAddr = 0;
 		size_t maxAddr = 0;
+		bool sawEof = false;
 		std::string line;
 
 		auto hex2 = [](char a, char b) -> int {
@@ -368,6 +390,17 @@ namespace Stk500v2 {
 			if (cnt < 0 || aH < 0 || aL < 0 || type < 0) {
 				err = "Bad hex bytes"; return false;
 			}
+			const size_t expectedChars = 11 + (size_t)cnt * 2;
+			if (line.size() != expectedChars) {
+				err = "Bad hex record length"; return false;
+			}
+			unsigned checksum = 0;
+			for (size_t i = 0; i < (size_t)cnt + 5; ++i) {
+				int b = hex2(line[1 + i * 2], line[2 + i * 2]);
+				if (b < 0) { err = "Bad hex byte"; return false; }
+				checksum = (checksum + (unsigned)b) & 0xFF;
+			}
+			if (checksum != 0) { err = "Hex checksum mismatch"; return false; }
 			uint32_t addr = ((uint32_t)aH << 8) | (uint32_t)aL;
 
 			if (type == 0x00) {
@@ -382,7 +415,8 @@ namespace Stk500v2 {
 				}
 				if (a + cnt > maxAddr) maxAddr = a + cnt;
 			} else if (type == 0x01) {
-				break; // EOF
+				sawEof = true;
+				break;
 			} else if (type == 0x02) {
 				int hH = hex2(line[9], line[10]);
 				int hL = hex2(line[11], line[12]);
@@ -395,6 +429,8 @@ namespace Stk500v2 {
 				baseAddr = (((uint32_t)hH << 8) | (uint32_t)hL) << 16;
 			}
 		}
+		if (!sawEof) { err = "Hex EOF record missing"; return false; }
+		if (maxAddr == 0) { err = "Hex contains no flash data"; return false; }
 
 		// ページ境界に切り上げ
 		size_t pages = (maxAddr + MEGA2560_PAGE_SIZE - 1) / MEGA2560_PAGE_SIZE;
@@ -406,8 +442,7 @@ namespace Stk500v2 {
 	// アップロード本体
 	// =========================================================================
 	UploadStats uploadMega2560(const std::string& port,
-		const std::vector<uint8_t>& flash,
-		const std::vector<uint8_t>* previousFlash) {
+		const std::vector<uint8_t>& flash) {
 		UploadStats stats;
 		auto t0 = std::chrono::steady_clock::now();
 
@@ -490,64 +525,77 @@ namespace Stk500v2 {
 		stats.syncMs = elapsedMs(t2);
 		auto t3 = std::chrono::steady_clock::now();
 
-		// 4) 全ページ書き込み (0xFF だけのページはスキップ)
-		// 重要: Wiring ブートローダ (公式 Mega 2560) は CMD_PROGRAM_FLASH_ISP の後、
-		//   内部の `address` 変数を「書き込んだバイト数 / 2」だけ自動的に進める。
-		//   よって連続するページに対して loadAddress を毎回呼ぶ必要はない。
-		//   呼ぶのは「直前のページから連続でない」場合のみ (= 初回 or 0xFF スキップ後)。
-		// この削減により ~3-5 ms × ページ数 を削れる (32 ページなら ~100ms)。
-		const size_t previousSize = previousFlash ? previousFlash->size() : 0;
-		size_t pages = (std::max)(flash.size(), previousSize) / MEGA2560_PAGE_SIZE;
-		std::array<uint8_t, MEGA2560_PAGE_SIZE> erasedPage;
-		erasedPage.fill(0xFF);
-		uint32_t expectedNextWordAddr = ~0u;  // 「未確定」を表すセンチネル
+		// 4) 先頭から全ページを順番通りに書き込む。
+		// Mega 2560 の公式 Wiring ブートローダーは、PROGRAM_FLASH のたびに
+		// eraseAddress を先頭から1ページずつ進める。ページを飛ばすと「消去するページ」と
+		// 「書き込むページ」がずれて、後続の要求が書き込み済みページを消してしまう。
+		if (flash.empty() || flash.size() % MEGA2560_PAGE_SIZE != 0) {
+			stats.errorMessage = "Flash image is empty or not page-aligned";
+			cli.leaveProgMode();
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
+		const size_t pages = flash.size() / MEGA2560_PAGE_SIZE;
+		if (!cli.loadAddress(0)) {
+			stats.errorMessage = "loadAddress failed before programming";
+			cli.leaveProgMode();
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
 		for (size_t p = 0; p < pages; ++p) {
 			size_t addr = p * MEGA2560_PAGE_SIZE;
-			const uint8_t* pageData = addr < flash.size()
-				? &flash[addr]
-				: erasedPage.data();
-
-			// 同じ接続中に書き込み成功した直前イメージと一致するページは送らない。
-			// 前イメージより短くなった領域は0xFFページを書いて古い内容を消す。
-			if (previousFlash) {
-				const uint8_t* oldPage = addr < previousFlash->size()
-					? &(*previousFlash)[addr]
-					: erasedPage.data();
-				if (std::memcmp(pageData, oldPage, MEGA2560_PAGE_SIZE) == 0) {
-					stats.pagesSkipped++;
-					continue;
-				}
-			}
-
-			bool allFF = std::memcmp(pageData, erasedPage.data(),
-				MEGA2560_PAGE_SIZE) == 0;
-			if (!previousFlash && allFF) {
-				stats.pagesSkipped++;
-				continue;
-			}
-
-			uint32_t wordAddr = (uint32_t)(addr / 2);
-			if (wordAddr != expectedNextWordAddr) {
-				if (!cli.loadAddress(wordAddr)) {
-					stats.errorMessage = "loadAddress failed at page " + std::to_string(p);
-					return stats;
-				}
-			}
-			if (!cli.programPage(pageData, MEGA2560_PAGE_SIZE)) {
+			if (!cli.programPage(&flash[addr], MEGA2560_PAGE_SIZE)) {
 				stats.errorMessage = "programPage failed at page " + std::to_string(p);
+				cli.leaveProgMode();
+				stats.totalMs = elapsedMs(t0);
 				return stats;
 			}
-			// ブートローダ側のアドレスはページサイズ / 2 だけ進んだはず
-			expectedNextWordAddr = wordAddr + (uint32_t)(MEGA2560_PAGE_SIZE / 2);
 			stats.bytesWritten += MEGA2560_PAGE_SIZE;
 			stats.pagesWritten++;
 		}
 		stats.progMs = elapsedMs(t3);
 		auto t4 = std::chrono::steady_clock::now();
 
-		// 5) プログラミングモード退出
+		// 5) 全ページを読み戻し、HEXイメージと1バイト単位で照合する。
+		sp.setReadTimeout(500);
+		if (!cli.loadAddress(0)) {
+			stats.errorMessage = "loadAddress failed before verification";
+			cli.leaveProgMode();
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
+		std::array<uint8_t, MEGA2560_PAGE_SIZE> actual{};
+		for (size_t p = 0; p < pages; ++p) {
+			const size_t addr = p * MEGA2560_PAGE_SIZE;
+			if (!cli.readFlashPage(actual.data(), actual.size())) {
+				stats.errorMessage = "readFlashPage failed at page " + std::to_string(p);
+				cli.leaveProgMode();
+				stats.totalMs = elapsedMs(t0);
+				return stats;
+			}
+			if (std::memcmp(actual.data(), &flash[addr], actual.size()) != 0) {
+				size_t offset = 0;
+				while (offset < actual.size() && actual[offset] == flash[addr + offset]) ++offset;
+				std::ostringstream mismatch;
+				mismatch << "Verification failed at flash address 0x"
+					<< std::hex << std::uppercase << (addr + offset)
+					<< ": expected 0x" << std::setw(2) << std::setfill('0')
+					<< (unsigned)flash[addr + offset]
+					<< ", actual 0x" << std::setw(2) << (unsigned)actual[offset];
+				stats.errorMessage = mismatch.str();
+				cli.leaveProgMode();
+				stats.totalMs = elapsedMs(t0);
+				return stats;
+			}
+			stats.bytesVerified += MEGA2560_PAGE_SIZE;
+			stats.pagesVerified++;
+		}
+		stats.verifyMs = elapsedMs(t4);
+		auto t5 = std::chrono::steady_clock::now();
+
+		// 6) 検証成功後にプログラミングモード退出
 		cli.leaveProgMode();
-		stats.leaveMs = elapsedMs(t4);
+		stats.leaveMs = elapsedMs(t5);
 
 		stats.totalMs = elapsedMs(t0);
 		stats.success = true;

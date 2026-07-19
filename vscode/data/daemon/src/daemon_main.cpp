@@ -153,7 +153,6 @@ static json handleUpload(const json& params) {
 	req.workspaceDir = params.value("workspaceDir", "");
 	req.port = params.value("port", "");
 	req.skipCompile = params.value("skipCompile", false);
-	req.forceFullUpload = params.value("forceFullUpload", false);
 
 	if (req.sketchDir.empty()) throw std::runtime_error("sketchDir required");
 

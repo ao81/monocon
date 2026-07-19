@@ -1085,48 +1085,45 @@ namespace Builder {
 			state.flashHexMtime = hexMtime;
 			state.flashHexSize = hexSize;
 		}
-		std::shared_ptr<const std::vector<uint8_t>> previousFlash;
-		if (!req.forceFullUpload) {
-			std::lock_guard<std::mutex> lk(g_state.uploadMtx);
-			auto it = g_state.uploadedFlashByPort.find(port);
-			if (it != g_state.uploadedFlashByPort.end()) {
-				previousFlash = it->second;
-			}
-		}
-		if (previousFlash && *previousFlash == *flash) {
-			out.success = true;
-			out.cached = true;
-			out.uploadTimeMs = 0;
-			out.avrdudeOutput = "upload cache hit: identical flash image\n";
-			return out;
-		}
 		// 注: 旧 warmupComPort は削除。SerialPort::open() が直後に同じ COM を開くため重複していた。
-		auto stats = Stk500v2::uploadMega2560(port, *flash,
-			previousFlash ? previousFlash.get() : nullptr);
+		auto uploadStarted = std::chrono::steady_clock::now();
+		auto stats = Stk500v2::uploadMega2560(port, *flash);
+		int attempts = 1;
+		std::string firstAttemptError;
+		if (!stats.success) {
+			// 瞬間的なUSB通信エラーや検証不一致は、ポートを開き直して最初から1回だけ再試行する。
+			firstAttemptError = stats.errorMessage;
+			Sleep(50);
+			stats = Stk500v2::uploadMega2560(port, *flash);
+			attempts = 2;
+		}
 		// デバッグ用に内訳もログに残す
 		std::ostringstream oss;
 		oss << "stk500v2 native upload\n"
+			<< "  attempts=" << attempts << "\n"
 			<< "  open=" << stats.openMs << "ms"
 			<< " reset=" << stats.resetMs << "ms"
 			<< " sync=" << stats.syncMs << "ms"
 			<< " prog=" << stats.progMs << "ms"
+			<< " verify=" << stats.verifyMs << "ms"
 			<< " leave=" << stats.leaveMs << "ms\n"
 			<< "  pages=" << stats.pagesWritten
-			<< " skipped=" << stats.pagesSkipped
 			<< " bytes=" << stats.bytesWritten
+			<< " verified_pages=" << stats.pagesVerified
+			<< " verified_bytes=" << stats.bytesVerified
 			<< " flash_cache=" << (flashCacheHit ? "hit" : "miss")
-			<< " delta_cache=" << (previousFlash ? "hit" : "miss") << "\n";
+			<< "\n";
+		if (!firstAttemptError.empty()) {
+			oss << "  first_attempt_error=" << firstAttemptError << "\n";
+		}
 		out.avrdudeOutput = oss.str();
 		if (!stats.success) {
-			out.errorMessage = stats.errorMessage;
+			out.errorMessage = "Upload failed after 2 attempts: " + stats.errorMessage;
 			return out;
 		}
-		{
-			std::lock_guard<std::mutex> lk(g_state.uploadMtx);
-			g_state.uploadedFlashByPort[port] = flash;
-		}
 		out.success = true;
-		out.uploadTimeMs = stats.totalMs;
+		out.uploadTimeMs = std::chrono::duration<double, std::milli>(
+			std::chrono::steady_clock::now() - uploadStarted).count();
 		return out;
 	}
 
@@ -1152,7 +1149,6 @@ namespace Builder {
 	nlohmann::json toJson(const UploadResult& r) {
 		return {
 			{"success", r.success},
-			{"cached", r.cached},
 			{"port", r.port},
 			{"uploadTimeMs", r.uploadTimeMs},
 			{"errorMessage", r.errorMessage},

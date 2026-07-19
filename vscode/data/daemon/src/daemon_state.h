@@ -60,11 +60,6 @@ struct DaemonState {
 	std::mutex sketchMtx;
 	std::unordered_map<std::string, SketchBuildState> sketches;
 
-	// --- 同一接続中のボードへ差分ページだけを書き込むための直前イメージ ---
-	std::mutex uploadMtx;
-	std::unordered_map<std::string,
-		std::shared_ptr<const std::vector<uint8_t>>> uploadedFlashByPort;
-
 	// --- core.a グローバルキャッシュのルート ---
 	std::string coreCacheRoot; // %LOCALAPPDATA%\ArduinoBuildDaemon\core-cache
 
@@ -75,7 +70,7 @@ struct DaemonState {
 	std::atomic<long long> requestCount{ 0 };
 
 	// --- バージョン ---
-	std::string version = "1.2.0";
+	std::string version = "1.3.0";
 };
 
 // グローバルインスタンス

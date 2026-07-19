@@ -15,6 +15,8 @@
 
 シリアルモニターはDTR/RTSを無効にして開くため、監視開始時のArduino自動リセットを防ぎます。各処理にはタイムアウトがあり、失敗後に「アップロードは既に実行中です」の状態が残りません。動作記録は出力パネルの`Monocon Tools`で確認できます。
 
+書き込み中はVS Code下部に進行状況を表示します。CLIの`Total client time`出力後、正常終了なら「Arduinoへの書き込みが完了しました。」という通知を表示し、ステータスバーにも完了状態を残します。
+
 既定のショートカットは`F2`と`Ctrl+Space`です。
 
 ### 課題フォルダーを一括作成
@@ -52,6 +54,7 @@
 
 - `out/extension.js`: 拡張機能のエントリーポイント
 - `out/arduino-upload.js`: Arduino書き込みとシリアルモニター連携
+- `out/upload-status.js`: 書き込み完了通知とステータスバー表示
 - `out/task-folders.js`: 課題フォルダーの一括作成
 - `test/arduino-upload.test.js`: コマンド連携と書き込み処理の回帰テスト
 - `test/task-folders.test.js`: 課題フォルダー生成の回帰テスト

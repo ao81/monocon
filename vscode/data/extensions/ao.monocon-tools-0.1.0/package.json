@@ -20,7 +20,9 @@
     "extensionKind": [
         "workspace"
     ],
-    "activationEvents": [],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
@@ -116,7 +118,7 @@
     "scripts": {
         "vscode:prepublish": "npm run check",
         "compile": "npm run check",
-        "check": "node --check ./out/extension.js && node --check ./out/arduino-upload.js && node --check ./out/task-folders.js",
+        "check": "node --check ./out/extension.js && node --check ./out/arduino-upload.js && node --check ./out/task-folders.js && node --check ./out/upload-status.js",
         "test": "node --test ./test/*.test.js"
     },
     "devDependencies": {
