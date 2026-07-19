@@ -403,24 +403,20 @@ public:
 
 	int to(int lo, int hi) const {
 		int v = atomicReadInt(&raw);
+		v = clamp(v, inputMin, inputMax);
+		const int32_t inSpan = static_cast<int32_t>(inputMax) - inputMin;
 
-		v = clamp<int, int, int>(v, inputMin, inputMax);
+		if (inSpan <= 0) return lo;
 
-		const int32_t inputSpan =
-			static_cast<int32_t>(inputMax) - inputMin;
+		const int32_t outSpan = static_cast<int32_t>(hi) - lo;
 
-		if (inputSpan <= 0) {
-			return lo;
-		}
+		int64_t num = static_cast<int64_t>(v - inputMin) * outSpan;
 
-		const int32_t outputSpan =
-			static_cast<int32_t>(hi) - lo;
+		if (num >= 0) num += inSpan / 2;
+		else num -= inSpan / 2;
 
 		return static_cast<int>(
-			static_cast<int32_t>(lo) +
-			(static_cast<int32_t>(v - inputMin) * outputSpan +
-			inputSpan / 2) /
-			inputSpan
+			static_cast<int64_t>(lo) + num / inSpan
 			);
 	}
 };
@@ -1235,8 +1231,6 @@ extern Disp dp;
 extern Dcm dm;
 extern Spm sm;
 extern Bz bz;
-
-void begin();
 
 class Seq {
 private:
