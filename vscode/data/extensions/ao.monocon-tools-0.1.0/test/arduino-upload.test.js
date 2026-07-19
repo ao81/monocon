@@ -11,6 +11,8 @@ function disposable(remove) {
 
 function loadExtension(vscode) {
     const extensionPath = path.resolve(__dirname, '../out/extension.js');
+    const uploadPath = path.resolve(__dirname, '../out/arduino-upload.js');
+    const foldersPath = path.resolve(__dirname, '../out/task-folders.js');
     const originalLoad = Module._load;
     Module._load = function (request, parent, isMain) {
         if (request === 'vscode') {
@@ -19,6 +21,8 @@ function loadExtension(vscode) {
         return originalLoad.call(this, request, parent, isMain);
     };
     delete require.cache[extensionPath];
+    delete require.cache[uploadPath];
+    delete require.cache[foldersPath];
     try {
         return require(extensionPath);
     }
@@ -123,7 +127,7 @@ function createVscodeMock(options = {}) {
                 return true;
             },
             getConfiguration(section) {
-                if (section !== 'monoconUpload') {
+                if (section !== 'monoconTools.upload') {
                     return { get: (_name, fallback) => fallback };
                 }
                 const values = {
@@ -153,10 +157,20 @@ function createVscodeMock(options = {}) {
 async function activateAndGetUpload(mock) {
     const extension = loadExtension(mock.vscode);
     extension.activate({ subscriptions: [] });
-    const upload = mock.commands.get('monocon.upload');
+    const upload = mock.commands.get('monoconTools.uploadArduino');
     assert.equal(typeof upload, 'function');
     return upload;
 }
+
+test('registers descriptive command IDs and compatibility aliases', async () => {
+    const mock = createVscodeMock();
+    await activateAndGetUpload(mock);
+
+    assert.equal(typeof mock.commands.get('monoconTools.uploadArduino'), 'function');
+    assert.equal(typeof mock.commands.get('monoconTools.createTaskFolders'), 'function');
+    assert.equal(typeof mock.commands.get('monocon.upload'), 'function');
+    assert.equal(typeof mock.commands.get('template.generate'), 'function');
+});
 
 test('monitor restart timeout always releases the upload lock', async () => {
     const mock = createVscodeMock({

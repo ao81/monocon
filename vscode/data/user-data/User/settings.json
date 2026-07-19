@@ -287,12 +287,12 @@
 		"]",
 		"q"
 	],
-	"template.baseName": "mon",
+	"monoconTools.taskFolders.baseName": "mon",
 
-	"monoconUpload.baudRate": 115200,
-	"monoconUpload.reopenMonitor": true,
-	"monoconUpload.reopenDelayMs": 0,
-	"monoconUpload.portReleaseDelayMs": 0,
-	"monoconUpload.taskTimeoutMs": 180000,
-	"monoconUpload.serialOperationTimeoutMs": 5000
+	"monoconTools.upload.baudRate": 115200,
+	"monoconTools.upload.reopenMonitor": true,
+	"monoconTools.upload.reopenDelayMs": 0,
+	"monoconTools.upload.portReleaseDelayMs": 0,
+	"monoconTools.upload.taskTimeoutMs": 180000,
+	"monoconTools.upload.serialOperationTimeoutMs": 5000
 }

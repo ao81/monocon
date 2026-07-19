@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
+    <Metadata>
+        <Identity Language="ja-JP" Id="monocon-tools" Version="0.1.0" Publisher="ao" />
+        <DisplayName>Monocon Tools</DisplayName>
+        <Description xml:space="preserve">高校生ものづくりコンテスト向けのArduino書き込み・課題フォルダー作成ツール</Description>
+        <Tags>arduino,monocon,serial-monitor</Tags>
+        <Categories>Other</Categories>
+        <GalleryFlags>Public</GalleryFlags>
+        <Properties>
+            <Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.80.0" />
+            <Property Id="Microsoft.VisualStudio.Code.ExtensionKind" Value="workspace" />
+            <Property Id="Microsoft.VisualStudio.Code.ExecutesCode" Value="true" />
+            <Property Id="Microsoft.VisualStudio.Services.GitHubFlavoredMarkdown" Value="true" />
+            <Property Id="Microsoft.VisualStudio.Services.Content.Pricing" Value="Free" />
+        </Properties>
+        <Icon>extension/icon.ico</Icon>
+    </Metadata>
+    <Installation>
+        <InstallationTarget Id="Microsoft.VisualStudio.Code" />
+    </Installation>
+    <Dependencies />
+    <Assets>
+        <Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true" />
+        <Asset Type="Microsoft.VisualStudio.Services.Content.Details" Path="extension/readme.md" Addressable="true" />
+        <Asset Type="Microsoft.VisualStudio.Services.Icons.Default" Path="extension/icon.ico" Addressable="true" />
+    </Assets>
+</PackageManifest>

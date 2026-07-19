@@ -1,78 +1,109 @@
 {
-    "name": "template",
+    "name": "monocon-tools",
     "displayName": "Monocon Tools",
     "publisher": "ao",
+    "version": "0.1.0",
+    "description": "高校生ものづくりコンテスト向けのArduino書き込み・課題フォルダー作成ツール",
     "icon": "icon.ico",
-    "description": "高校生ものづくりコンテスト向けのテンプレート生成・Arduino書き込み補助",
-    "version": "0.0.1",
     "engines": {
         "vscode": "^1.80.0"
     },
     "categories": [
         "Other"
     ],
+    "keywords": [
+        "arduino",
+        "monocon",
+        "serial monitor",
+        "高校生ものづくりコンテスト"
+    ],
+    "extensionKind": [
+        "workspace"
+    ],
     "activationEvents": [],
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "template.generate",
-                "title": "Template Generator: フォルダ構造を生成"
+                "command": "monoconTools.uploadArduino",
+                "title": "Arduinoへ書き込み",
+                "category": "Monocon Tools"
+            },
+            {
+                "command": "monoconTools.createTaskFolders",
+                "title": "課題フォルダーを一括作成",
+                "category": "Monocon Tools"
             },
             {
                 "command": "monocon.upload",
-                "title": "Monocon: シリアル停止・書き込み・再開"
+                "title": "Arduinoへ書き込み（旧ID）",
+                "category": "Monocon Tools"
+            },
+            {
+                "command": "template.generate",
+                "title": "課題フォルダーを一括作成（旧ID）",
+                "category": "Monocon Tools"
             }
         ],
         "menus": {
             "explorer/context": [
                 {
-                    "command": "template.generate",
+                    "command": "monoconTools.createTaskFolders",
                     "group": "2_workspace"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "monocon.upload",
+                    "when": "false"
+                },
+                {
+                    "command": "template.generate",
+                    "when": "false"
                 }
             ]
         },
         "configuration": {
             "title": "Monocon Tools",
             "properties": {
-                "template.baseName": {
+                "monoconTools.taskFolders.baseName": {
                     "type": "string",
                     "default": "kadai",
-                    "description": "サブディレクトリ名と .ino ファイル名のベース部分 (例: kadai → kadai1, kadai2, ...)"
+                    "description": "作成する課題フォルダーと.inoファイルの基本名（例: kadai1）"
                 },
-                "monoconUpload.baudRate": {
+                "monoconTools.upload.baudRate": {
                     "type": "number",
                     "default": 9600,
                     "minimum": 1,
                     "description": "書き込み後に再開するシリアルモニターのボーレート"
                 },
-                "monoconUpload.reopenMonitor": {
+                "monoconTools.upload.reopenMonitor": {
                     "type": "boolean",
                     "default": true,
                     "description": "書き込み前に監視していたシリアルポートを、書き込み後に再度開く"
                 },
-                "monoconUpload.reopenDelayMs": {
+                "monoconTools.upload.reopenDelayMs": {
                     "type": "number",
                     "default": 0,
                     "minimum": 0,
                     "maximum": 10000,
                     "description": "書き込み完了からシリアルモニターを再開するまでの待機時間"
                 },
-                "monoconUpload.portReleaseDelayMs": {
+                "monoconTools.upload.portReleaseDelayMs": {
                     "type": "number",
                     "default": 0,
                     "minimum": 0,
                     "maximum": 5000,
                     "description": "シリアルモニター停止後、書き込み開始までポート解放を待つ時間"
                 },
-                "monoconUpload.taskTimeoutMs": {
+                "monoconTools.upload.taskTimeoutMs": {
                     "type": "number",
                     "default": 180000,
                     "minimum": 10000,
                     "maximum": 600000,
                     "description": "Arduino書き込みタスクが応答しない場合に中止するまでの時間"
                 },
-                "monoconUpload.serialOperationTimeoutMs": {
+                "monoconTools.upload.serialOperationTimeoutMs": {
                     "type": "number",
                     "default": 5000,
                     "minimum": 1000,
@@ -85,17 +116,16 @@
     "scripts": {
         "vscode:prepublish": "npm run check",
         "compile": "npm run check",
-        "check": "node --check ./out/extension.js",
+        "check": "node --check ./out/extension.js && node --check ./out/arduino-upload.js && node --check ./out/task-folders.js",
         "test": "node --test ./test/*.test.js"
     },
     "devDependencies": {
         "@types/node": "^18.19.130",
-        "@types/vscode": "^1.80.0",
-        "typescript": "^5.0.0"
+        "@types/vscode": "^1.80.0"
     },
     "__metadata": {
         "installedTimestamp": 1779508662908,
         "targetPlatform": "undefined",
-        "size": 12965
+        "size": 22000
     }
 }
