@@ -132,7 +132,7 @@
 	"arduino.enableUSBDetection": true,
 	"arduino.disableTestingOpen": false,
 	"arduino.skipHeaderProvider": false,
-	"arduino.defaultBaudRate": 9600,
+	"arduino.defaultBaudRate": 115200,
 	"arduino.additionalUrls": [
 		"https://dl.espressif.com/dl/package_esp32_index.json"
 	],
@@ -219,7 +219,6 @@
 	"extensions.ignoreRecommendations": true,
 	"git.enableSmartCommit": true,
 	"git.confirmSync": false,
-	"workbench.activityBar.location": "top",
 	"scm.diffDecorations": "none",
 	"scm.diffDecorationsGutterAction": "none",
 	"chat.disableAIFeatures": true,
@@ -288,5 +287,12 @@
 		"]",
 		"q"
 	],
-	"template.baseName": "mon"
+	"template.baseName": "mon",
+
+	"monoconUpload.baudRate": 115200,
+	"monoconUpload.reopenMonitor": true,
+	"monoconUpload.reopenDelayMs": 0,
+	"monoconUpload.portReleaseDelayMs": 0,
+	"monoconUpload.taskTimeoutMs": 180000,
+	"monoconUpload.serialOperationTimeoutMs": 5000
 }

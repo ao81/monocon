@@ -153,6 +153,7 @@ static json handleUpload(const json& params) {
 	req.workspaceDir = params.value("workspaceDir", "");
 	req.port = params.value("port", "");
 	req.skipCompile = params.value("skipCompile", false);
+	req.forceFullUpload = params.value("forceFullUpload", false);
 
 	if (req.sketchDir.empty()) throw std::runtime_error("sketchDir required");
 
@@ -364,7 +365,7 @@ int main(int argc, char* argv[]) {
 	SetConsoleCP(CP_UTF8);
 
 	// --- 引数 ---
-	int idleMinutes = 5;   // デフォルト: 5 分無操作で自動終了
+	int idleMinutes = 30;  // コンテスト中の再起動を避け、ホットキャッシュを維持
 	for (int i = 1; i < argc; ++i) {
 		std::string a = argv[i];
 		if (a == "--no-daemonize" || a == "--foreground") g_foreground = true;

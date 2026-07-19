@@ -182,8 +182,7 @@
 	// =====================================================================
 	{
 		"key": "f2",
-		"command": "workbench.action.tasks.runTask",
-		"args": "Arduino: Upload"
+		"command": "monocon.upload"
 	},
 	{
 		"key": "f2",
@@ -241,12 +240,11 @@
 	},
 
 	// =====================================================================
-	// タスクビルド: Ctrl+Space
+	// Arduino アップロード（予備キー）: Ctrl+Space
 	// =====================================================================
 	{
 		"key": "ctrl+space",
-		"command": "workbench.action.tasks.build",
-		"when": "taskCommandsRegistered"
+		"command": "monocon.upload"
 	},
 	{
 		"key": "ctrl+shift+b",

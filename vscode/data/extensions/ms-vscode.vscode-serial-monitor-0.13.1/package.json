@@ -27,7 +27,7 @@
 		"name": "Microsoft Corporation"
 	},
 	"publisher": "ms-vscode",
-	"main": "./dist/extension.js",
+	"main": "./dist/extension-no-reset.js",
 	"scripts": {
 		"build": "webpack --mode production",
 		"build:dev": "webpack --mode development",
@@ -35,7 +35,7 @@
 		"lint": "eslint src --ext ts --max-warnings 0",
 		"package": "vsce package",
 		"rebuild:dev": "pnpm run build:dev",
-		"test": "",
+		"test": "node --test ./test/*.test.js",
 		"watch": "webpack --mode development --watch"
 	},
 	"contributes": {

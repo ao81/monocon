@@ -114,8 +114,16 @@ bool initializeDaemonState() {
 void refreshComPorts() {
 	auto names = PortScanner::listNames();
 	auto arduino = PortScanner::findArduinoPort();
-	std::lock_guard<std::mutex> lk(g_state.portMtx);
-	g_state.cachedPorts = std::move(names);
-	g_state.cachedArduinoPort = std::move(arduino);
-	g_state.portsCachedAt = std::chrono::steady_clock::now();
+	bool changed = false;
+	{
+		std::lock_guard<std::mutex> lk(g_state.portMtx);
+		changed = names != g_state.cachedPorts || arduino != g_state.cachedArduinoPort;
+		g_state.cachedPorts = std::move(names);
+		g_state.cachedArduinoPort = std::move(arduino);
+		g_state.portsCachedAt = std::chrono::steady_clock::now();
+	}
+	if (changed) {
+		std::lock_guard<std::mutex> lk(g_state.uploadMtx);
+		g_state.uploadedFlashByPort.clear();
+	}
 }

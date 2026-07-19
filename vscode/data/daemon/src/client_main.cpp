@@ -4,9 +4,10 @@
 #include <windows.h>
 #include <tlhelp32.h>   // CreateToolhelp32Snapshot for kill command
 
-#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <iostream>
+#include <mutex>
 #include <thread>
 #include <filesystem>
 
@@ -68,9 +69,10 @@ namespace {
 	//      重要: spawn を 2 度走らせると多重起動の原因になる。
 	HANDLE connectOrSpawn(const std::string& pipeName, bool autoSpawn) {
 		bool spawned = false;
-		// 起動時間を長めに見る (Defender スキャン込みで最大 6 秒)
-		// 100ms * 60 = 6 秒
-		for (int attempt = 0; attempt < 60; ++attempt) {
+		// 起動時間を長めに見つつ、正常なコールド起動は10ms刻みで素早く拾う。
+		// 旧実装は100ms固定sleepのため、起動済みでも平均50msを余分に待っていた。
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(6);
+		while (std::chrono::steady_clock::now() < deadline) {
 			HANDLE h = CreateFileA(
 				pipeName.c_str(),
 				GENERIC_READ | GENERIC_WRITE,
@@ -94,9 +96,11 @@ namespace {
 					return INVALID_HANDLE_VALUE;
 				}
 				spawned = true;
+			} else if (err == ERROR_FILE_NOT_FOUND && !autoSpawn) {
+				return INVALID_HANDLE_VALUE;
 			}
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 		return INVALID_HANDLE_VALUE;
 	}
@@ -114,19 +118,26 @@ namespace {
 
 		if (!PipeIO::writeMessage(hPipe, body)) return "";
 
-		// タイムアウト処理: 簡易的に readMessage を別スレッドにする
+		// タイムアウト付き読み取り。旧実装の50msポーリングをcondition_variable
+		// 通知に置き換え、応答到着からクライアント終了までの固定遅延をなくす。
 		std::string resp;
-		std::atomic<bool> done{ false };
+		std::mutex doneMtx;
+		std::condition_variable doneCv;
+		bool done = false;
 		std::thread t([&]() {
-			resp = PipeIO::readMessage(hPipe);
-			done = true;
+			std::string received = PipeIO::readMessage(hPipe);
+			{
+				std::lock_guard<std::mutex> lock(doneMtx);
+				resp = std::move(received);
+				done = true;
+			}
+			doneCv.notify_one();
 			});
-		auto deadline = std::chrono::steady_clock::now() +
-			std::chrono::seconds(timeoutSec);
-		while (!done && std::chrono::steady_clock::now() < deadline) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(50));
-		}
-		if (!done) {
+		std::unique_lock<std::mutex> lock(doneMtx);
+		bool completed = doneCv.wait_for(lock, std::chrono::seconds(timeoutSec),
+			[&] { return done; });
+		lock.unlock();
+		if (!completed) {
 			// Pipe を閉じることで read を解除させる
 			CancelIoEx(hPipe, nullptr);
 			t.join();
@@ -178,7 +189,7 @@ namespace {
 	void printUsage() {
 		std::cout <<
 			"Usage:\n"
-			"  arduino-build-cli.exe upload <SketchDir> [Port] [--workspace <Dir>]\n"
+			"  arduino-build-cli.exe upload <SketchDir> [Port] [--workspace <Dir>] [--full-upload]\n"
 			"  arduino-build-cli.exe build  <SketchDir>        [--workspace <Dir>]\n"
 			"  arduino-build-cli.exe ping\n"
 			"  arduino-build-cli.exe ports\n"
@@ -186,18 +197,21 @@ namespace {
 			"  arduino-build-cli.exe kill        (force: 全 daemon プロセスを強制終了)\n"
 			"\n"
 			"  --workspace <Dir>: ビルド出力先のワークスペースルートを指定\n"
+			"  --full-upload: 直前イメージとの差分ページキャッシュを使わない\n"
 			"     省略時は SketchDir から .vscode/ を持つフォルダを上に探索\n"
 			"     ビルド出力先: <Workspace>/.vscode/build/<相対パス>/\n";
 	}
 
 	// --workspace <path> を抽出して、それ以外の位置引数だけ vector で返す
 	std::vector<std::string> parsePositional(int argc, char* argv[],
-		std::string& workspaceOut) {
+		std::string& workspaceOut, bool& forceFullUploadOut) {
 		std::vector<std::string> positional;
 		for (int i = 1; i < argc; ++i) {
 			std::string a = argv[i];
 			if (a == "--workspace" && i + 1 < argc) {
 				workspaceOut = argv[++i];
+			} else if (a == "--full-upload") {
+				forceFullUploadOut = true;
 			} else {
 				positional.push_back(a);
 			}
@@ -207,7 +221,8 @@ namespace {
 
 	int handleSubcommand(int argc, char* argv[]) {
 		std::string workspaceDir;
-		auto pos = parsePositional(argc, argv, workspaceDir);
+		bool forceFullUpload = false;
+		auto pos = parsePositional(argc, argv, workspaceDir, forceFullUpload);
 		if (pos.empty()) { printUsage(); return 1; }
 		std::string cmd = pos[0];
 
@@ -242,6 +257,7 @@ namespace {
 			json p = { {"sketchDir", pos[1]} };
 			if (pos.size() >= 3) p["port"] = pos[2];
 			if (!workspaceDir.empty()) p["workspaceDir"] = workspaceDir;
+			if (forceFullUpload) p["forceFullUpload"] = true;
 			resp = sendRpc(hPipe, "upload", p, 300);
 		} else {
 			printUsage();
@@ -318,7 +334,9 @@ namespace {
 				}
 				std::cout << "Compile " << label
 					<< " in " << cr.value("buildTimeMs", 0.0) << " ms\n";
-				std::cout << "Upload to " << r.value("port", "") << " in "
+				std::cout << "Upload "
+					<< (r.value("cached", false) ? "(cached) " : "")
+					<< "to " << r.value("port", "") << " in "
 					<< r.value("uploadTimeMs", 0.0) << " ms\n";
 				std::cout << "Total client time: " << sw.elapsedMilliseconds() << " ms\n";
 

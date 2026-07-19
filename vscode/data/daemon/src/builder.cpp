@@ -68,28 +68,29 @@ namespace {
 	// =============================================================================
 
 	// ポータブル版VSCodeのキャッシュディレクトリを特定
-	std::string getPortableCacheDir() {
-		char buf[MAX_PATH];
-		GetModuleFileNameA(nullptr, buf, MAX_PATH);
-		fs::path p = buf;
+	const std::string& getPortableCacheDir() {
+		// 実行ファイル位置はプロセス中に変化しないため、初回だけ解決する。
+		static const std::string cacheDir = [] {
+			char buf[MAX_PATH];
+			GetModuleFileNameA(nullptr, buf, MAX_PATH);
+			fs::path p = buf;
 
-		// フォルダ名は環境により大小混在し得るため、小文字化して比較する
-		auto toLower = [](std::string s) {
-			std::transform(s.begin(), s.end(), s.begin(),
-				[](unsigned char c) { return (char)std::tolower(c); });
-			return s;
-		};
+			auto toLower = [](std::string s) {
+				std::transform(s.begin(), s.end(), s.begin(),
+					[](unsigned char c) { return (char)std::tolower(c); });
+				return s;
+			};
 
-		// 実行ファイル位置から親ディレクトリを遡り、対象のVSCodeフォルダを探す
-		while (!p.empty() && p.parent_path() != p) {
-			std::string name = toLower(p.filename().string());
-			if (name.find("vscode-win32") != std::string::npos || name == "vscode") {
-				return (p / "data" / "cache").string();
+			while (!p.empty() && p.parent_path() != p) {
+				std::string name = toLower(p.filename().string());
+				if (name.find("vscode-win32") != std::string::npos || name == "vscode") {
+					return (p / "data" / "cache").string();
+				}
+				p = p.parent_path();
 			}
-			p = p.parent_path();
-		}
-		// フォールバック: 見つからない場合は実行ファイル直下の data/cache を使用
-		return (fs::path(buf).parent_path() / "data" / "cache").string();
+			return (fs::path(buf).parent_path() / "data" / "cache").string();
+			}();
+		return cacheDir;
 	}
 
 	// .ino / フォルダ / 末尾スラッシュ を吸収して「.ino を含むディレクトリ」を返す
@@ -101,11 +102,7 @@ namespace {
 			return "";
 		}
 		if (fs::is_directory(p, ec)) {
-			for (const auto& entry : fs::directory_iterator(p, ec)) {
-				if (ec) break;
-				if (entry.path().extension() == ".ino") return p.string();
-			}
-			return p.string();   // .ino 無し: エラーは呼び出し元で
+			return p.string();   // .ino 有無は後続の1回のソース走査で確認
 		}
 		return "";
 	}
@@ -195,7 +192,7 @@ namespace {
 	std::string cppFlags(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& buildDir) {
 		std::ostringstream f;
-		f << "-c -g -Os -Wall -Wextra -std=gnu++17"
+		f << "-c -Os -pipe -Wall -Wextra -std=gnu++17"
 			<< " -ffunction-sections -fdata-sections -fno-exceptions"
 			<< " -fno-threadsafe-statics -Wno-error=narrowing"
 			<< " -Wno-unused-variable"
@@ -207,7 +204,7 @@ namespace {
 	std::string cFlags(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& buildDir) {
 		std::ostringstream f;
-		f << "-c -g -Os -Wall -Wextra -std=gnu11"
+		f << "-c -Os -pipe -Wall -Wextra -std=gnu11"
 			<< " -ffunction-sections -fdata-sections"
 			<< " -Wno-unused-variable"
 			<< " -mmcu=" << bc.mcu
@@ -367,7 +364,7 @@ namespace {
 	//   旧実装は .ino, .cpp, .c それぞれ別ループで 3 回スキャンしていた。
 	//   ファイルメタデータも 1 回の GetFileAttributesEx で取る。
 	std::vector<FileEntry> collectSources(const std::string& sketchDir,
-		const std::string& buildDir) {
+		const std::string& buildDir, bool* hasIno = nullptr) {
 		std::vector<std::string> inos;
 		std::vector<std::string> cpps;
 		std::vector<std::string> cs;
@@ -386,6 +383,7 @@ namespace {
 		std::sort(inos.begin(), inos.end());
 		std::sort(cpps.begin(), cpps.end());
 		std::sort(cs.begin(), cs.end());
+		if (hasIno) *hasIno = !inos.empty();
 
 		std::vector<FileEntry> entries;
 		entries.reserve(inos.empty() ? cpps.size() + cs.size()
@@ -807,7 +805,7 @@ namespace {
 	bool runLink(const std::vector<FileEntry>& all, const BoardConfig& bc,
 		const std::string& coreA, const std::string& elfPath, std::string& outputLog) {
 		std::ostringstream args;
-		args << "-w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections"
+		args << "-w -Os -flto -fuse-linker-plugin -Wl,--gc-sections"
 			<< " -mmcu=" << bc.mcu
 			<< " -o \"" << elfPath << "\"";
 		for (const auto& e : all) args << " \"" << e.objPath << "\"";
@@ -857,14 +855,17 @@ namespace Builder {
 			out.errorMessage = "Cannot resolve sketch directory: \"" + req.sketchDir + "\"";
 			return out;
 		}
-		if (Utils::getFilesByExtension(sketchDir, ".ino").empty()) {
-			out.errorMessage = "No .ino file found in: " + sketchDir;
-			return out;
-		}
 		std::string workspace = resolveWorkspace(sketchDir, req.workspaceDir);
 		std::string buildDir = computeBuildDir(workspace, sketchDir);
 		Utils::createDirectory(buildDir);
 		BoardConfig bc = resolveBoardConfig(req.fqbn);
+		// ソース列挙と.ino存在確認を1回のディレクトリ走査で済ませる。
+		bool hasIno = false;
+		auto entries = collectSources(sketchDir, buildDir, &hasIno);
+		if (!hasIno) {
+			out.errorMessage = "No .ino file found in: " + sketchDir;
+			return out;
+		}
 		// --- core.a の確保 (初回のみ) ---
 		std::string coreA = coreArchivePath(coreCacheKey(bc));
 		if (req.forceFullBuild) Utils::deleteFile(coreA);
@@ -875,10 +876,19 @@ namespace Builder {
 				return out;
 			}
 		}
-		// --- ソース列挙 + 差分判定 ---
-		auto entries = collectSources(sketchDir, buildDir);
+		// --- 差分判定 ---
+		// コンパイラフラグやツールチェーンが変わった場合は、mtimeが同じでも
+		// 旧オブジェクトを再利用しない。通常時は短い署名ファイルを読むだけ。
+		CompileFlagsCache flagsCache = buildFlagsCache(bc, sketchDir, buildDir);
+		std::string buildSignature = Utils::sha1Hex(
+			flagsCache.cpp + "\n" + flagsCache.cc + "\n" +
+			g_state.toolchain.compilerVersion + "\n" + coreA);
+		std::string signaturePath = Utils::joinPath(buildDir, ".build-signature");
+		bool buildConfigChanged = !Utils::fileExists(signaturePath)
+			|| Utils::trim(Utils::readFile(signaturePath)) != buildSignature;
 		auto saved = loadStamps(buildDir);
-		auto plan = planRebuild(entries, saved, req.forceFullBuild);
+		auto plan = planRebuild(entries, saved,
+			req.forceFullBuild || buildConfigChanged);
 		std::string sketchName = Utils::getFileName(sketchDir);
 		std::string elfPath = Utils::joinPath(buildDir, sketchName + ".elf");
 		std::string hexPath = Utils::joinPath(buildDir, sketchName + ".hex");
@@ -902,9 +912,6 @@ namespace Builder {
 			return out;
 		}
 		// --- コンパイル (差分のみ) ---
-		// フラグは 1 度だけ作って各並列ジョブに共有する (const 参照は thread-safe)。
-		CompileFlagsCache flagsCache = buildFlagsCache(bc, sketchDir, buildDir);
-
 		if (plan.size() == 1) {
 			// 単一ファイル: スレッド生成のオーバーヘッドを避けて素直に実行
 			size_t idx = plan[0];
@@ -979,6 +986,7 @@ namespace Builder {
 		}
 		// --- スタンプ更新 ---
 		saveStamps(buildDir, entries);
+		Utils::writeFileIfChanged(signaturePath, buildSignature + "\n");
 		// --- state 更新 ---
 		{
 			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
@@ -999,7 +1007,6 @@ namespace Builder {
 	}
 	UploadResult upload(const UploadRequest& req) {
 		UploadResult out;
-		Stopwatch sw;
 		std::string sketchDir = resolveSketchDir(req.sketchDir);
 		if (sketchDir.empty()) {
 			out.errorMessage = "Cannot resolve sketch directory: \"" + req.sketchDir + "\"";
@@ -1048,14 +1055,54 @@ namespace Builder {
 
 		// =====================================================================
 
-		std::vector<uint8_t> flash;
-		std::string hexErr;
-		if (!Stk500v2::readIntelHex(out.compile.hexFile, flash, hexErr)) {
-			out.errorMessage = "Hex parse failed: " + hexErr;
+		std::shared_ptr<const std::vector<uint8_t>> flash;
+		long long hexMtime = 0;
+		uint64_t hexSize = 0;
+		Utils::getFileMetadata(out.compile.hexFile, hexMtime, hexSize);
+		bool flashCacheHit = false;
+		{
+			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
+			auto it = g_state.sketches.find(sketchDir);
+			if (it != g_state.sketches.end()
+				&& it->second.flashImage
+				&& it->second.flashHexMtime == hexMtime
+				&& it->second.flashHexSize == hexSize) {
+				flash = it->second.flashImage;
+				flashCacheHit = true;
+			}
+		}
+		if (!flash) {
+			auto parsed = std::make_shared<std::vector<uint8_t>>();
+			std::string hexErr;
+			if (!Stk500v2::readIntelHex(out.compile.hexFile, *parsed, hexErr)) {
+				out.errorMessage = "Hex parse failed: " + hexErr;
+				return out;
+			}
+			flash = parsed;
+			std::lock_guard<std::mutex> lk(g_state.sketchMtx);
+			auto& state = g_state.sketches[sketchDir];
+			state.flashImage = parsed;
+			state.flashHexMtime = hexMtime;
+			state.flashHexSize = hexSize;
+		}
+		std::shared_ptr<const std::vector<uint8_t>> previousFlash;
+		if (!req.forceFullUpload) {
+			std::lock_guard<std::mutex> lk(g_state.uploadMtx);
+			auto it = g_state.uploadedFlashByPort.find(port);
+			if (it != g_state.uploadedFlashByPort.end()) {
+				previousFlash = it->second;
+			}
+		}
+		if (previousFlash && *previousFlash == *flash) {
+			out.success = true;
+			out.cached = true;
+			out.uploadTimeMs = 0;
+			out.avrdudeOutput = "upload cache hit: identical flash image\n";
 			return out;
 		}
 		// 注: 旧 warmupComPort は削除。SerialPort::open() が直後に同じ COM を開くため重複していた。
-		auto stats = Stk500v2::uploadMega2560(port, flash);
+		auto stats = Stk500v2::uploadMega2560(port, *flash,
+			previousFlash ? previousFlash.get() : nullptr);
 		// デバッグ用に内訳もログに残す
 		std::ostringstream oss;
 		oss << "stk500v2 native upload\n"
@@ -1065,14 +1112,21 @@ namespace Builder {
 			<< " prog=" << stats.progMs << "ms"
 			<< " leave=" << stats.leaveMs << "ms\n"
 			<< "  pages=" << stats.pagesWritten
-			<< " bytes=" << stats.bytesWritten << "\n";
+			<< " skipped=" << stats.pagesSkipped
+			<< " bytes=" << stats.bytesWritten
+			<< " flash_cache=" << (flashCacheHit ? "hit" : "miss")
+			<< " delta_cache=" << (previousFlash ? "hit" : "miss") << "\n";
 		out.avrdudeOutput = oss.str();
 		if (!stats.success) {
 			out.errorMessage = stats.errorMessage;
 			return out;
 		}
+		{
+			std::lock_guard<std::mutex> lk(g_state.uploadMtx);
+			g_state.uploadedFlashByPort[port] = flash;
+		}
 		out.success = true;
-		out.uploadTimeMs = sw.elapsedMilliseconds();
+		out.uploadTimeMs = stats.totalMs;
 		return out;
 	}
 
@@ -1098,6 +1152,7 @@ namespace Builder {
 	nlohmann::json toJson(const UploadResult& r) {
 		return {
 			{"success", r.success},
+			{"cached", r.cached},
 			{"port", r.port},
 			{"uploadTimeMs", r.uploadTimeMs},
 			{"errorMessage", r.errorMessage},

@@ -3,11 +3,11 @@
 	"tasks": [
 		{
 			"label": "Arduino: Upload",
-			"type": "shell",
+			"type": "process",
 			"command": "${execPath}/../data/daemon/build/bin/arduino-build-cli.exe",
 			"args": ["upload", "${fileDirname}", "--workspace", "${workspaceFolder}"],
 			"group": { "kind": "build", "isDefault": true },
-			"presentation": { "reveal": "always", "panel": "shared", "clear": true },
+			"presentation": { "reveal": "silent", "panel": "shared", "clear": false, "showReuseMessage": false },
 			"problemMatcher": []
 		}
 	]

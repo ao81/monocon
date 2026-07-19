@@ -1,7 +1,9 @@
 #include "stk500v2.h"
 
 #include <windows.h>
+#include <array>
 #include <chrono>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 
@@ -39,9 +41,21 @@ namespace {
 
 		bool open(const std::string& port) {
 			std::string dev = "\\\\.\\" + port;
-			h = CreateFileA(dev.c_str(),
-				GENERIC_READ | GENERIC_WRITE, 0, nullptr,
-				OPEN_EXISTING, 0, nullptr);
+			// シリアルモニターのCloseHandle反映を固定sleepで待たず、必要な時だけ
+			// 5ms刻みで再試行する。通常は初回で開くため待ち時間はゼロ。
+			const auto deadline = std::chrono::steady_clock::now() +
+				std::chrono::milliseconds(300);
+			do {
+				h = CreateFileA(dev.c_str(),
+					GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+					OPEN_EXISTING, 0, nullptr);
+				if (h != INVALID_HANDLE_VALUE) break;
+				DWORD error = GetLastError();
+				if (error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION) {
+					return false;
+				}
+				Sleep(5);
+			} while (std::chrono::steady_clock::now() < deadline);
 			if (h == INVALID_HANDLE_VALUE) return false;
 
 			// ドライバ側のキューを 16KB に拡張。USB-Serial 経由でページ (272B) を
@@ -392,7 +406,8 @@ namespace Stk500v2 {
 	// アップロード本体
 	// =========================================================================
 	UploadStats uploadMega2560(const std::string& port,
-		const std::vector<uint8_t>& flash) {
+		const std::vector<uint8_t>& flash,
+		const std::vector<uint8_t>* previousFlash) {
 		UploadStats stats;
 		auto t0 = std::chrono::steady_clock::now();
 
@@ -481,19 +496,35 @@ namespace Stk500v2 {
 		//   よって連続するページに対して loadAddress を毎回呼ぶ必要はない。
 		//   呼ぶのは「直前のページから連続でない」場合のみ (= 初回 or 0xFF スキップ後)。
 		// この削減により ~3-5 ms × ページ数 を削れる (32 ページなら ~100ms)。
-		size_t pages = flash.size() / MEGA2560_PAGE_SIZE;
+		const size_t previousSize = previousFlash ? previousFlash->size() : 0;
+		size_t pages = (std::max)(flash.size(), previousSize) / MEGA2560_PAGE_SIZE;
+		std::array<uint8_t, MEGA2560_PAGE_SIZE> erasedPage;
+		erasedPage.fill(0xFF);
 		uint32_t expectedNextWordAddr = ~0u;  // 「未確定」を表すセンチネル
 		for (size_t p = 0; p < pages; ++p) {
 			size_t addr = p * MEGA2560_PAGE_SIZE;
+			const uint8_t* pageData = addr < flash.size()
+				? &flash[addr]
+				: erasedPage.data();
 
-			// 64bit 単位で 0xFF 判定 (バイト単位より高速)
-			bool allFF = true;
-			const uint64_t kFFMask = 0xFFFFFFFFFFFFFFFFull;
-			const uint64_t* p64 = reinterpret_cast<const uint64_t*>(&flash[addr]);
-			for (size_t i = 0; i < MEGA2560_PAGE_SIZE / sizeof(uint64_t); ++i) {
-				if (p64[i] != kFFMask) { allFF = false; break; }
+			// 同じ接続中に書き込み成功した直前イメージと一致するページは送らない。
+			// 前イメージより短くなった領域は0xFFページを書いて古い内容を消す。
+			if (previousFlash) {
+				const uint8_t* oldPage = addr < previousFlash->size()
+					? &(*previousFlash)[addr]
+					: erasedPage.data();
+				if (std::memcmp(pageData, oldPage, MEGA2560_PAGE_SIZE) == 0) {
+					stats.pagesSkipped++;
+					continue;
+				}
 			}
-			if (allFF) continue;
+
+			bool allFF = std::memcmp(pageData, erasedPage.data(),
+				MEGA2560_PAGE_SIZE) == 0;
+			if (!previousFlash && allFF) {
+				stats.pagesSkipped++;
+				continue;
+			}
 
 			uint32_t wordAddr = (uint32_t)(addr / 2);
 			if (wordAddr != expectedNextWordAddr) {
@@ -502,7 +533,7 @@ namespace Stk500v2 {
 					return stats;
 				}
 			}
-			if (!cli.programPage(&flash[addr], MEGA2560_PAGE_SIZE)) {
+			if (!cli.programPage(pageData, MEGA2560_PAGE_SIZE)) {
 				stats.errorMessage = "programPage failed at page " + std::to_string(p);
 				return stats;
 			}

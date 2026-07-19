@@ -26,6 +26,7 @@ namespace Stk500v2 {
 		double totalMs = 0;
 		size_t bytesWritten = 0;
 		size_t pagesWritten = 0;
+		size_t pagesSkipped = 0;
 	};
 
 	// Intel HEX ファイルを読み込み、フラッシュイメージを返す。
@@ -36,6 +37,7 @@ namespace Stk500v2 {
 
 	// Mega 2560 へアップロード
 	UploadStats uploadMega2560(const std::string& port,
-		const std::vector<uint8_t>& flash);
+		const std::vector<uint8_t>& flash,
+		const std::vector<uint8_t>* previousFlash = nullptr);
 
 } // namespace Stk500v2

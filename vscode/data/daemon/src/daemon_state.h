@@ -6,6 +6,8 @@
 #include <mutex>
 #include <chrono>
 #include <atomic>
+#include <cstdint>
+#include <memory>
 
 // =============================================================================
 // DaemonState: デーモン全体で共有するホットキャッシュ
@@ -38,6 +40,10 @@ struct SketchBuildState {
 	std::string elfFile;
 	std::chrono::steady_clock::time_point lastBuildAt{};
 	bool hasValidBuild = false;
+	// 同じHEXを繰り返し書き込む際、Intel HEX解析とディスクI/Oを省略する。
+	std::shared_ptr<const std::vector<uint8_t>> flashImage;
+	long long flashHexMtime = 0;
+	uint64_t flashHexSize = 0;
 };
 
 struct DaemonState {
@@ -54,6 +60,11 @@ struct DaemonState {
 	std::mutex sketchMtx;
 	std::unordered_map<std::string, SketchBuildState> sketches;
 
+	// --- 同一接続中のボードへ差分ページだけを書き込むための直前イメージ ---
+	std::mutex uploadMtx;
+	std::unordered_map<std::string,
+		std::shared_ptr<const std::vector<uint8_t>>> uploadedFlashByPort;
+
 	// --- core.a グローバルキャッシュのルート ---
 	std::string coreCacheRoot; // %LOCALAPPDATA%\ArduinoBuildDaemon\core-cache
 
@@ -64,7 +75,7 @@ struct DaemonState {
 	std::atomic<long long> requestCount{ 0 };
 
 	// --- バージョン ---
-	std::string version = "1.0.0";
+	std::string version = "1.2.0";
 };
 
 // グローバルインスタンス

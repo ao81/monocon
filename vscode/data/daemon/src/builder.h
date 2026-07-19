@@ -39,10 +39,12 @@ namespace Builder {
 		std::string workspaceDir;  // 任意。空なら .vscode/ を辿って自動検出
 		std::string port;          // 空なら自動検出
 		bool skipCompile = false;
+		bool forceFullUpload = false; // trueなら直前イメージとの差分判定を使わない
 	};
 
 	struct UploadResult {
 		bool success = false;
+		bool cached = false;       // 同一ボード・同一HEXのため実転送を省略したか
 		std::string port;
 		double uploadTimeMs = 0;
 		std::string errorMessage;

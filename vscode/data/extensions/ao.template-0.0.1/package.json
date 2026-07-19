@@ -1,57 +1,101 @@
 {
-	"name": "template",
-	"displayName": "Template Generator",
-	"publisher": "ao",
-	"icon": "icon.ico",
-	"description": "",
-	"version": "0.0.1",
-	"engines": {
-		"vscode": "^1.80.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"activationEvents": [],
-	"main": "./out/extension.js",
-	"contributes": {
-		"commands": [
-			{
-				"command": "template.generate",
-				"title": "Template Generator: フォルダ構造を生成"
-			}
-		],
-		"menus": {
-			"explorer/context": [
-				{
-					"command": "template.generate",
-					"group": "2_workspace"
-				}
-			]
-		},
-		"configuration": {
-			"title": "Template Generator",
-			"properties": {
-				"template.baseName": {
-					"type": "string",
-					"default": "kadai",
-					"description": "サブディレクトリ名と .ino ファイル名のベース部分 (例: kadai → kadai1, kadai2, ...)"
-				}
-			}
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./"
-	},
-	"devDependencies": {
-		"@types/node": "^18.19.130",
-		"@types/vscode": "^1.80.0",
-		"typescript": "^5.0.0"
-	},
-	"__metadata": {
-		"installedTimestamp": 1779508662908,
-		"targetPlatform": "undefined",
-		"size": 12965
-	}
+    "name": "template",
+    "displayName": "Monocon Tools",
+    "publisher": "ao",
+    "icon": "icon.ico",
+    "description": "高校生ものづくりコンテスト向けのテンプレート生成・Arduino書き込み補助",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "template.generate",
+                "title": "Template Generator: フォルダ構造を生成"
+            },
+            {
+                "command": "monocon.upload",
+                "title": "Monocon: シリアル停止・書き込み・再開"
+            }
+        ],
+        "menus": {
+            "explorer/context": [
+                {
+                    "command": "template.generate",
+                    "group": "2_workspace"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Monocon Tools",
+            "properties": {
+                "template.baseName": {
+                    "type": "string",
+                    "default": "kadai",
+                    "description": "サブディレクトリ名と .ino ファイル名のベース部分 (例: kadai → kadai1, kadai2, ...)"
+                },
+                "monoconUpload.baudRate": {
+                    "type": "number",
+                    "default": 9600,
+                    "minimum": 1,
+                    "description": "書き込み後に再開するシリアルモニターのボーレート"
+                },
+                "monoconUpload.reopenMonitor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "書き込み前に監視していたシリアルポートを、書き込み後に再度開く"
+                },
+                "monoconUpload.reopenDelayMs": {
+                    "type": "number",
+                    "default": 0,
+                    "minimum": 0,
+                    "maximum": 10000,
+                    "description": "書き込み完了からシリアルモニターを再開するまでの待機時間"
+                },
+                "monoconUpload.portReleaseDelayMs": {
+                    "type": "number",
+                    "default": 0,
+                    "minimum": 0,
+                    "maximum": 5000,
+                    "description": "シリアルモニター停止後、書き込み開始までポート解放を待つ時間"
+                },
+                "monoconUpload.taskTimeoutMs": {
+                    "type": "number",
+                    "default": 180000,
+                    "minimum": 10000,
+                    "maximum": 600000,
+                    "description": "Arduino書き込みタスクが応答しない場合に中止するまでの時間"
+                },
+                "monoconUpload.serialOperationTimeoutMs": {
+                    "type": "number",
+                    "default": 5000,
+                    "minimum": 1000,
+                    "maximum": 30000,
+                    "description": "シリアルモニターの停止・再開が応答しない場合の待機上限"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run check",
+        "compile": "npm run check",
+        "check": "node --check ./out/extension.js",
+        "test": "node --test ./test/*.test.js"
+    },
+    "devDependencies": {
+        "@types/node": "^18.19.130",
+        "@types/vscode": "^1.80.0",
+        "typescript": "^5.0.0"
+    },
+    "__metadata": {
+        "installedTimestamp": 1779508662908,
+        "targetPlatform": "undefined",
+        "size": 12965
+    }
 }
