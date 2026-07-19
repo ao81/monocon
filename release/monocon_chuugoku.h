@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/16
+// 作成年月日: 2026/07/19
 /**********************************************/
 
 #ifndef MONOCON_CHUUGOKU_H
@@ -246,7 +246,7 @@ public:
 
 	operator bool() const { return st.stable; }
 
-	bool held(uint16_t ms, bool lv = LOW) {
+	bool held(uint16_t ms, bool lv) {
 		const uint32_t now = atomicMillis();
 		if (st.stable == static_cast<uint8_t>(lv) && !st.fired &&
 			static_cast<uint32_t>(now - st.stableSince) >= ms) {
@@ -895,7 +895,7 @@ private:
 	int32_t currentStep;
 	int32_t targetStep;
 
-	uint32_t previousStepUs;
+	uint32_t previousStepMs;
 
 	void phase(uint8_t s) {
 		ix = s & 3;
@@ -939,7 +939,7 @@ public:
 		excitation(mode),
 		currentStep(0),
 		targetStep(0),
-		previousStepUs(0) {
+		previousStepMs(0) {
 	}
 
 	void cw() {
@@ -1010,22 +1010,22 @@ public:
 		targetStep = currentStep + diff;
 	}
 
-	void update(uint32_t intervalUs) {
+	void update(uint32_t intervalMs) {
 		if (currentStep == targetStep) {
 			return;
 		}
 
-		if (intervalUs == 0) {
-			intervalUs = 1;
+		if (intervalMs == 0) {
+			intervalMs = 1;
 		}
 
-		const uint32_t now = micros();
+		const uint32_t now = millis();
 
-		if (static_cast<uint32_t>(now - previousStepUs) < intervalUs) {
+		if (static_cast<uint32_t>(now - previousStepMs) < intervalMs) {
 			return;
 		}
 
-		previousStepUs = now;
+		previousStepMs = now;
 
 		if (currentStep < targetStep) {
 			stepCcw();
@@ -1120,12 +1120,41 @@ public:
 		melodyRepeat(false) {
 	}
 
-	void operator()(int f) {
+	void operator()(int frequency) {
 		melodyRunning = false;
-		if (f <= 0) { off(); return; }
-		if (!timedActive && f == continuousFrequency) return;
-		continuousFrequency = f;
-		start(f, 0, false);
+
+		if (frequency <= 0) {
+			off();
+			return;
+		}
+
+		if (timedActive) {
+			continuousFrequency = frequency;
+			start(frequency, 0, false);
+			return;
+		}
+
+		if (continuousFrequency == frequency) {
+			return;
+		}
+
+		if (continuousFrequency <= 0) {
+			continuousFrequency = frequency;
+			start(frequency, 0, false);
+			return;
+		}
+
+		const uint16_t newTop = topForFrequency(frequency);
+
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			OCR3A = newTop;
+
+			if (TCNT3 > newTop) {
+				TCNT3 = 0;
+			}
+		}
+
+		continuousFrequency = frequency;
 	}
 
 	void operator()(int f, uint32_t durationMs) {
@@ -1144,13 +1173,15 @@ public:
 			stop();
 			return;
 		}
+		stop();
 		melodyNotes = notes;
 		melodyDurations = durations;
 		melodyLength = length;
 		melodyIndex = 0;
 		melodyNext = atomicMillis();
-		melodyRunning = true;
 		melodyRepeat = repeat;
+		melodyRunning = true;
+		update();
 	}
 
 	void stop() {
