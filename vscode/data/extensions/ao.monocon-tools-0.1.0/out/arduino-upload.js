@@ -286,8 +286,9 @@ async function runUpload(context) {
                 throw new Error(`${UPLOAD_TASK_NAME} タスクが見つかりません。`);
             }
             const exitCode = await executeTaskAndWait(task, taskTimeoutMs);
-            if (exitCode !== undefined && exitCode !== 0) {
-                throw new Error(`書き込みタスクが終了コード ${exitCode} で失敗しました。`);
+            if (exitCode !== 0) {
+                const code = exitCode === undefined ? "不明" : exitCode;
+                throw new Error(`書き込みタスクが終了コード ${code} で失敗しました。`);
             }
             log("Arduinoへの書き込みが完了しました。");
         }

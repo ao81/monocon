@@ -9,7 +9,7 @@ function disposable(remove) {
     return { dispose: remove || (() => undefined) };
 }
 
-function loadExtension(vscode) {
+function loadExtension(vscode, net) {
     const extensionPath = path.resolve(__dirname, '../out/extension.js');
     const uploadPath = path.resolve(__dirname, '../out/arduino-upload.js');
     const foldersPath = path.resolve(__dirname, '../out/task-folders.js');
@@ -18,6 +18,9 @@ function loadExtension(vscode) {
     Module._load = function (request, parent, isMain) {
         if (request === 'vscode') {
             return vscode;
+        }
+        if (request === 'node:net' && net) {
+            return net;
         }
         return originalLoad.call(this, request, parent, isMain);
     };
@@ -43,7 +46,45 @@ function createVscodeMock(options = {}) {
     let executeCount = 0;
     let fetchCount = 0;
     let terminateCount = 0;
+    let processEnded = false;
     const monitorStartSettings = [];
+    const completionServers = new Set();
+
+    const net = {
+        createServer(connectionListener) {
+            const server = {
+                on() { return server; },
+                listen() {
+                    completionServers.add(server);
+                    return server;
+                },
+                close() {
+                    completionServers.delete(server);
+                },
+                signal(message) {
+                    connectionListener({
+                        on(event, listener) {
+                            if (event === 'data') {
+                                const chunks = Array.isArray(message) ? message : [message];
+                                for (const chunk of chunks) {
+                                    listener(Buffer.from(chunk));
+                                }
+                            }
+                        }
+                    });
+                }
+            };
+            return server;
+        }
+    };
+
+    const signalUploadCompletion = () => {
+        for (const server of [...completionServers]) {
+            server.signal(options.splitCompletionSignal
+                ? ['upload-', 'verified\n']
+                : 'upload-verified\n');
+        }
+    };
 
     const task = { name: 'Arduino: Upload' };
     const api = {
@@ -64,6 +105,11 @@ function createVscodeMock(options = {}) {
     const vscode = {
         ProgressLocation: { Notification: 15 },
         StatusBarAlignment: { Left: 1, Right: 2 },
+        ThemeColor: class ThemeColor {
+            constructor(id) {
+                this.id = id;
+            }
+        },
         commands: {
             registerCommand(name, callback) {
                 commands.set(name, callback);
@@ -105,14 +151,20 @@ function createVscodeMock(options = {}) {
                     listener({ execution });
                 }
                 if (!options.hangingTask) {
+                    if (options.completionSignalDelayMs !== undefined) {
+                        setTimeout(signalUploadCompletion, options.completionSignalDelayMs);
+                    }
                     setTimeout(() => {
-                        for (const listener of processListeners) {
-                            listener({ execution, exitCode: 0 });
+                        if (!options.taskEndWithoutProcess) {
+                            processEnded = true;
+                            for (const listener of processListeners) {
+                                listener({ execution, exitCode: options.exitCode ?? 0 });
+                            }
                         }
                         for (const listener of taskListeners) {
                             listener({ execution });
                         }
-                    }, 0);
+                    }, options.processEndDelayMs || 0);
                 }
                 return execution;
             }
@@ -125,6 +177,8 @@ function createVscodeMock(options = {}) {
                 const item = {
                     text: '',
                     tooltip: '',
+                    color: undefined,
+                    backgroundColor: undefined,
                     visible: false,
                     show() { this.visible = true; },
                     hide() { this.visible = false; },
@@ -169,18 +223,20 @@ function createVscodeMock(options = {}) {
 
     return {
         vscode,
+        net,
         commands,
         messages,
         monitorStartSettings,
         statusItems,
         get executeCount() { return executeCount; },
         get fetchCount() { return fetchCount; },
-        get terminateCount() { return terminateCount; }
+        get terminateCount() { return terminateCount; },
+        get processEnded() { return processEnded; }
     };
 }
 
 async function activateAndGetUpload(mock) {
-    const extension = loadExtension(mock.vscode);
+    const extension = loadExtension(mock.vscode, mock.net);
     extension.activate({ subscriptions: [] });
     const upload = mock.commands.get('monoconTools.uploadArduino');
     assert.equal(typeof upload, 'function');
@@ -247,5 +303,69 @@ test('shows a completion popup and keeps the result in the status bar', async ()
     assert.equal(mock.messages.info.includes('Arduinoへの書き込みが完了しました。'), true);
     assert.equal(mock.statusItems.length, 1);
     assert.equal(mock.statusItems[0].text, '$(check) Arduino: 書き込み完了');
+    assert.equal(mock.statusItems[0].color, '#22c55e');
+    assert.equal(mock.statusItems[0].backgroundColor, undefined);
     assert.equal(mock.statusItems[0].visible, true);
+});
+
+test('uses yellow text while uploading', async () => {
+    const mock = createVscodeMock({ processEndDelayMs: 50 });
+    const upload = await activateAndGetUpload(mock);
+
+    const pending = upload();
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    assert.equal(mock.statusItems[0].text, '$(sync~spin) Arduino: 書き込み中…');
+    assert.equal(mock.statusItems[0].color, '#eab308');
+    assert.equal(mock.statusItems[0].backgroundColor, undefined);
+
+    await pending;
+});
+
+test('uses red text when uploading fails', async () => {
+    const mock = createVscodeMock({ exitCode: 1 });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.statusItems[0].text, '$(error) Arduino: 書き込み失敗');
+    assert.equal(mock.statusItems[0].color, '#ef4444');
+    assert.equal(mock.statusItems[0].backgroundColor, undefined);
+});
+
+test('shows completion from the CLI signal before VS Code reports process end', async () => {
+    const mock = createVscodeMock({
+        completionSignalDelayMs: 0,
+        processEndDelayMs: 50,
+        splitCompletionSignal: true
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    const pending = upload();
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    assert.equal(mock.processEnded, false);
+    assert.equal(mock.messages.info.includes('Arduinoへの書き込みが完了しました。'), true);
+
+    await pending;
+    assert.equal(mock.messages.info.filter(
+        message => message === 'Arduinoへの書き込みが完了しました。'
+    ).length, 1);
+});
+
+test('does not report success when VS Code omits the process exit code', async () => {
+    const mock = createVscodeMock({
+        taskEndWithoutProcess: true,
+        timeoutMs: 300
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.messages.info.includes('Arduinoへの書き込みが完了しました。'), false);
+    assert.equal(mock.messages.error.length, 1);
+    assert.match(mock.messages.error[0], /終了コード 不明/);
+    assert.equal(mock.statusItems[0].text, '$(error) Arduino: 書き込み結果不明');
+    assert.equal(mock.statusItems[0].color, '#ef4444');
+    assert.equal(mock.statusItems[0].backgroundColor, undefined);
 });

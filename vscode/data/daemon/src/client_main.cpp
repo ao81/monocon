@@ -27,6 +27,18 @@ using json = nlohmann::json;
 // =============================================================================
 
 namespace {
+	constexpr const char* UPLOAD_STATUS_PIPE = "\\\\.\\pipe\\monocon-upload-status-v1";
+
+	void notifyUploadVerified() {
+		HANDLE pipe = CreateFileA(UPLOAD_STATUS_PIPE, GENERIC_WRITE, 0, nullptr,
+			OPEN_EXISTING, 0, nullptr);
+		if (pipe == INVALID_HANDLE_VALUE) return;
+		constexpr char message[] = "upload-verified\n";
+		DWORD written = 0;
+		WriteFile(pipe, message, static_cast<DWORD>(sizeof(message) - 1),
+			&written, nullptr);
+		CloseHandle(pipe);
+	}
 
 	// daemon exe の場所を決める。クライアントと同じフォルダに置く前提。
 	std::string findDaemonExe() {
@@ -332,6 +344,8 @@ namespace {
 				std::cout << "Upload to " << r.value("port", "") << " in "
 					<< r.value("uploadTimeMs", 0.0) << " ms\n";
 				std::cout << "Total client time: " << sw.elapsedMilliseconds() << " ms\n";
+				std::cout.flush();
+				notifyUploadVerified();
 
 				// std::cout << r.value("avrdudeOutput", "");
 			} else if (cmd == "shutdown") {
