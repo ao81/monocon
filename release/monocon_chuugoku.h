@@ -1391,10 +1391,11 @@ public:
 	void next() {
 		syncLoop();
 
-		const int base =
-			transitionPending_ ? target_ : current_;
+		if (transitionPending_) {
+			return;
+		}
 
-		int target = base + 1;
+		int target = current_ + 1;
 
 		if (count_ > 0 && target >= count_) {
 			target = 0;
@@ -1406,10 +1407,11 @@ public:
 	void prev() {
 		syncLoop();
 
-		const int base =
-			transitionPending_ ? target_ : current_;
+		if (transitionPending_) {
+			return;
+		}
 
-		int target = base - 1;
+		int target = current_ - 1;
 
 		if (target < 0) {
 			target = count_ > 0 ? count_ - 1 : 0;
