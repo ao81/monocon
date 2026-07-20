@@ -279,6 +279,13 @@ public:
 		}
 		return false;
 	}
+
+	bool change() {
+		const bool v = fHtol || fLtoh;
+		fHtol = false;
+		fLtoh = false;
+		return v;
+	}
 };
 
 class Di : public InEdge {
