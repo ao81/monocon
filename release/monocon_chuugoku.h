@@ -30,6 +30,21 @@ constexpr uint8_t d1 = 10;
 constexpr uint8_t d2 = 11;
 constexpr uint8_t d3 = 12;
 constexpr uint8_t d4 = 13;
+constexpr uint8_t D_INPUT_MASK = _BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7);
+
+void monoconEarlyDigitalInputInit()
+__attribute__((naked, used, section(".init3")));
+
+void monoconEarlyDigitalInputInit() {
+	asm volatile(
+		"in r24, 0x05\n\t"
+		"andi r24, 0x0F\n\t"
+		"out 0x05, r24\n\t"
+		"in r24, 0x04\n\t"
+		"andi r24, 0x0F\n\t"
+		"out 0x04, r24\n\t"
+		);
+}
 
 constexpr uint8_t SCK_BIT = _BV(PH3);
 constexpr uint8_t SDI_BIT = _BV(PH4);
@@ -90,6 +105,15 @@ inline void dw(uint8_t pin, uint8_t val) {
 
 namespace board_detail {
 	extern uint8_t loopEpoch;
+
+	inline void lockDigitalInputs() {
+		TCCR0A &= static_cast<uint8_t>(~(_BV(COM0A1) | _BV(COM0A0)));
+		TCCR1A &= static_cast<uint8_t>(~(_BV(COM1A1) | _BV(COM1A0) |
+			_BV(COM1B1) | _BV(COM1B0)));
+		TCCR2A &= static_cast<uint8_t>(~(_BV(COM2A1) | _BV(COM2A0)));
+		PORTB &= static_cast<uint8_t>(~D_INPUT_MASK);
+		DDRB &= static_cast<uint8_t>(~D_INPUT_MASK);
+	}
 
 	inline uint8_t percentToByte(uint8_t p) {
 		if (p >= 100) return 255;
@@ -333,6 +357,7 @@ private:
 	int ring[5];
 	uint8_t ri;
 	uint8_t sampleCount;
+	bool valid;
 	static Sok* list[2];
 	static uint8_t nList;
 
@@ -345,9 +370,10 @@ private:
 
 		const int med = board_detail::median5(
 			ring[0], ring[1], ring[2], ring[3], ring[4]);
-		if (med == raw) return;
+		if (valid && med == raw) return;
 
 		raw = med;
+		valid = true;
 		int32_t m;
 		if (med >= sokAd[0]) {
 			m = sokMm[0];
@@ -372,7 +398,7 @@ public:
 	float cm;
 
 	explicit Sok(uint8_t pin)
-		: ri(0), sampleCount(0), _raw(0), raw(0), mm(0), cm(0.0f) {
+		: ri(0), sampleCount(0), valid(false), _raw(0), raw(0), mm(0), cm(0.0f) {
 		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
 		adcReg(pin, &_raw);
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -525,7 +551,11 @@ private:
 		int8_t step = 0;
 		if (event == 0x10) step = direction ? 1 : -1;
 		else if (event == 0x20) step = direction ? -1 : 1;
-		if (step != 0) cnt += step;
+		if (step > 0) {
+			if (cnt < INT32_MAX) ++cnt;
+		} else if (step < 0) {
+			if (cnt > INT32_MIN) --cnt;
+		}
 	}
 
 public:
@@ -552,7 +582,7 @@ public:
 
 	int delta() {
 		const int32_t v = count();
-		const int32_t diff = v - last;
+		const int64_t diff = static_cast<int64_t>(v) - last;
 		last = v;
 		if (diff > INT_MAX) return INT_MAX;
 		if (diff < INT_MIN) return INT_MIN;
@@ -570,6 +600,7 @@ public:
 			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 				if (cnt == before) {
 					cnt = after;
+					last = after;
 					committed = true;
 				}
 			}
@@ -592,6 +623,7 @@ public:
 			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 				if (cnt == before) {
 					cnt = after;
+					last = after;
 					committed = true;
 				}
 			}
@@ -616,13 +648,15 @@ private:
 	uint8_t previousState;
 
 	void writeState(uint8_t state) {
-		uint8_t pe = PORTE & static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
-		if (state & B) pe |= _BV(PE5);
-		if (state & G) pe |= _BV(PE4);
-		PORTE = pe;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			uint8_t pe = PORTE & static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
+			if (state & B) pe |= _BV(PE5);
+			if (state & G) pe |= _BV(PE4);
+			PORTE = pe;
 
-		if (state & R) PORTG |= _BV(PG5);
-		else           PORTG &= static_cast<uint8_t>(~_BV(PG5));
+			if (state & R) PORTG |= _BV(PG5);
+			else           PORTG &= static_cast<uint8_t>(~_BV(PG5));
+		}
 	}
 
 public:
@@ -706,7 +740,7 @@ public:
 	Disp& off() { return (*this)(0, 0, 0); }
 
 	Disp& s(const char* text) {
-		if (!text) return off();
+		if (!text || !text[0]) return off();
 		return (*this)(toPattern(text[0]),
 			text[1] ? toPattern(text[1]) : 0,
 			text[1] && text[2] ? toPattern(text[2]) : 0);
@@ -743,6 +777,7 @@ public:
 	}
 
 	Disp& f(double f, bool zero = false, bool left = false) {
+		if (!isfinite(f)) return s("Err");
 		const bool neg = f < 0;
 		const double a = neg ? -f : f;
 		if (neg) {
@@ -1237,14 +1272,28 @@ private:
 	int current_ = 0;
 	int position_ = 0;
 	int count_ = 0;
+	int target_ = 0;
 
 	uint32_t enteredAt_ = 0;
 	uint8_t lastEpoch_ = 0xFF;
 
 	bool initialized_ = false;
-	bool moved_ = false;
+	bool transitionPending_ = false;
+	bool restartPending_ = false;
 	bool entryPending_ = true;
 	bool exitPending_ = false;
+
+	int clampState(int state) const {
+		if (state < 0) {
+			return 0;
+		}
+
+		if (count_ > 0 && state >= count_) {
+			return count_ - 1;
+		}
+
+		return state;
+	}
 
 	void syncLoop() {
 		const uint8_t epoch = board_detail::loopEpoch;
@@ -1257,12 +1306,18 @@ private:
 			count_ = position_;
 		}
 
-		if (count_ > 0 && current_ >= count_) {
-			current_ = 0;
+		if (transitionPending_ || restartPending_) {
+			if (transitionPending_) {
+				current_ = clampState(target_);
+			}
+
+			enteredAt_ = millis();
+			entryPending_ = true;
+			transitionPending_ = false;
+			restartPending_ = false;
 		}
 
 		position_ = 0;
-		moved_ = false;
 		exitPending_ = false;
 		lastEpoch_ = epoch;
 
@@ -1275,24 +1330,20 @@ private:
 	void moveTo(int state) {
 		syncLoop();
 
-		if (state < 0) {
-			state = 0;
-		}
+		state = clampState(state);
 
-		if (count_ > 0 && state >= count_) {
-			state = count_ - 1;
-		}
-
-		if (state == current_) {
+		if (!transitionPending_ && state == current_) {
 			return;
 		}
 
-		current_ = state;
-		enteredAt_ = millis();
+		if (transitionPending_ && state == target_) {
+			return;
+		}
 
-		entryPending_ = true;
+		target_ = state;
+		transitionPending_ = true;
+		restartPending_ = false;
 		exitPending_ = true;
-		moved_ = true;
 	}
 
 public:
@@ -1304,12 +1355,6 @@ public:
 
 	bool on() {
 		syncLoop();
-
-		if (moved_) {
-			++position_;
-			return false;
-		}
-
 		return position_++ == current_;
 	}
 
@@ -1323,8 +1368,8 @@ public:
 
 	void next() {
 		syncLoop();
-
-		int target = current_ + 1;
+		const int base = transitionPending_ ? target_ : current_;
+		int target = base + 1;
 
 		if (count_ > 0 && target >= count_) {
 			target = 0;
@@ -1335,8 +1380,8 @@ public:
 
 	void prev() {
 		syncLoop();
-
-		int target = current_ - 1;
+		const int base = transitionPending_ ? target_ : current_;
+		int target = base - 1;
 
 		if (target < 0) {
 			target = count_ > 0 ? count_ - 1 : 0;
@@ -1351,11 +1396,9 @@ public:
 
 	void restart() {
 		syncLoop();
-
-		enteredAt_ = millis();
-		entryPending_ = true;
+		transitionPending_ = false;
+		restartPending_ = true;
 		exitPending_ = false;
-		moved_ = true;
 	}
 
 	bool is(int state) {
@@ -1663,11 +1706,14 @@ ISR(TIMER1_COMPA_vect) {
 
 ISR(TIMER2_COMPA_vect) {
 	++tms;
-	board_detail::serviceDue = 1;
+	if (board_detail::serviceDue < UINT8_MAX) {
+		++board_detail::serviceDue;
+	}
 	bz.isrTick();
 }
 
 inline void board_detail::service() {
+	lockDigitalInputs();
 	uint8_t due;
 	uint32_t now;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -1679,17 +1725,12 @@ inline void board_detail::service() {
 
 	Di::serviceAll(now);
 	Pr::serviceAll(now);
-	Sok::serviceAll();
-	bz.update();
-	led.serviceTick();
-	dp.serviceTick();
-}
-
-void serialEventRun() {
-	board_detail::service();
-	const uint8_t epoch = ++board_detail::loopEpoch;
-	Di::expireAll(epoch);
-	Pr::expireAll(epoch);
+	while (due--) {
+		Sok::serviceAll();
+		bz.update();
+		led.serviceTick();
+		dp.serviceTick();
+	}
 }
 
 void yield() {
@@ -1700,7 +1741,7 @@ void begin() {
 	cli();
 
 	DDRF &= static_cast<uint8_t>(~(_BV(PF0) | _BV(PF1) | _BV(PF2) | _BV(PF3)));
-	DDRB &= static_cast<uint8_t>(~(_BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7)));
+	board_detail::lockDigitalInputs();
 
 	DDRH |= SCK_BIT | SDI_BIT | LAT_BIT;
 	PORTH = static_cast<uint8_t>(
@@ -1774,5 +1815,94 @@ void begin() {
 		static_cast<unsigned long>(TCNT0) ^
 		(static_cast<unsigned long>(TCNT1) << 8));
 }
+
+void userSetup() __attribute__((weak));
+void userLoop() __attribute__((weak));
+
+void setup() {
+#ifdef dbg
+	Serial.begin(115200);
+#endif
+
+	begin();
+
+	if (userSetup) {
+		userSetup();
+	}
+}
+
+void loop() {
+	if (userLoop) {
+		userLoop();
+	}
+
+	board_detail::service();
+
+	const uint8_t epoch = ++board_detail::loopEpoch;
+	Di::expireAll(epoch);
+	Pr::expireAll(epoch);
+}
+
+#define setup userSetup
+#define loop userLoop
+
+#ifdef dbg
+
+inline void debugLine() {
+	Serial.println();
+}
+
+template <typename T, typename... Rest>
+inline void debugLine(const T& value, const Rest&... rest) {
+	Serial.print(value);
+	debugLine(rest...);
+}
+
+#define D(...) do { debugLine(__VA_ARGS__); } while (0)
+
+#define DP(x) do { \
+	Serial.print(x); \
+} while (0)
+
+#define DV(x) do { \
+	Serial.print(F(#x " = ")); \
+	Serial.println(x); \
+} while (0)
+
+#define DT(x) do { \
+	Serial.print('['); \
+	Serial.print(millis()); \
+	Serial.print(F("] ")); \
+	Serial.println(F(x)); \
+} while (0)
+
+#define DC(x) do { \
+	auto _dcNow = (x); \
+	static decltype(_dcNow) _dcPrevious = _dcNow; \
+	if (_dcNow != _dcPrevious) { \
+		Serial.print(F(#x ": ")); \
+		Serial.print(_dcPrevious); \
+		Serial.print(F(" -> ")); \
+		Serial.println(_dcNow); \
+		_dcPrevious = _dcNow; \
+	} \
+} while (0)
+
+#define DH() do { \
+	Serial.print(__FILE__); \
+	Serial.print(':'); \
+	Serial.println(__LINE__); \
+} while (0)
+
+#else
+
+#define D(...) do {} while (0)
+#define DP(x) do {} while (0)
+#define DV(x) do {} while (0)
+#define DT(x) do {} while (0)
+#define DC(x) do {} while (0)
+#define DH() do {} while (0)
+
+#endif
 
 #endif
