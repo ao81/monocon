@@ -26,8 +26,8 @@ void loop() {
 		n += enc.delta();
 
 		in pr = an.pr(a2);
-		if (pr) led(G);
-		else led(R);
+		if (pr) { led(G); bzoff(); }
+		else { led(R); bz(1000); }
 
 		// dp.n(n);
 
