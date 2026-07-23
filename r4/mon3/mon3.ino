@@ -7,8 +7,8 @@ const int ptn[4][2] = {{ 0x01, 0x01 }, { 0x40, 0x40 }, { 0x08, 0x08 }, { 0x00, 0
 
 word in;
 
-volatile bool sw1edge = false, sw2edge = false;
-volatile int sw1, sw2;
+bool sw1edge = false, sw2edge = false;
+int sw1, sw2;
 int presw1, presw2;
 
 ISR (TIMER3_COMPA_vect) {
