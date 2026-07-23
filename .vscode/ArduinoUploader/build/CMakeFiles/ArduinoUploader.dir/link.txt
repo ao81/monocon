@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\ArduinoUploader.dir/objects.a
-C:\PROGRA~2\mingw64\bin\ar.exe qc CMakeFiles\ArduinoUploader.dir/objects.a @CMakeFiles\ArduinoUploader.dir\objects1.rsp
-C:\PROGRA~2\mingw64\bin\C__~1.EXE -O3 -DNDEBUG -O3 -Wl,--whole-archive CMakeFiles\ArduinoUploader.dir/objects.a -Wl,--no-whole-archive -o bin\ArduinoUploader.exe -Wl,--out-implib,libArduinoUploader.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\ArduinoUploader.dir\linkLibs.rsp
