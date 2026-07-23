@@ -79,6 +79,22 @@ const uint8_t seg[16] = {
 	0x77, 0x7c, 0x58, 0x5e, 0x79, 0x71,
 };
 
+//================ 汎用ユーティリティ ================
+// 範囲内に収める（Arduino の constrain と同義の関数版）
+inline long clampv(long v, long lo, long hi) {
+	return v < lo ? lo : (v > hi ? hi : v);
+}
+// cur を target へ最大 step だけ近づける（ソフトスタート/ランプ用）
+inline long toward(long cur, long target, long step) {
+	if (cur < target) return (cur + step > target) ? target : cur + step;
+	if (cur > target) return (cur - step < target) ? target : cur - step;
+	return cur;
+}
+// 中央±width 内なら center を返す不感帯処理（ジョイスティック等）
+inline long deadband(long v, long center, long width) {
+	return (v > center - width && v < center + width) ? center : v;
+}
+
 //================ 入力 ================
 class In {
 public:
