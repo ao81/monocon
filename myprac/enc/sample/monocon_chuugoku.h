@@ -33,13 +33,41 @@ const uint8_t seg[16] = {
 
 class In {
 public:
+	/* タクトスイッチ */
+	int sw;
+
+	void fsw(int pin) {
+		sw = digitalRead(pin);
+	}
+
+	/* トグルスイッチ */
+	int ts;
+
+	void fts(int pin) {
+		ts = digitalRead(pin);
+	}
+
+	/* フォトインタラプタ */
+	int ph;
+
+	void fph(int pin) {
+		ph = digitalRead(pin);
+	}
+
+	/* 測距モジュール (ranging module) */
+	int rm;
+
+	void frm(int pin) {
+		rm = analogRead(pin);
+	}
+
 	/* ロータリーエンコーダ */
 	int a = 0, b = 0;
 	int pa = 0, pb = 0;
 	int c = 0;
 	uint8_t st = 0;
 
-	void enc(int pinA, int pinB) {
+	void fenc(int pinA, int pinB) {
 		a = digitalRead(pinA);
 		b = digitalRead(pinB);
 
@@ -67,15 +95,13 @@ public:
 		pb = b;
 	}
 
-
 	/* フォトリフレクタ */
 	int p = 0;
 
-	void pr(int pin) {
+	void fpr(int pin) {
 		p = analogRead(pin);
 	}
 };
-
 In in;
 
 int& c = in.c;

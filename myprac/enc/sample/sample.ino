@@ -5,7 +5,7 @@ bool swps = false;
 bool r = true;
 
 void isr() {
-	in.enc(p1, p2);
+	in.fenc(p1, p2);
 
 	static word i = 0;
 	if (i++ > 50) {
