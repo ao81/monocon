@@ -54,8 +54,11 @@ constexpr uint8_t G = 0b100;
 constexpr uint8_t B = 0b010;
 constexpr uint8_t R = 0b001;
 constexpr uint8_t GB = 0b110;
+constexpr uint8_t C = 0b110;
 constexpr uint8_t GR = 0b101;
+constexpr uint8_t Y = 0b101;
 constexpr uint8_t BR = 0b011;
+constexpr uint8_t M = 0b011;
 constexpr uint8_t GBR = 0b111;
 
 constexpr uint8_t L = LOW;
@@ -562,7 +565,6 @@ public:
 	}
 };
 
-
 class Enc {
 private:
 	volatile uint8_t* ra;
@@ -571,8 +573,7 @@ private:
 	uint8_t mb;
 	bool samePort;
 	volatile uint8_t est;
-	volatile int32_t cnt;
-	int32_t last;
+	volatile int32_t pending;
 	bool direction;
 
 	static Enc* list[4];
@@ -591,6 +592,7 @@ private:
 
 		uint8_t a;
 		uint8_t b;
+
 		if (samePort) {
 			const uint8_t p = *ra;
 			a = (p & ma) ? 1 : 0;
@@ -600,98 +602,116 @@ private:
 			b = (*rb & mb) ? 1 : 0;
 		}
 
-		const uint8_t next = table[est & 0x0F][(a << 1) | b];
+		const uint8_t next =
+			table[est & 0x0F][(a << 1) | b];
+
 		est = next;
+
 		const uint8_t event = next & 0x30;
-		int8_t step = 0;
-		if (event == 0x10) step = direction ? 1 : -1;
-		else if (event == 0x20) step = direction ? -1 : 1;
-		if (step > 0) {
-			if (cnt < INT32_MAX) ++cnt;
-		} else if (step < 0) {
-			if (cnt > INT32_MIN) --cnt;
+
+		if (event == 0x10) {
+			if (direction) {
+				if (pending < INT32_MAX) ++pending;
+			} else {
+				if (pending > INT32_MIN) --pending;
+			}
+		} else if (event == 0x20) {
+			if (direction) {
+				if (pending > INT32_MIN) --pending;
+			} else {
+				if (pending < INT32_MAX) ++pending;
+			}
 		}
+	}
+
+	int32_t take() {
+		int32_t v;
+
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			v = pending;
+			pending = 0;
+		}
+
+		return v;
 	}
 
 public:
 	Enc(uint8_t pa, uint8_t pb, bool d = true)
 		: ra(portInputRegister(digitalPinToPort(pa))),
 		rb(portInputRegister(digitalPinToPort(pb))),
-		ma(digitalPinToBitMask(pa)), mb(digitalPinToBitMask(pb)),
-		samePort(ra == rb), est(0), cnt(0), last(0), direction(d) {
+		ma(digitalPinToBitMask(pa)),
+		mb(digitalPinToBitMask(pb)),
+		samePort(ra == rb),
+		est(0),
+		pending(0),
+		direction(d) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 4) list[nList++] = this;
+			if (nList < 4) {
+				list[nList++] = this;
+			}
 		}
 	}
 
 	static inline void isrPollAll() {
 		const uint8_t n = nList;
-		for (uint8_t i = 0; i < n; ++i) list[i]->poll();
+
+		for (uint8_t i = 0; i < n; ++i) {
+			list[i]->poll();
+		}
 	}
 
-	int32_t count() const {
-		int32_t v;
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = cnt; }
-		return v;
+	int32_t delta() {
+		return take();
 	}
 
-	int delta() {
-		const int32_t v = count();
-		const int64_t diff = static_cast<int64_t>(v) - last;
-		last = v;
-		if (diff > INT_MAX) return INT_MAX;
-		if (diff < INT_MIN) return INT_MIN;
-		return static_cast<int>(diff);
-	}
-
-	int32_t clampTo(int32_t lo, int32_t hi) {
+	int32_t clampTo(
+		int32_t value,
+		int32_t lo,
+		int32_t hi
+	) {
 		if (hi < lo) {
-			const int32_t t = lo; lo = hi; hi = t;
+			const int32_t t = lo;
+			lo = hi;
+			hi = t;
 		}
-		for (;;) {
-			const int32_t before = count();
-			const int32_t after = clamp(before, lo, hi);
-			bool committed = false;
-			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-				if (cnt == before) {
-					cnt = after;
-					last = after;
-					committed = true;
-				}
-			}
-			if (committed) return after;
-		}
+
+		int64_t result =
+			static_cast<int64_t>(value) + take();
+
+		if (result < lo) result = lo;
+		if (result > hi) result = hi;
+
+		return static_cast<int32_t>(result);
 	}
 
-	int32_t loopTo(int32_t lo, int32_t hi) {
+	int32_t loopTo(
+		int32_t value,
+		int32_t lo,
+		int32_t hi
+	) {
 		if (hi < lo) {
-			const int32_t t = lo; lo = hi; hi = t;
+			const int32_t t = lo;
+			lo = hi;
+			hi = t;
 		}
-		for (;;) {
-			const int32_t before = count();
-			const int64_t span = static_cast<int64_t>(hi) -
-				static_cast<int64_t>(lo) + 1LL;
-			int64_t r = (static_cast<int64_t>(before) - lo) % span;
-			if (r < 0) r += span;
-			const int32_t after = static_cast<int32_t>(static_cast<int64_t>(lo) + r);
-			bool committed = false;
-			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-				if (cnt == before) {
-					cnt = after;
-					last = after;
-					committed = true;
-				}
-			}
-			if (committed) return after;
-		}
-	}
 
-	void set(int32_t v = 0) {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			cnt = v;
-			est = 0;
-			last = v;
+		const int64_t span =
+			static_cast<int64_t>(hi) - lo + 1LL;
+
+		int64_t result =
+			static_cast<int64_t>(value) +
+			take() -
+			lo;
+
+		result %= span;
+
+		if (result < 0) {
+			result += span;
 		}
+
+		return static_cast<int32_t>(
+			static_cast<int64_t>(lo) + result
+			);
 	}
 };
 
