@@ -6,12 +6,15 @@ int a, b;
 int pa, pb;
 bool r = true;
 
-ISR(TIMER3_COMPA_vect) {
+ISR(TIMER3_COMPA_vect) { // 0.1ms
 	static word in = 0;
-	if (in++ > 5) {
+	if (in++ > 50) {
 		in = 0;
 		r = true;
 	}
+
+	a = digitalRead(pin1);
+	b = digitalRead(pin2);
 }
 
 void setup() {
@@ -29,9 +32,6 @@ void loop() {
 		sw = digitalRead(pin4);
 		ph = digitalRead(pin3);
 	}
-
-	a = digitalRead(pin1);
-	b = digitalRead(pin2);
 
 	static int c = 0;
 
