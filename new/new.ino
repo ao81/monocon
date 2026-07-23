@@ -1,62 +1,33 @@
-#define useir
 #include "monocon_chuugoku.h"
 
 void setup() {
 	begin();
 }
 
-int dir = 1;
-int b = 0;
-int aa = 0;
-
-void ir() {
-	aa++;
-}
+di sw1(d3), sw2(d2), ph(d4), ts(d1);
+enc en(a3, a4);
+pr p(a2);
+sok so(a1);
 
 void loop() {
-	{
-		static int n = 0;
+	if (ts == H) {
+		uint8_t l = 0;
+		if (sw1 == L) l |= B;
+		if (sw2 == L) l |= R;
+		if (ph == H) l |= G;
+		led(l, 10);
 
-		in sw1 = di(d3);
-		in sw2 = di(d2);
-		if (sw1.htol) n--;
-		if (sw2.htol) n++;
+		dp.off();
 
-		in enc = an.enc(a3, a4);
-		n += enc.delta();
+	} else {
+		static const uint8_t color[3] = { G, B, R };
+		static int idx = 0;
+		idx = en.loopTo(0, 2);
+		led(color[idx]);
 
-		in pr = an.pr(a2);
-		if (pr) { led(G); bzoff(); }
-		else { led(R); bz(1000); }
+		dp.n(so.cm);
 
-		// dp.n(n);
-
-		in ts = di(d1);
-		if (ts) dm.cw(100);
-		else dm.fr();
-	}
-
-	{
-		if (aa >= 1000) {
-			aa = 0;
-			in sk = an.sok(a1);
-			dp.n(sk).o(100, 100, 10);
-		}
-	}
-
-	if (0) {
-		in jo = an.joy(a3, a4);
-		dp.n(jo.dir(8, 2));
-	}
-
-	if (0) {
-		if (aa >= 100) {
-			aa = 0;
-			b += dir;
-			if (b == 100) dir = -1;
-			if (b == 0) dir = 1;
-		}
-		led(R, b);
-		dp.s("end");
+		if (!p) bz(1000);
+		else bz.off();
 	}
 }

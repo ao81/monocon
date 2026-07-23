@@ -58,13 +58,36 @@ void fsout(uint8_t v) {
 	}
 }
 
+volatile int adc_cache[16] = { 0 };
+volatile uint8_t adc_current_pin = 0;
+
 int ar(uint8_t pin) {
 	if (pin >= A0) pin -= A0;
-	ADMUX = (1 << REFS0) | (pin & 0x07);
-	ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 1) << MUX5);
+	pin &= 0x0F;
+
+	if (!(SREG & (1 << SREG_I))) {
+		ADMUX = (1 << REFS0) | (pin & 0x07);
+		ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 1) << MUX5);
+		ADCSRA |= (1 << ADSC);
+		while (ADCSRA & (1 << ADSC));
+		return ADC;
+	}
+
+	int v;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		v = adc_cache[pin];
+	}
+	return v;
+}
+
+ISR(ADC_vect) {
+	adc_cache[adc_current_pin] = ADC;
+
+	adc_current_pin = (adc_current_pin + 1) & 0x0F;
+
+	ADMUX = (1 << REFS0) | (adc_current_pin & 0x07);
+	ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((adc_current_pin >> 3) & 1) << MUX5);
 	ADCSRA |= (1 << ADSC);
-	while (ADCSRA & (1 << ADSC));
-	return ADC;
 }
 
 int dr(uint8_t pin) {
@@ -86,46 +109,18 @@ T clamp(T v, U lo, V hi) {
 	return v < lo ? (T)lo : (v > hi ? (T)hi : v);
 }
 
-// ここから入力系 (begin() の後ろに追加)
+extern "C" void TIMER3_COMPA_vect(void);
+
+// ここから入力系
 
 struct Dch {
-	uint8_t           pin;
 	volatile uint8_t* reg;
 	uint8_t           mask;
 	uint8_t           stable;
 	unsigned long     t;
 	bool              fired;
-	bool              init;
 };
 
-constexpr uint8_t NCH = 12;
-Dch dchPool[NCH] = {};
-
-Dch* dchSlot(uint8_t pin, bool dig, uint8_t raw0 = LOW) {
-	Dch* freeCh = nullptr;
-	for (uint8_t i = 0; i < NCH; i++) {
-		if (dchPool[i].init && dchPool[i].pin == pin) return &dchPool[i];
-		if (!dchPool[i].init && !freeCh) freeCh = &dchPool[i];
-	}
-	if (!freeCh) return nullptr;
-	Dch& c = *freeCh;
-	c.pin = pin;
-	if (dig) {
-		c.reg = portInputRegister(digitalPinToPort(pin));
-		c.mask = digitalPinToBitMask(pin);
-		c.stable = (*c.reg & c.mask) ? HIGH : LOW;
-	} else {
-		c.reg = nullptr;
-		c.mask = 0;
-		c.stable = raw0;
-	}
-	c.t = millis();
-	c.fired = false;
-	c.init = true;
-	return &c;
-}
-
-// エッジ・レベル入力の結果型 (デジタル / フォトリフレクタ)
 struct de {
 	uint8_t level;
 	bool    ltoh;
@@ -165,117 +160,260 @@ de edgeUpdate(Dch* c, uint8_t raw, uint16_t lock) {
 	return r;
 }
 
-// デジタル入力
-de di(uint8_t pin, uint16_t lock = 10) {
-	Dch* c = dchSlot(pin, true);
-	if (!c) return { LOW, false, false, nullptr };
-	uint8_t raw = (*c->reg & c->mask) ? HIGH : LOW;
-	return edgeUpdate(c, raw, lock);
-}
+// エッジ入力の共通土台
+class InEdge {
+protected:
+	Dch      st;
+	uint16_t lock;
+	bool     first = true;
+	volatile bool fLtoh = false;
+	volatile bool fHtol = false;
 
-// エンコーダ内部チャネル
-struct Ech {
-	uint8_t           pa, pb;
-	volatile uint8_t* ra;
-	uint8_t           ma;
-	volatile uint8_t* rb;
-	uint8_t           mb;
-	uint8_t           est;
-	long              c;
-	bool              init;
+	virtual uint8_t read() = 0;
+
+	void poll() {
+		uint8_t raw = read();
+		if (first) {
+			first = false;
+			st.stable = raw;
+			st.t = millis();
+			return;
+		}
+		de r = edgeUpdate(&st, raw, lock);
+		if (r.ltoh) fLtoh = true;
+		if (r.htol) fHtol = true;
+	}
+
+public:
+	InEdge(uint16_t lock) : lock(lock) {
+		st.reg = nullptr;
+		st.mask = 0;
+		st.stable = LOW;
+		st.t = 0;
+		st.fired = false;
+	}
+
+	bool ltoh() {
+		bool v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			v = fLtoh;
+			fLtoh = false;
+		}
+		return v;
+	}
+
+	bool htol() {
+		bool v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			v = fHtol;
+			fHtol = false;
+		}
+		return v;
+	}
+
+	bool level() const {
+		return st.stable;
+	}
+
+	operator bool() const {
+		return st.stable;
+	}
+
+	bool held(uint16_t ms, bool lv) {
+		bool v = false;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (st.stable == lv && !st.fired && millis() - st.t >= ms) {
+				st.fired = true;
+				v = true;
+			}
+		}
+		return v;
+	}
 };
 
-constexpr uint8_t NEC = 6;
-Ech echPool[NEC] = {};
+// デジタル入力
+class di : public InEdge {
+private:
+	volatile uint8_t* reg;
+	uint8_t           mask;
 
-Ech* echSlot(uint8_t pa, uint8_t pb) {
-	Ech* freeCh = nullptr;
-	for (uint8_t i = 0; i < NEC; i++) {
-		if (echPool[i].init && echPool[i].pa == pa && echPool[i].pb == pb) return &echPool[i];
-		if (!echPool[i].init && !freeCh) freeCh = &echPool[i];
-	}
-	if (!freeCh) return nullptr;
-	Ech& e = *freeCh;
-	e.pa = pa;
-	e.pb = pb;
-	e.ra = portInputRegister(digitalPinToPort(pa));
-	e.ma = digitalPinToBitMask(pa);
-	e.rb = portInputRegister(digitalPinToPort(pb));
-	e.mb = digitalPinToBitMask(pb);
-	e.est = 0;
-	e.c = 0;
-	e.init = true;
-	return &e;
-}
-
-int encPoll(Ech* e, bool dir) {
-	uint8_t a = (*e->ra & e->ma) ? 1 : 0;
-	uint8_t b = (*e->rb & e->mb) ? 1 : 0;
-
-	static const uint8_t table[7][4] = {
-		{ 0x00, 0x02, 0x04, 0x00 },
-		{ 0x00, 0x00, 0x00, 0x00 },
-		{ 0x13, 0x02, 0x00, 0x00 },
-		{ 0x03, 0x03, 0x03, 0x00 },
-		{ 0x26, 0x00, 0x04, 0x00 },
-		{ 0x00, 0x00, 0x00, 0x00 },
-		{ 0x06, 0x06, 0x06, 0x00 },
-	};
-	e->est = table[e->est & 0x0f][(a << 1) | b];
-	uint8_t dd = e->est & 0x30;
-	int step = 0;
-	if (dd == 0x10)      step = dir ? 1 : -1;
-	else if (dd == 0x20) step = dir ? -1 : 1;
-	e->c += step;
-	return step;
-}
-
-// 回転入力の結果型 (エンコーダ)
-struct Enc {
-	Ech* e;
-	bool dir;
-
-	int delta() {
-		if (!e) return 0;
-		return encPoll(e, dir);
+	uint8_t read() override {
+		return (*reg & mask) ? HIGH : LOW;
 	}
 
-	long count() {
-		if (!e) return 0;
-		encPoll(e, dir);
-		return e->c;
+	static di* list[8];
+	static uint8_t nList;
+
+	friend void TIMER3_COMPA_vect(void);
+
+	static void pollAll() {
+		for (uint8_t i = 0; i < nList; i++) list[i]->poll();
 	}
 
-	long clampTo(long lo, long hi) {
-		if (!e) return lo;
-		encPoll(e, dir);
-		e->c = clamp(e->c, lo, hi);
-		return e->c;
+public:
+	di(uint8_t pin, uint16_t lock = 10)
+		: InEdge(lock), reg(portInputRegister(digitalPinToPort(pin))), mask(digitalPinToBitMask(pin)) {
+		uint8_t s = SREG;
+		cli();
+		if (nList < 8) list[nList++] = this;
+		SREG = s;
+	}
+};
+di* di::list[8] = {};
+uint8_t di::nList = 0;
+
+// アナログ巡回更新の共通土台
+class An {
+protected:
+	virtual void anaPoll() = 0;
+
+	static An* list[8];
+	static uint8_t nList;
+	static uint8_t idx;
+
+	friend void TIMER3_COMPA_vect(void);
+
+	static void pollTick() {
+		if (!nList) return;
+		list[idx]->anaPoll();
+		if (++idx >= nList) idx = 0;
 	}
 
-	long loopTo(long lo, long hi) {
-		if (!e) return lo;
-		encPoll(e, dir);
-		long span = hi - lo + 1;
-		if (span < 1) span = 1;
-		e->c = lo + ((e->c - lo) % span + span) % span;
-		return e->c;
+public:
+	An() {
+		uint8_t s = SREG;
+		cli();
+		if (nList < 8) list[nList++] = this;
+		SREG = s;
+	}
+};
+An* An::list[8] = {};
+uint8_t An::nList = 0;
+uint8_t An::idx = 0;
+
+// フォトリフレクタ
+class pr : public InEdge, public An {
+private:
+	uint8_t pin;
+	int     th;
+
+	uint8_t read() override {
+		return (ar(pin) > th) ? HIGH : LOW;
 	}
 
-	void set(long v = 0) {
-		if (!e) return;
-		e->c = v;
-		e->est = 0;
+	void anaPoll() override {
+		poll();
+	}
+
+public:
+	pr(uint8_t pin, int th = 950, uint16_t lock = 10)
+		: InEdge(lock), pin(pin), th(th) {
+	}
+};
+
+constexpr int SOK_N = 4;
+constexpr int sokAd[SOK_N] = { 450, 380, 260, 60 };
+constexpr int sokMm[SOK_N] = { 40, 150, 300, 500 };
+
+// 測距モジュール
+class sok : public An {
+private:
+	uint8_t pin;
+	int     ring[5] = { 0, 0, 0, 0, 0 };
+	uint8_t ri = 0;
+	uint8_t cnt = 0;
+	bool    sat = false;
+
+	void anaPoll() override {
+		ring[ri] = ar(pin);
+		if (++ri >= 5) ri = 0;
+		if (cnt < 5) cnt++;
+
+		int tmp[5];
+		uint8_t n = cnt;
+		for (uint8_t i = 0; i < n; i++) tmp[i] = ring[i];
+		for (uint8_t i = 1; i < n; i++) {
+			int t = tmp[i];
+			int8_t j = i - 1;
+			while (j >= 0 && tmp[j] > t) {
+				tmp[j + 1] = tmp[j];
+				j--;
+			}
+			tmp[j + 1] = t;
+		}
+		int med = tmp[n / 2];
+
+		long ad = med;
+		long m;
+		if (ad >= sokAd[0]) {
+			m = sokMm[0];
+		} else if (ad <= sokAd[SOK_N - 1]) {
+			m = sokMm[SOK_N - 1];
+		} else {
+			uint8_t i = 0;
+			while (ad < sokAd[i + 1]) i++;
+			long da = sokAd[i] - sokAd[i + 1];
+			m = sokMm[i] + ((sokAd[i] - ad) * (long)(sokMm[i + 1] - sokMm[i]) + da / 2) / da;
+		}
+		if (m >= sokMm[SOK_N - 1]) sat = true;
+		else if (m < sokMm[SOK_N - 1] - 20) sat = false;
+		if (sat) m = sokMm[SOK_N - 1];
+
+		raw = med;
+		mm = (int)m;
+		cm = m / 10.0f;
+	}
+
+public:
+	volatile int   raw = 0;
+	volatile int   mm = 0;
+	volatile float cm = 0;
+
+	sok(uint8_t pin) : pin(pin) {
+	}
+};
+
+// 半固定抵抗
+class vr : public An {
+private:
+	uint8_t pin;
+
+	void anaPoll() override {
+		raw = ar(pin);
+	}
+
+public:
+	volatile int raw = 0;
+
+	vr(uint8_t pin) : pin(pin) {
+	}
+
+	int to(int lo, int hi) {
+		long v = raw;
+		return (int)(lo + (v * (long)(hi - lo) + 511) / 1023);
 	}
 };
 
 // ジョイスティック
-struct Joy {
-	int x, y;
+class joy : public An {
+private:
+	uint8_t px, py;
 
-	int dir(int div, uint8_t rot = 0, bool mirror = false) const {
+	void anaPoll() override {
+		x = ar(px);
+		y = ar(py);
+	}
+
+public:
+	volatile int x = 0;
+	volatile int y = 0;
+
+	joy(uint8_t px, uint8_t py) : px(px), py(py) {
+	}
+
+	int dir(int div, uint8_t rot = 0, bool mirror = false) {
 		static const int C = 532;
-		long dx = x - C, dy = y - C;
+		long dx = (int)x - C, dy = (int)y - C;
 		if (dx * dx + dy * dy < 165000) return -1;
 		double th = atan2((double)dx, (double)dy);
 		if (mirror) th = -th;
@@ -284,81 +422,99 @@ struct Joy {
 	}
 };
 
-// アナログ入力
-class An {
+// ロータリーエンコーダ
+class enc {
+private:
+	volatile uint8_t* ra;
+	volatile uint8_t* rb;
+	uint8_t           ma, mb;
+	volatile uint8_t  est;
+	volatile long     cnt;
+	long              last;
+	bool              dir;
+
+	static enc* list[4];
+	static uint8_t nList;
+
+	friend void TIMER3_COMPA_vect(void);
+
+	void poll() {
+		static const uint8_t table[7][4] = {
+			{ 0x00, 0x02, 0x04, 0x00 },
+			{ 0x00, 0x00, 0x00, 0x00 },
+			{ 0x13, 0x02, 0x00, 0x00 },
+			{ 0x03, 0x03, 0x03, 0x00 },
+			{ 0x26, 0x00, 0x04, 0x00 },
+			{ 0x00, 0x00, 0x00, 0x00 },
+			{ 0x06, 0x06, 0x06, 0x00 },
+		};
+		uint8_t a = (*ra & ma) ? 1 : 0;
+		uint8_t b = (*rb & mb) ? 1 : 0;
+		est = table[est & 0x0f][(a << 1) | b];
+		uint8_t dd = est & 0x30;
+		int step = (dd == 0x10) ? (dir ? 1 : -1) : (dd == 0x20) ? (dir ? -1 : 1) : 0;
+		cnt += step;
+	}
+
+	static void pollAll() {
+		for (uint8_t i = 0; i < nList; i++) list[i]->poll();
+	}
+
 public:
-	// ロータリーエンコーダ
-	Enc enc(uint8_t pa, uint8_t pb, bool dir = true) {
-		return { echSlot(pa, pb), dir };
+	enc(uint8_t pa, uint8_t pb, bool d = true)
+		: ra(portInputRegister(digitalPinToPort(pa))), rb(portInputRegister(digitalPinToPort(pb))),
+		ma(digitalPinToBitMask(pa)), mb(digitalPinToBitMask(pb)), est(0), cnt(0), last(0), dir(d) {
+		uint8_t s = SREG;
+		cli();
+		if (nList < 4) list[nList++] = this;
+		SREG = s;
 	}
 
-	// フォトリフレクタ
-	de pr(uint8_t pin, int th = 950, uint16_t lock = 10) {
-		uint8_t raw = (ar(pin) > th) ? HIGH : LOW;
-		Dch* c = dchSlot(pin, false, raw);
-		if (!c) return { LOW, false, false, nullptr };
-		return edgeUpdate(c, raw, lock);
-	}
-
-	// 測距モジュール
-	int sokRaw(uint8_t pin, uint8_t n = 5) {
-		int v[9];
-		if (n > 9) n = 9;
-		for (uint8_t i = 0; i < n; i++) v[i] = ar(pin);
-		for (uint8_t i = 1; i < n; i++) {
-			int t = v[i];
-			int8_t j = i - 1;
-			while (j >= 0 && v[j] > t) {
-				v[j + 1] = v[j];
-				j--;
-			}
-			v[j + 1] = t;
+	long count() {
+		long v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			v = cnt;
 		}
-		return v[n / 2];
+		return v;
 	}
 
-	static constexpr int SOK_N = 4;
-	static constexpr int sokAd[SOK_N] = { 450, 380, 260, 60 };
-	static constexpr int sokMm[SOK_N] = { 40, 150, 300, 500 };
+	int delta() {
+		long v = count();
+		int d = (int)(v - last);
+		last = v;
+		return d;
+	}
 
-	float sok(uint8_t pin) {
-		long ad = sokRaw(pin);
-		long mm;
-
-		if (ad >= sokAd[0]) {
-			mm = sokMm[0];
-		} else if (ad <= sokAd[SOK_N - 1]) {
-			mm = sokMm[SOK_N - 1];
-		} else {
-			uint8_t i = 0;
-			while (ad < sokAd[i + 1]) i++;
-			long da = sokAd[i] - sokAd[i + 1];
-			mm = sokMm[i] + ((sokAd[i] - ad) * (long)(sokMm[i + 1] - sokMm[i]) + da / 2) / da;
+	long clampTo(long lo, long hi) {
+		long v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			cnt = clamp(cnt, lo, hi);
+			v = cnt;
 		}
-
-		static bool sat = false;
-		if (mm >= sokMm[SOK_N - 1]) sat = true;
-		else if (mm < sokMm[SOK_N - 1] - 20) sat = false;
-		if (sat) mm = sokMm[SOK_N - 1];
-
-		return mm / 10.0f;
+		return v;
 	}
 
-	// 半固定抵抗
-	int vr(uint8_t pin, int lo = 0, int hi = 1023) {
-		long v = ar(pin);
-		return (int)(lo + (v * (long)(hi - lo) + 511) / 1023);
+	long loopTo(long lo, long hi) {
+		long v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			long span = hi - lo + 1;
+			if (span < 1) span = 1;
+			cnt = lo + ((cnt - lo) % span + span) % span;
+			v = cnt;
+		}
+		return v;
 	}
 
-	// ジョイスティック
-	Joy joy(uint8_t px, uint8_t py) {
-		Joy j;
-		j.x = ar(px);
-		j.y = ar(py);
-		return j;
+	void set(long v = 0) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			cnt = v;
+			est = 0;
+		}
+		last = v;
 	}
 };
-An an;
+enc* enc::list[4] = {};
+uint8_t enc::nList = 0;
 
 #define in auto
 
@@ -373,8 +529,6 @@ constexpr uint8_t GBR = 0b111;
 
 volatile uint8_t ledColor = 0;
 volatile uint8_t ledOpacity = 100;
-
-extern "C" void TIMER3_COMPA_vect(void);
 
 // フルカラーLED
 class Led {
@@ -644,17 +798,31 @@ public:
 Spm sm;
 
 // 圧電ブザー
-void bz(int f) {
-	tone(BZ_PIN, f);
-}
+class Bz {
+private:
+	int pref = -1;
+	int pret = -1;
 
-void bz(int f, unsigned long t) {
-	tone(BZ_PIN, f, t);
-}
+public:
+	void operator()(int f) {
+		if (f == pref) return;
+		pref = f;
+		tone(BZ_PIN, f);
+	}
 
-void bzoff() {
-	noTone(BZ_PIN);
-}
+	void operator()(int f, unsigned long t) {
+		if (f == pref && t == pret) return;
+		pref = f;
+		pret = t;
+		tone(BZ_PIN, f, t);
+	}
+
+	void off() {
+		pref = pret = -1;
+		noTone(BZ_PIN);
+	}
+};
+Bz bz;
 
 #ifdef useir
 void ir();
@@ -663,11 +831,26 @@ void ir();
 ISR(TIMER3_COMPA_vect) {
 	led.update();
 	dp.update();
+	enc::pollAll();
+
+	static uint8_t acnt = 0;
+	if (++acnt >= 10) {
+		An::pollTick();
+	}
+
+	static uint8_t dcnt = 0;
+	if (++dcnt >= 100) {
+		dcnt = 0;
+		di::pollAll();
+	}
 
 #ifdef useir
 	ir();
 #endif
 }
+
+#define L LOW
+#define H HIGH
 
 void begin(void) {
 	pinMode(a1, INPUT);
@@ -701,9 +884,13 @@ void begin(void) {
 	randomSeed(ar(A15) ^ micros());
 
 	led(0);
-
+	dp.off();
+	dm.fr();
+	sm.fr();
+	bz.off();
 
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
+	ADCSRA |= (1 << ADIE);
 
 	cli();
 	TCCR3A = TCCR3B = TCNT3 = 0;
@@ -711,5 +898,12 @@ void begin(void) {
 	TCCR3B |= (1 << WGM32);
 	TCCR3B |= (1 << CS31) | (1 << CS30);
 	TIMSK3 |= (1 << OCIE3A);
+
+	ADMUX = (1 << REFS0);
+	ADCSRB &= ~(1 << MUX5);
+	ADCSRA |= (1 << ADSC);
+
 	sei();
+
+	delay(100);
 }
