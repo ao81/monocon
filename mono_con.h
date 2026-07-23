@@ -6,21 +6,21 @@
 //    https://hyakuedu.wordpress.com/
 //
 //    CPU Board: Arduino MEGA 2560 R3
-//                                     2026/01/08 OKAKO
+//                                     2026/04/15 OKAKO
 //
 //===================================================================================================================
 #ifndef _MONO_CON_2026_H
 #define _MONO_CON_2026_H
 
 //--- Arduino  ATmega2560 Input
-#define _USER_CON_1PIN A1
-#define _USER_CON_2PIN A2
-#define _USER_CON_3PIN 17
-#define _USER_CON_4PIN 18
-#define _USER_CON_5PIN 19
-#define _USER_CON_6PIN 40
-#define _USER_CON_7PIN 42
-#define _USER_CON_8PIN 20 //GND
+#define _USER_CON_1PIN A1 //ジョイステック：X
+#define _USER_CON_2PIN A2 //ジョイステック：Y
+#define _USER_CON_3PIN 17 //D1:フォトインタラプタ
+#define _USER_CON_4PIN 18 //D2:タクトスイッチ
+#define _USER_CON_5PIN 19 //D3:トグルスイッチ
+#define _USER_CON_6PIN 40 //M1:予備１
+#define _USER_CON_7PIN 42 //M2:予備２
+#define _USER_CON_8PIN 20//D4:GND
 
 //--- OKAKO_Shield_CN2
 #define BOARD_SW_PIN 26
@@ -33,9 +33,9 @@
 #define SDI_PIN 25
 
 //--- セグメントLED 0-9,blank
-const int num[11] = { 0x3f, 0x06, 0x5b, 0x4f, 0x66,  //0, 1, 2, 3, 4
-                      0x6d, 0x7d, 0x27, 0x7f, 0x6f,  //5, 6, 7, 8, 9
-                      0x00 };                        //blank
+int num[11] = { 0x3f, 0x06, 0x5b, 0x4f, 0x66,  //0, 1, 2, 3, 4
+                0x6d, 0x7d, 0x27, 0x7f, 0x6f,  //5, 6, 7, 8, 9
+                0x00 };                        //blank
 
 //--- レジスタ初期設定
 void config_init(void) {
@@ -48,7 +48,7 @@ void config_init(void) {
   pinMode(_USER_CON_7PIN, INPUT);
 
   pinMode(_USER_CON_8PIN, OUTPUT);
-  digitalWrite(_USER_CON_8PIN, LOW); //IN_D4をGND設定 
+  digitalWrite(_USER_CON_8PIN, LOW);//IN_D4をGND設定
 
   pinMode(BOARD_SW_PIN, INPUT);
   pinMode(BZ_PIN, OUTPUT);
@@ -66,7 +66,6 @@ void config_init(void) {
   ////////// 1ms割り込み用のタイマ(Timer3)の初期化 //////////
   TCCR3A = 0;
   TCCR3B = 0x0b;
-  // OCR3A = 124;
   OCR3A = 249;
   TIMSK3 = 2;
 #endif
@@ -87,29 +86,33 @@ struct bitset RC;  // 構造体変数
 //--- 共用体宣言lm (LED & step Motor)
 union {
   struct {               //--- 構造体宣言，bit というグループ名
-    unsigned int SM : 4;   // bit0 ～ bit3 ステッピングモータ励磁信号
-    unsigned int R : 1;    // bit4 フルカラーLED，赤色
-    unsigned int B : 1;    // bit5 フルカラーLED，青色
-    unsigned int G : 1;    // bit6 フルカラーLED，緑色
-    unsigned int res : 1;  // bit7 未使用
+    int SM : 4;   // bit0 ～ bit3 ステッピングモータ励磁信号
+    int R : 1;    // bit4 フルカラーLED，赤色
+    int B : 1;    // bit5 フルカラーLED，青色
+    int G : 1;    // bit6 フルカラーLED，緑色
+    int res : 1;  // bit7 未使用
   } bit;          // bit アクセス名
   struct {
-    unsigned int SM : 4;
-    unsigned int GBR : 3;  // フルカラーLED, カラーコードを3bitで指定
-    unsigned int res : 1;
+    int SM : 4;
+    int GBR : 3;  // フルカラーLED, カラーコードを3bitで指定
+    int res : 1;
   } color;  // GBRを3ビットアクセス名
   int b8;   // byte アクセス名
 } lm;       // 共用体変数名
 
 //--- U1,U2,U3初期化
 void serial_init(void) {
-  // U1, U2
+  //U1
   digitalWrite(LAT1_PIN, LOW);
-  shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, 0x00);
   shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, 0x00);
   digitalWrite(LAT1_PIN, HIGH);
 
-  // U3
+  //U2
+  digitalWrite(LAT1_PIN, LOW);
+  shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, 0x00);
+  digitalWrite(LAT1_PIN, HIGH);
+
+  //u3
   digitalWrite(LAT2_PIN, LOW);
   shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, 0x00);
   digitalWrite(LAT2_PIN, HIGH);
@@ -135,7 +138,7 @@ int stepm_init(int n) {
 }
 
 //--- フルカラーLEDとステッピングモータの動作制御関数
-void led_stepmotor(char n) {
+int led_stepmotor(char n) {
   digitalWrite(LAT2_PIN, LOW);
   shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, n);
   digitalWrite(LAT2_PIN, HIGH);
