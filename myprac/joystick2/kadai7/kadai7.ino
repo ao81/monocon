@@ -1,0 +1,48 @@
+#define USE_TIMER3
+#include "mono_con.h"
+
+const int xseg[3][2] = {
+	{ 0x30, 0x00 },
+	{ 0x06, 0x30 },
+	{ 0x00, 0x06 },
+};
+
+const int yseg[3][2] = {
+	{ 0x08, 0x08 },
+	{ 0x40, 0x40 },
+	{ 0x01, 0x01 },
+};
+
+int x, y, tsw, sw, ph;
+bool r = true;
+
+int getdir(int p) {
+	return constrain(map(p, 0, 1023, 0, 3), 0, 2);
+}
+
+ISR(TIMER3_COMPA_vect) {
+	static word in = 0;
+	if (in++ > 5) {
+		in = 0;
+		r = true;
+	}
+}
+
+void setup() {
+	config_init();
+	serial_init();
+}
+
+void loop() {
+	if (r) {
+		r = false;
+
+		x = analogRead(pin2);
+		y = analogRead(pin1);
+		tsw = digitalRead(pin5);
+		sw = digitalRead(pin4);
+		ph = digitalRead(pin3);
+	}
+
+	disp(xseg[getdir(x)][0] | yseg[getdir(y)][0], xseg[getdir(x)][1] | yseg[getdir(y)][1]);
+}
