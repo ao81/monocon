@@ -54,6 +54,7 @@ void loop() {
 		}
 	} else {
 		lm.color.GBR = B100;
+		stop();
 	}
 
 	led_stepmotor(lm.b8);
