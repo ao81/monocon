@@ -2,28 +2,62 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "Arduino: Preheat Cache",
+			"type": "shell",
+			"command": "arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path '${workspaceFolder}/.arduino-build' '${fileDirname}'",
+			"options": {
+				"shell": {
+					"executable": "powershell",
+					"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+				}
+			},
+			"group": "none",
+			"runOptions": {
+				"runOn": "folderOpen"
+			},
+			"presentation": {
+				"reveal": "never",
+				"panel": "shared",
+				"echo": false
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "Arduino: Build",
 			"type": "shell",
-			"command": "arduino-cli compile --fqbn arduino:avr:megaADK ${fileDirname}",
+			"command": "$start = Get-Date; arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path '${workspaceFolder}/.arduino-build' '${fileDirname}'; Write-Host \"ビルド時間: $([math]::Round(((Get-Date) - $start).TotalSeconds, 2))秒\"",
+			"options": {
+				"shell": {
+					"executable": "powershell",
+					"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+				}
+			},
 			"group": "build",
 			"presentation": {
 				"reveal": "always",
-				"panel": "shared"
+				"panel": "shared",
+				"echo": false
 			},
 			"problemMatcher": []
 		},
 		{
 			"label": "Arduino: Upload",
 			"type": "shell",
-			"command": "arduino-cli compile --fqbn arduino:avr:megaADK ${fileDirname} && arduino-cli upload -p COM6 --fqbn arduino:avr:megaADK ${fileDirname}",
-			// COM- の部分を適宜変更する
+			"command": "$port = 'COM6'; if (-not (Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -like ('*' + $port + '*') })) { $port = (arduino-cli board list | Select-String 'serial' | ForEach-Object { ($_ -split '\\s+')[0] } | Select-Object -First 1) }; if (-not $port) { Write-Error 'ボードが見つかりません。'; exit 1 }; Write-Host \"port: $port\"; $start = Get-Date; arduino-cli compile -b arduino:avr:megaADK -j 0 -u -p $port --build-path '${workspaceFolder}/.arduino-build' '${fileDirname}'; Write-Host \"processing time: $([math]::Round(((Get-Date) - $start).TotalSeconds, 2))s\"",
+			"options": {
+				"shell": {
+					"executable": "powershell",
+					"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+				}
+			},
 			"group": {
 				"kind": "build",
 				"isDefault": true
 			},
 			"presentation": {
 				"reveal": "always",
-				"panel": "shared"
+				"panel": "shared",
+				"echo": false
 			},
 			"problemMatcher": []
 		}
