@@ -7,8 +7,7 @@ int x, y;
 int getdir(int xx, int yy) {
 	int dx = xx - 511, dy = yy - 511;
 	if (abs(dx) < 200 && abs(dy) < 200) return -1;
-	double angle = atan2((double)dx, (double)dy);
-	int dir = (int)((angle + 2 * PI + PI / 8) / (PI / 4));
+	int dir = (int)((atan2((double)dx, (double)dy) + 2 * PI + PI / 8) / (PI / 4));
 	return dir % 8;
 }
 
