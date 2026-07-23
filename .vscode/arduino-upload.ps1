@@ -1,79 +1,197 @@
 Param(
 	[string]$BuildPath,
 	[string]$SketchDir,
-	[string]$Port = 'COM6'
+	[string]$Port = ''
 )
-Write-Host ">>> Uploading to Arduino...`n" -ForegroundColor Cyan
+Write-Host ">>> Uploading to Arduino...`n"
 
 $totalSw = [System.Diagnostics.Stopwatch]::StartNew()
-
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
-$availablePorts = [System.IO.Ports.SerialPort]::GetPortNames()
-Write-Host "GetPortNames: $($sw.Elapsed.TotalMilliseconds)ms"
 
-if ($availablePorts -notcontains $Port) {
-	Write-Host ">>> Port $Port not found. Available ports: $($availablePorts -join ', ')" -ForegroundColor Red
-	exit 1
+# ---------------------------------------------------------
+# 共通定数（環境に依存する部分）
+# ---------------------------------------------------------
+$avrGccRoot  = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\bin"
+$avrGpp      = "$avrGccRoot\avr-g++.exe"
+$avrGcc      = "$avrGccRoot\avr-gcc.exe"
+$avrObjcopy  = "$avrGccRoot\avr-objcopy.exe"
+$hwRoot      = "$env:LOCALAPPDATA\Arduino15\packages\arduino\hardware\avr\1.8.7"
+$coresInc    = "$hwRoot\cores\arduino"
+$variantsInc = "$hwRoot\variants\mega"
+
+$globalCacheDir = "$env:LOCALAPPDATA\ArduinoCLI_Cache"
+$portCacheFile  = "$globalCacheDir\port_cache.txt"
+
+# ---------------------------------------------------------
+# 1. ポート検出
+# ---------------------------------------------------------
+$TargetPort = ""
+try { $TargetPort = [System.IO.File]::ReadAllText($portCacheFile).Trim() } catch {}
+
+if ($TargetPort -eq "") {
+	Write-Host "Port cache miss, scanning..." -ForegroundColor Yellow
+	try {
+		$pnpDevices = Get-CimInstance Win32_PnPEntity -Filter "Name LIKE '%(COM%)'" -ErrorAction Stop
+		$target = $pnpDevices | Where-Object { $_.Caption -match 'Arduino|Mega|USB Serial|CH340|CP210' } | Select-Object -First 1
+		if ($target -and $target.Caption -match '\((COM\d+)\)') { $TargetPort = $matches[1] }
+	} catch {}
+
+	if ($TargetPort -eq "") {
+		$availablePorts = [System.IO.Ports.SerialPort]::GetPortNames()
+		if ($availablePorts.Count -gt 0) { $TargetPort = $availablePorts[-1] }
+		else { Write-Host ">>> Error: No COM port found." -ForegroundColor Red; exit 1 }
+	}
+
+	if (-not (Test-Path $globalCacheDir)) { New-Item -ItemType Directory -Force -Path $globalCacheDir | Out-Null }
+	[System.IO.File]::WriteAllText($portCacheFile, $TargetPort)
 }
 
-$sw.Restart()
-$avrdudeRoot = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avrdude"
-$dirs = [System.IO.Directory]::GetDirectories($avrdudeRoot)
-$avrdudeDir = $dirs[$dirs.Length - 1]
-$avrdude = "$avrdudeDir\bin\avrdude.exe"
-$avrdudeConf = "$avrdudeDir\etc\avrdude.conf"
-Write-Host "avrdude path resolve: $($sw.Elapsed.TotalMilliseconds)ms"
+Write-Host "Using Port: $TargetPort`n"
+Write-Host "Find port: $($sw.Elapsed.TotalMilliseconds)ms"
 
-$sketchName = [System.IO.Path]::GetFileName($SketchDir)
-$inoFile = "$SketchDir\$sketchName.ino"
-$hexFile = "$BuildPath\$sketchName.ino.hex"
+# ---------------------------------------------------------
+# 2. avrdudeのパス解決
+# ---------------------------------------------------------
+$sw.Restart()
+$avrdudeCacheFile = "$globalCacheDir\avrdude_path_cache.txt"
+$avrdude = ""; $avrdudeConf = ""
+try {
+	$lines = [System.IO.File]::ReadAllLines($avrdudeCacheFile)
+	$avrdude = $lines[0]; $avrdudeConf = $lines[1]
+} catch {}
+
+if ($avrdude -eq "") {
+	$avrdudeRoot = "$env:LOCALAPPDATA\Arduino15\packages\arduino\tools\avrdude"
+	$avrdudeDir  = [System.IO.Directory]::GetDirectories($avrdudeRoot)[-1]
+	$avrdude     = "$avrdudeDir\bin\avrdude.exe"
+	$avrdudeConf = "$avrdudeDir\etc\avrdude.conf"
+	[System.IO.File]::WriteAllLines($avrdudeCacheFile, [string[]]@($avrdude, $avrdudeConf))
+}
+Write-Host "Avrdude path resolve: $($sw.Elapsed.TotalMilliseconds)ms"
+
+# ---------------------------------------------------------
+# 3. パス構築
+# ---------------------------------------------------------
+$sw.Restart()
+$sketchName  = [System.IO.Path]::GetFileName($SketchDir)
+$inoFile     = "$SketchDir\$sketchName.ino"
+$sketchBuild = "$BuildPath\sketch"
+$cppFile     = "$sketchBuild\$sketchName.ino.cpp"
+$objFile     = "$sketchBuild\$sketchName.ino.cpp.o"
+$elfFile     = "$BuildPath\$sketchName.ino.elf"
+$hexFile     = "$BuildPath\$sketchName.ino.hex"
+$eepFile     = "$BuildPath\$sketchName.ino.eep"
+$coreA       = "$BuildPath\core\core.a"
 $hashCacheFile = "$BuildPath\$sketchName.ino.sha256"
 
-$sw.Restart()
-$inoInfo = [System.IO.FileInfo]::new($inoFile)
-$hashCacheInfo = [System.IO.FileInfo]::new($hashCacheFile)
+$inoInfo     = [System.IO.FileInfo]::new($inoFile)
 $needCompile = $true
-if ($inoInfo.Exists -and $hashCacheInfo.Exists) {
+
+if ($inoInfo.Exists -and [System.IO.File]::Exists($hashCacheFile) -and [System.IO.File]::Exists($hexFile)) {
 	$currentHash = $inoInfo.LastWriteTime.Ticks.ToString()
-	$cachedHash = [System.IO.File]::ReadAllText($hashCacheFile).Trim()
+	$cachedHash  = [System.IO.File]::ReadAllText($hashCacheFile).Trim()
 	if ($currentHash -eq $cachedHash) { $needCompile = $false }
 }
 Write-Host "Cache check: $($sw.Elapsed.TotalMilliseconds)ms"
 
+# ---------------------------------------------------------
+# 4. コンパイル（arduino-cliを完全バイパス）
+# ---------------------------------------------------------
 $buildTime = 0.0
-$uploadTime = 0.0
-
+$sw.Restart()
 if ($needCompile) {
 	$currentHash = $inoInfo.LastWriteTime.Ticks.ToString()
 
-	$sw.Restart()
-	arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path $BuildPath --warnings none --quiet $SketchDir
-	
-	$buildTime = $sw.Elapsed.TotalSeconds
-	Write-Host "Compile: $($buildTime)s"
+	# core.aが存在しない場合はarduino-cliで一度だけフルビルド（初回のみ）
+	if (-not (Test-Path $coreA)) {
+		Write-Host "First build: generating core.a via arduino-cli..." -ForegroundColor Yellow
+		$null = & arduino-cli compile -b arduino:avr:megaADK -j 0 --build-path $BuildPath --warnings none --quiet $SketchDir 2>&1
+		if ($LASTEXITCODE -ne 0) {
+			Write-Host "`n>>> Build failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
+		}
+		[System.IO.File]::WriteAllText($hashCacheFile, $currentHash)
+		$buildTime = $sw.Elapsed.TotalSeconds
+		Write-Host "Compile (full): $($buildTime)s"
+	} else {
+		# -------------------------------------------------------
+		# 差分ビルド: スケッチ1ファイルのみ avr-g++ → リンク → objcopy
+		# -------------------------------------------------------
 
-	if ($LASTEXITCODE -ne 0) {
-		Write-Host "`n>>> Build failed.`n" -ForegroundColor Red
-		exit $LASTEXITCODE
+		# .ino → .cpp はarduino-cliが生成済みのものをそのまま使う
+		# （#include <Arduino.h>等のプリプロセスはcppファイルに既に展開済み）
+
+		# Step1: コンパイル
+		$compileArgs = @(
+			"-c", "-g", "-Os", "-w",
+			"-std=gnu++11", "-fpermissive", "-fno-exceptions",
+			"-ffunction-sections", "-fdata-sections",
+			"-fno-threadsafe-statics", "-Wno-error=narrowing",
+			"-MMD", "-flto",
+			"-mmcu=atmega2560",
+			"-DF_CPU=16000000L", "-DARDUINO=10607",
+			"-DARDUINO_AVR_ADK", "-DARDUINO_ARCH_AVR",
+			"-I$coresInc", "-I$variantsInc",
+			$cppFile, "-o", $objFile
+		)
+		$null = & $avrGpp @compileArgs 2>&1
+		if ($LASTEXITCODE -ne 0) {
+			Write-Host "`n>>> Compile failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
+		}
+
+		# Step2: リンク
+		$linkArgs = @(
+			"-w", "-Os", "-g", "-flto", "-fuse-linker-plugin",
+			"-Wl,--gc-sections",
+			"-mmcu=atmega2560",
+			"-o", $elfFile,
+			$objFile, $coreA,
+			"-L$BuildPath", "-lm"
+		)
+		$null = & $avrGcc @linkArgs 2>&1
+		if ($LASTEXITCODE -ne 0) {
+			Write-Host "`n>>> Link failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
+		}
+
+		# Step3: eep生成
+		$null = & $avrObjcopy -O ihex -j .eeprom `
+			--set-section-flags=.eeprom=alloc,load `
+			--no-change-warnings --change-section-lma .eeprom=0 `
+			$elfFile $eepFile 2>&1
+
+		# Step4: hex生成
+		$null = & $avrObjcopy -O ihex -R .eeprom $elfFile $hexFile 2>&1
+		if ($LASTEXITCODE -ne 0) {
+			Write-Host "`n>>> Objcopy failed.`n" -ForegroundColor Red; exit $LASTEXITCODE
+		}
+
+		[System.IO.File]::WriteAllText($hashCacheFile, $currentHash)
+		$buildTime = $sw.Elapsed.TotalSeconds
+		Write-Host "Compile (incremental): $($buildTime)s"
 	}
-
-	[System.IO.File]::WriteAllText($hashCacheFile, $currentHash)
-
-	$sw.Restart()
-	& $avrdude -C $avrdudeConf -q -q -V -p m2560 -c wiring -P $Port -b 115200 -D -U "flash:w:${hexFile}:i"
-	$avrdudeExit = $LASTEXITCODE
-	$uploadTime = $sw.Elapsed.TotalSeconds
-	Write-Host "Upload: $($uploadTime)s"
-
-	if ($avrdudeExit -ne 0) {
-		Write-Host "`n>>> Upload failed.`n" -ForegroundColor Red
-		exit $avrdudeExit
-	}
-}
-else {
-	Write-Host ">> Skip compiling and uploading (No changes detected).`n" -ForegroundColor Yellow
+} else {
+	Write-Host "Compile: skipped (no changes)"
 }
 
+# ---------------------------------------------------------
+# 5. 書き込み
+# ---------------------------------------------------------
+$sw.Restart()
+$avrdudeArgs = @("-C", $avrdudeConf, "-q", "-q", "-V", "-p", "m2560", "-c", "wiring", "-P", $TargetPort, "-b", "115200", "-D", "-U", "flash:w:${hexFile}:i")
+$null = & $avrdude @avrdudeArgs 2>&1
+$avrdudeExit = $LASTEXITCODE
+
+$uploadTime = $sw.Elapsed.TotalSeconds
+Write-Host "Upload: $($uploadTime)s"
+
+if ($avrdudeExit -ne 0) {
+	[System.IO.File]::Delete($portCacheFile)
+	Write-Host "`n>>> Upload failed. Port cache cleared.`n" -ForegroundColor Red
+	exit $avrdudeExit
+}
+
+# ---------------------------------------------------------
+# 6. トータルタイム表示
+# ---------------------------------------------------------
 $totalTime = $totalSw.Elapsed.TotalSeconds
 $line = "`nBuild: {0:F2}s  Upload: {1:F2}s  Total: {2:F2}s`n" -f $buildTime, $uploadTime, $totalTime
 [Console]::WriteLine($line)
