@@ -380,7 +380,7 @@ private:
 	}
 
 public:
-	explicit Sig(uint16_t lock = 0)
+	explicit Sig(uint16_t lock = 10)
 		: InEdge(lock), next_(nullptr) {
 		attach();
 	}
