@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/11
+// 作成年月日: 2026/07/15
 /**********************************************/
 
 // 以下のコメント文は全て削除すること
@@ -58,36 +58,17 @@ void fsout(uint8_t v) {
 	}
 }
 
-volatile int adc_cache[16] = { 0 };
-volatile uint8_t adc_current_pin = 0;
-
 int ar(uint8_t pin) {
 	if (pin >= A0) pin -= A0;
-	pin &= 0x0F;
-
-	if (!(SREG & (1 << SREG_I))) {
+	int v;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		ADMUX = (1 << REFS0) | (pin & 0x07);
 		ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 1) << MUX5);
 		ADCSRA |= (1 << ADSC);
 		while (ADCSRA & (1 << ADSC));
-		return ADC;
-	}
-
-	int v;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		v = adc_cache[pin];
+		v = ADC;
 	}
 	return v;
-}
-
-ISR(ADC_vect) {
-	adc_cache[adc_current_pin] = ADC;
-
-	adc_current_pin = (adc_current_pin + 1) & 0x0F;
-
-	ADMUX = (1 << REFS0) | (adc_current_pin & 0x07);
-	ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((adc_current_pin >> 3) & 1) << MUX5);
-	ADCSRA |= (1 << ADSC);
 }
 
 int dr(uint8_t pin) {
@@ -110,8 +91,6 @@ T clamp(T v, U lo, V hi) {
 }
 
 extern "C" void TIMER3_COMPA_vect(void);
-
-// ここから入力系
 
 struct Dch {
 	volatile uint8_t* reg;
@@ -160,7 +139,6 @@ de edgeUpdate(Dch* c, uint8_t raw, uint16_t lock) {
 	return r;
 }
 
-// エッジ入力の共通土台
 class InEdge {
 protected:
 	Dch      st;
@@ -247,7 +225,9 @@ private:
 	friend void TIMER3_COMPA_vect(void);
 
 	static void pollAll() {
-		for (uint8_t i = 0; i < nList; i++) list[i]->poll();
+		for (uint8_t i = 0; i < nList; i++) {
+			if (list[i]) list[i]->poll();
+		}
 	}
 
 public:
@@ -258,11 +238,29 @@ public:
 		if (nList < 8) list[nList++] = this;
 		SREG = s;
 	}
+
+	di(const di&) = delete;
+	di& operator=(const di&) = delete;
+
+	~di() {
+		uint8_t s = SREG;
+		cli();
+		for (uint8_t i = 0; i < nList; i++) {
+			if (list[i] == this) {
+				for (uint8_t j = i; j < nList - 1; j++) {
+					list[j] = list[j + 1];
+				}
+				list[--nList] = nullptr;
+				break;
+			}
+		}
+		SREG = s;
+	}
 };
 di* di::list[8] = {};
 uint8_t di::nList = 0;
 
-// アナログ巡回更新の共通土台
+// アナログ入力
 class An {
 protected:
 	virtual void anaPoll() = 0;
@@ -518,7 +516,6 @@ uint8_t enc::nList = 0;
 
 #define in auto
 
-// フルカラーLEd
 constexpr uint8_t G = 0b100;
 constexpr uint8_t B = 0b010;
 constexpr uint8_t R = 0b001;
@@ -535,13 +532,20 @@ class Led {
 private:
 	void update() {
 		static uint8_t acc = 0;
+		static uint8_t prevState = 255;
+
 		uint8_t prev = acc;
 		acc += ledOpacity;
 		bool on = (acc < prev);
 
-		dw(LED_R_PIN, (on && (ledColor & 1)) ? HIGH : LOW);
-		dw(LED_B_PIN, (on && (ledColor & 2)) ? HIGH : LOW);
-		dw(LED_G_PIN, (on && (ledColor & 4)) ? HIGH : LOW);
+		uint8_t state = on ? ledColor : 0;
+
+		if (state != prevState) {
+			dw(LED_R_PIN, (state & 1) ? HIGH : LOW);
+			dw(LED_B_PIN, (state & 2) ? HIGH : LOW);
+			dw(LED_G_PIN, (state & 4) ? HIGH : LOW);
+			prevState = state;
+		}
 	}
 
 	friend void TIMER3_COMPA_vect(void);
@@ -590,6 +594,7 @@ private:
 
 	void update() {
 		static uint8_t acc[3] = { 0, 0, 0 };
+		static uint8_t prev_a = 255, prev_b = 255, prev_c = 255;
 
 		uint8_t p0 = acc[0];
 		acc[0] += segOpacity[0];
@@ -603,11 +608,17 @@ private:
 		acc[2] += segOpacity[2];
 		uint8_t c = (acc[2] < p2) ? segPattern[2] : 0;
 
-		PORTH &= ~LAT_BIT;
-		fsout(a);
-		fsout(b);
-		fsout(c);
-		PORTH |= LAT_BIT;
+		if (a != prev_a || b != prev_b || c != prev_c) {
+			PORTH &= ~LAT_BIT;
+			fsout(a);
+			fsout(b);
+			fsout(c);
+			PORTH |= LAT_BIT;
+
+			prev_a = a;
+			prev_b = b;
+			prev_c = c;
+		}
 	}
 
 	friend void TIMER3_COMPA_vect(void);
@@ -801,7 +812,7 @@ Spm sm;
 class Bz {
 private:
 	int pref = -1;
-	int pret = -1;
+	unsigned long pret = -1;
 
 public:
 	void operator()(int f) {
@@ -829,13 +840,14 @@ void ir();
 #endif
 
 ISR(TIMER3_COMPA_vect) {
-	led.update();
-	dp.update();
 	enc::pollAll();
 
 	static uint8_t acnt = 0;
 	if (++acnt >= 10) {
+		acnt = 0;
 		An::pollTick();
+		led.update();
+		dp.update();
 	}
 
 	static uint8_t dcnt = 0;
@@ -890,7 +902,6 @@ void begin(void) {
 	bz.off();
 
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
-	ADCSRA |= (1 << ADIE);
 
 	cli();
 	TCCR3A = TCCR3B = TCNT3 = 0;
@@ -898,11 +909,6 @@ void begin(void) {
 	TCCR3B |= (1 << WGM32);
 	TCCR3B |= (1 << CS31) | (1 << CS30);
 	TIMSK3 |= (1 << OCIE3A);
-
-	ADMUX = (1 << REFS0);
-	ADCSRB &= ~(1 << MUX5);
-	ADCSRA |= (1 << ADSC);
-
 	sei();
 
 	delay(100);
