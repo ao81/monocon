@@ -458,7 +458,7 @@ public:
 	void reset() { run = false; fix = 0; }
 	bool running() { return run; }
 	unsigned long ms() { return run ? millis() - t0 : fix; }
-	unsigned long operator()() { ms(); }
+	unsigned long operator()() { return ms(); }
 };
 
 //================ 7セグ (3桁) ================
