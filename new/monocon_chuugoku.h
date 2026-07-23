@@ -226,6 +226,10 @@ public:
 		ec = 0;
 		est = 0;
 	}
+	void encSet(int n) {
+		ec = n;
+		est = n;
+	}
 };
 In in;
 
@@ -563,6 +567,7 @@ void begin(void) {
 	led.off();
 	spm.off();
 	dcm.fr();
+	dispOff();
 
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
 
