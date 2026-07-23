@@ -168,7 +168,7 @@ private:
 		uint8_t p2 = acc[2];
 		acc[2] += segOpacity[2];
 		uint8_t c = (acc[2] < p2) ? segPattern[2] : 0;
-		
+
 		PORTH &= ~LAT_BIT;
 		fsout(a);
 		fsout(b);
@@ -281,7 +281,7 @@ public:
 	}
 };
 Disp dp;
-#define str(...) str(#__VA_ARGS__)
+#define s(a, ...) s(#a, ##__VA_ARGS__)
 
 #ifdef useir
 void ir();
