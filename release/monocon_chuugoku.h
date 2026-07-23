@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/08
+// 作成年月日: 2026/07/09
 /**********************************************/
 
 #pragma once
@@ -299,7 +299,7 @@ public:
 		return (sok10(pin, adNear, adFar, nearMm, farMm) + 5) / 10;
 	}
 
-	bool ref(uint8_t pin, int th, bool writeHigh = false) {
+	bool ref(uint8_t pin, int th = 950, bool writeHigh = false) {
 		int v = ar(pin);
 		return writeHigh ? (v > th) : (v < th);
 	}
