@@ -182,6 +182,45 @@ void disp(char a, char b, char c) {
 	}
 }
 
+//================ 7セグ 数値表示ヘルパ ================
+// 整数表示 (-99〜999)。先頭ゼロは消灯し、負数は符号付きで右詰め表示。
+void dispNum(int n) {
+	bool neg = n < 0;
+	if (neg) n = -n;
+	if (n > 999) n = 999;
+	uint8_t bh = (n >= 100) ? seg[(n / 100) % 10] : 0x00;
+	uint8_t bt = (n >= 10)  ? seg[(n / 10) % 10]  : 0x00;
+	uint8_t bo = seg[n % 10];
+	if (neg) {
+		if (n < 10)       bt = 0x40;   // 1桁: 中央に "-"
+		else if (n < 100) bh = 0x40;   // 2桁: 左に "-"
+		// 3桁の負数は桁あふれのため符号は省略
+	}
+	disp(bh, bt, bo);
+}
+
+// 小数点付き表示。point=小数部の桁数 (1 or 2)。
+//   dispDec(234, 1) → "23.4"   dispDec(50, 2) → "0.50"
+void dispDec(int v, int point = 1) {
+	if (v < 0) v = 0;
+	if (v > 999) v = 999;
+	uint8_t b0 = seg[(v / 100) % 10];
+	uint8_t b1 = seg[(v / 10) % 10];
+	uint8_t b2 = seg[v % 10];
+	if (point == 2) {
+		b0 |= 0x80;
+	} else {
+		b1 |= 0x80;
+		if (v < 100) b0 = 0x00;        // 先頭ゼロ消灯
+	}
+	disp(b0, b1, b2);
+}
+
+// 全消灯
+void dispOff() {
+	disp(0, 0, 0);
+}
+
 //================ ブザー ================
 void bz(int f) {
 	tone(BZ_PIN, f);
