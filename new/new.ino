@@ -30,6 +30,10 @@ void loop() {
 		else led(R);
 
 		// dp.n(n);
+
+		in ts = di(d1);
+		if (ts) dm.cw(100);
+		else dm.fr();
 	}
 
 	{
