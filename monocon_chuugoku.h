@@ -309,37 +309,56 @@ void disp(char a, char b, char c) {
 	}
 }
 
-// 整数表示 (-99〜999)。先頭ゼロ消灯・負数は符号付き右詰め。範囲外はクランプ。
-void dispNum(int n) {
+// 整数をそのまま表示 (-99〜999)。先頭ゼロ消灯・負数は符号付き。
+void dispn(int n) {
 	bool neg = n < 0;
 	if (neg) n = -n;
-	if (neg && n > 99) n = 99;   // 負数は2桁まで（符号消失を防ぐ）
+	if (neg && n > 99) n = 99;
 	if (n > 999) n = 999;
 	uint8_t bh = (n >= 100) ? seg[(n / 100) % 10] : 0x00;
 	uint8_t bt = (n >= 10) ? seg[(n / 10) % 10] : 0x00;
 	uint8_t bo = seg[n % 10];
 	if (neg) {
-		if (n < 10) bt = 0x40;   // 1桁: 中央に "-"
-		else        bh = 0x40;   // 2桁: 左に "-"
+		if (n < 10) bt = 0x40;
+		else        bh = 0x40;
 	}
 	disp(bh, bt, bo);
 }
 
-// 小数点付き表示。point = 小数部の桁数 (1 or 2)。
-//   dispDec(234, 1) → "23.4"   dispDec(50, 2) → "0.50"
-void dispDec(int v, int point = 1) {
-	if (v < 0) v = 0;
-	if (v > 999) v = 999;
-	uint8_t b0 = seg[(v / 100) % 10];
-	uint8_t b1 = seg[(v / 10) % 10];
-	uint8_t b2 = seg[v % 10];
-	if (point == 2) {
-		b0 |= 0x80;
+// 小数を自動桁数で表示。値の大きさで小数点位置が変わる。
+//   dispDec(0.5f)  → "0.50"    dispDec(23.4f) → "23.4"
+//   dispDec(123.0f)→ "123"     dispDec(-1.5f) → "-1.5"
+// 正:  <10 で2桁, <100 で1桁, それ以上は整数(最大999)
+// 負:  <10 で1桁, それ以上は整数(最小-99)
+void dispn(double f) {
+	bool neg = f < 0;
+	double a = neg ? -f : f;
+
+	if (neg) {
+		if (a < 9.95) {
+			int v = (int)(a * 10 + 0.5);
+			if (v > 99) v = 99;
+			disp(0x40, seg[(v / 10) % 10] | 0x80, seg[v % 10]);
+		} else {
+			int v = (int)(a + 0.5);
+			if (v > 99) v = 99;
+			disp(0x40, seg[(v / 10) % 10], seg[v % 10]);
+		}
 	} else {
-		b1 |= 0x80;
-		if (v < 100) b0 = 0x00;
+		if (a < 9.995) {
+			int v = (int)(a * 100 + 0.5);
+			if (v > 999) v = 999;
+			disp(seg[(v / 100) % 10] | 0x80, seg[(v / 10) % 10], seg[v % 10]);
+		} else if (a < 99.95) {
+			int v = (int)(a * 10 + 0.5);
+			if (v > 999) v = 999;
+			disp(seg[(v / 100) % 10], seg[(v / 10) % 10] | 0x80, seg[v % 10]);
+		} else {
+			int v = (int)(a + 0.5);
+			if (v > 999) v = 999;
+			disp(seg[(v / 100) % 10], seg[(v / 10) % 10], seg[v % 10]);
+		}
 	}
-	disp(b0, b1, b2);
 }
 
 // 全消灯
@@ -361,21 +380,21 @@ void bzoff() {
 }
 
 // 音階定数 (Hz)
-#define NOTE_C4 262
-#define NOTE_D4 294
-#define NOTE_E4 330
-#define NOTE_F4 349
-#define NOTE_G4 392
-#define NOTE_A4 440
-#define NOTE_B4 494
-#define NOTE_C5 523
-#define NOTE_D5 587
-#define NOTE_E5 659
-#define NOTE_F5 698
-#define NOTE_G5 784
-#define NOTE_A5 880
-#define NOTE_C6 1047
-#define NOTE_REST 0
+#define nc4 262
+#define nd4 294
+#define ne4 330
+#define nf4 349
+#define ng4 392
+#define na4 440
+#define nb4 494
+#define nc5 523
+#define nd5 587
+#define ne5 659
+#define nf5 698
+#define ng5 784
+#define na5 880
+#define nc6 1047
+#define nr  0
 
 // 非ブロッキング・メロディ再生。
 //   const int n[] = { NOTE_C4, NOTE_E4, NOTE_G4 };
@@ -404,7 +423,7 @@ public:
 		// tone に長さを渡し自動停止させる → 音間に実際の無音20msが入る
 		if (ns[idx] > 0) tone(BZ_PIN, ns[idx], ds[idx]);
 		else noTone(BZ_PIN);
-		next = now + ds[idx] + 20;
+		next = now + ds[idx];
 		idx++;
 	}
 };
@@ -429,16 +448,19 @@ public:
 };
 Led led;
 
-//================ ステッピングモータ (28BYJ-48, 2相励磁) ================
+//================ ステッピングモータ (28BYJ-48, フルステップ2相励磁) ================
+// 1回転 = 2048ステップ。1ステップ = 360 / 2048 ≒ 0.176度。
+// ps は「電源を入れた位置」を0とした絶対ステップ数。物理的な原点ではない。
+// 絶対角度が必要な課題では、フォトインタラプタで原点を出して zero() を呼ぶ。
+const long SPR = 2048;   // steps per revolution
+
 class Spm {
-	int8_t ix = 0;
-	long   ps = 0;
-	unsigned long stepPre = 0;
+	int8_t ix = 0;              // 現在の励磁相 (0..3)
+	long   ps = 0;              // 電源投入位置を0とした絶対ステップ
+	unsigned long stepPre = 0;  // step(ms) の前回ステップ時刻
 
-public:
-	long rem = 0;   // 残ステップ数
-
-	void set(uint8_t s) {
+	// 励磁相を s(0..3) に設定する。内部用。
+	void phase(uint8_t s) {
 		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };  // SPM4..1
 		uint8_t b = tbl[s & 3];
 		digitalWrite(SPM1_PIN, (b & 1) ? HIGH : LOW);
@@ -448,17 +470,14 @@ public:
 		ix = s & 3;
 	}
 
-	void cw() {
-		set((ix + 3) & 3);
-		ps++;
-	}
+public:
+	long rem = 0;   // 残りステップ数。正=CW, 負=CCW。
 
-	void ccw() {
-		set((ix + 1) & 3);
-		ps--;
-	}
+	// --- 1ステップだけ動かす（rem は使わない）---
+	void cw() { phase((ix + 3) & 3); ps++; }   // 時計回りに1相
+	void ccw() { phase((ix + 1) & 3); ps--; }   // 反時計回りに1相
 
-	// 全相OFF（脱励磁）
+	// 全相OFF。保持トルクが消え、手で回せる状態になる。
 	void off() {
 		digitalWrite(SPM1_PIN, LOW);
 		digitalWrite(SPM2_PIN, LOW);
@@ -466,72 +485,60 @@ public:
 		digitalWrite(SPM4_PIN, LOW);
 	}
 
-	// 相対移動をキューに積む（正=CW, 負=CCW）
-	void mv(long n) {
-		rem += n;
-	}
+	// --- 移動量を指定する（rem に反映）---
+	void mv(long n) { rem += n; }        // 相対。今の位置から n ステップ
+	void to(long t) { rem = t - ps; }    // 絶対。ステップ番号 t へ（最短方向ではない）
+	void stop() { rem = 0; }         // 残り移動を打ち切る（励磁は保持）
 
-	// 残移動を打ち切る（励磁は保持）
-	void stop() {
-		rem = 0;
-	}
-
-	// 1ステップ進める。速度制御なしで最速駆動したいとき用。
-	void run() {
-		if (rem > 0) {
-			cw();
-			rem--;
-		} else if (rem < 0) {
-			ccw();
-			rem++;
-		}
-	}
-
-	bool moving() {
-		return rem != 0;
-	}
-
-	long pos() {
-		return ps;
-	}
-
-	void zero() {
-		ps = 0;
-		rem = 0;
-	}
-
-	// 絶対位置 t へ移動（直線軸）
-	void to(long t) {
-		rem = t - ps;
-	}
-
-	// 円環軸（1周 period ステップ）で target へ最短方向に回す（rem に加算）
-	void turn(long target, long period) {
-		long cur = ((ps % period) + period) % period;
-		long tgt = ((target % period) + period) % period;
-		long d = ((tgt - cur) % period + period) % period;
-		if (d > period / 2) d -= period;
-		mv(d);
-	}
-
-	// 円環軸で target へ最短方向。rem を代入し直す版（毎ループ呼んでよい）
-	void seek(long target, long period) {
-		long cur = ((ps % period) + period) % period;
-		long tgt = ((target % period) + period) % period;
-		long d = ((tgt - cur) % period + period) % period;
-		if (d > period / 2) d -= period;
+	// 円環軸で目標ステップ target へ最短方向に向ける。
+	// rem を代入し直すので毎ループ呼んでよい。
+	void seek(long target) {
+		long cur = ((ps % SPR) + SPR) % SPR;
+		long tgt = ((target % SPR) + SPR) % SPR;
+		long d = ((tgt - cur) % SPR + SPR) % SPR;
+		if (d > SPR / 2) d -= SPR;
 		rem = d;
 	}
 
-	// 速度制御つき非ブロッキング駆動。ms ミリ秒ごとに1ステップ。
-	//   spm.mv(2048);  ... loop 内で spm.step(2);   // 2ms/step
+	// 方向固定版。cw=true でCW固定(正回転)、false でCCW固定(逆回転)。
+	// 最短方向を無視して、指定した向きだけで target まで回す。
+	// 既に target にいるときは、CW/CCW どちらでも動かさない(rem=0)。
+	void seek(long target, bool cw) {
+		long cur = ((ps % SPR) + SPR) % SPR;
+		long tgt = ((target % SPR) + SPR) % SPR;
+		long d = ((tgt - cur) % SPR + SPR) % SPR;   // CW方向の距離 0..SPR-1
+		if (cw)          rem = d;            // CW固定
+		else if (d == 0) rem = 0;            // 既に目標。逆方向でも動かさない
+		else             rem = d - SPR;      // CCW固定(負の値になる)
+	}
+
+	// --- 実際に動かす ---
+	// rem に従って1ステップ動かす。速度制限なし（呼ぶたびに動く）。
+	void stepNow() {
+		if (rem > 0) { cw();  rem--; } else if (rem < 0) { ccw(); rem++; }
+	}
+
+	// ms ミリ秒ごとに1ステップ動かす非ブロッキング版。loop 内で呼ぶ。
+	//   sm.mv(2048); ... loop で sm.step(2);   // 2ms/step で1回転
 	void step(unsigned long ms) {
 		if (rem == 0) return;
 		unsigned long now = millis();
 		if (now - stepPre < ms) return;
 		stepPre = now;
-		run();
+		stepNow();
 	}
+
+	// --- 状態 ---
+	bool moving() { return rem != 0; }   // 移動中か
+	long pos() { return ps; }         // 現在の絶対ステップ
+	void zero() { ps = 0; rem = 0; }   // 現在位置を原点(0)にする
+
+	// --- 角度で扱う版（2048が360で割り切れないので float+丸めで誤差を抑える）---
+	static long  degToStep(float deg) { return lround(deg * SPR / 360.0); }
+	static float stepToDeg(long s) { return s * 360.0 / SPR; }
+	void  toDeg(float deg) { to(degToStep(deg)); }     // 絶対角度へ
+	void  seekDeg(float deg) { seek(degToStep(deg)); }   // 最短方向で角度へ
+	float posDeg() { return stepToDeg(ps); }   // 現在角度
 };
 Spm sm;
 
