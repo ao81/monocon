@@ -257,6 +257,97 @@ public:
 	}
 };
 
+class Sig : public InEdge {
+private:
+	static Sig* head_;
+	Sig* next_;
+
+	void attach() {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			next_ = head_;
+			head_ = this;
+		}
+	}
+
+	void detach() {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			Sig** link = &head_;
+			while (*link && *link != this) {
+				link = &((*link)->next_);
+			}
+			if (*link == this) {
+				*link = next_;
+			}
+			next_ = nullptr;
+		}
+	}
+
+public:
+	explicit Sig(uint16_t lock = 0)
+		: InEdge(lock), next_(nullptr) {
+		attach();
+	}
+
+	~Sig() {
+		detach();
+	}
+
+	Sig(const Sig&) = delete;
+	Sig& operator=(const Sig&) = delete;
+
+	bool set(bool condition) {
+		pollWith(condition ? HIGH : LOW, monoconMillis());
+		return level();
+	}
+
+	bool update(bool condition) {
+		return set(condition);
+	}
+
+	bool operator()(bool condition) {
+		return set(condition);
+	}
+
+	void reset(bool level = false) {
+		const uint8_t raw = level ? HIGH : LOW;
+		const uint32_t now = monoconMillis();
+
+		first = false;
+		st.stable = raw;
+		st.candidate = raw;
+		st.stableSince = now;
+		st.candidateSince = now;
+		st.candidateActive = false;
+		st.fired = false;
+		fLtoh = false;
+		fHtol = false;
+		ltohEpoch = monocon_detail::loopEpoch;
+		htolEpoch = monocon_detail::loopEpoch;
+	}
+
+	bool initialized() const {
+		return !first;
+	}
+
+	bool changed() {
+		const bool result = fLtoh || fHtol;
+		fLtoh = false;
+		fHtol = false;
+		return result;
+	}
+
+	uint32_t elapsed() const {
+		if (first) return 0;
+		return static_cast<uint32_t>(monoconMillis() - st.stableSince);
+	}
+
+	static void expireAll(uint8_t epoch) {
+		for (Sig* p = head_; p; p = p->next_) {
+			p->expireEdges(epoch);
+		}
+	}
+};
+
 class di : public InEdge {
 private:
 	volatile uint8_t* reg;
@@ -1367,6 +1458,7 @@ namespace monocon_detail {
 
 volatile uint32_t tms = 0;
 
+Sig* Sig::head_ = nullptr;
 di* di::list[8] = {};
 uint8_t di::nList = 0;
 pr* pr::list[8] = {};
@@ -1475,6 +1567,7 @@ inline void monocon_detail::service() {
 void serialEventRun() {
 	monocon_detail::service();
 	const uint8_t epoch = ++monocon_detail::loopEpoch;
+	Sig::expireAll(epoch);
 	di::expireAll(epoch);
 	pr::expireAll(epoch);
 }
