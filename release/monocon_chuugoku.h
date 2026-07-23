@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/19
+// 作成年月日: 2026/07/22
 /**********************************************/
 
 #ifndef MONOCON_CHUUGOKU_H
@@ -726,6 +726,12 @@ private:
 		return static_cast<uint8_t>(c);
 	}
 
+	static uint8_t digitPattern(uint8_t value) {
+		if (value < 10) return seg[value];
+		if (value < 36) return alp[value - 10];
+		return SEG_NONE;
+	}
+
 public:
 	Disp() {
 		for (uint8_t i = 0; i < 3; ++i) {
@@ -837,6 +843,49 @@ public:
 			opacity[i] = board_detail::percentToByte(p);
 		}
 		return *this;
+	}
+
+	Disp& base(int32_t x, uint8_t radix, bool zero = false) {
+		if (radix < 2 || radix > 36) {
+			return s("Err");
+		}
+
+		const uint32_t range =
+			static_cast<uint32_t>(radix) *
+			static_cast<uint32_t>(radix) *
+			static_cast<uint32_t>(radix);
+
+		int64_t value = static_cast<int64_t>(x) % range;
+
+		if (value < 0) {
+			value += range;
+		}
+
+		const uint8_t d2 = value % radix;
+		value /= radix;
+
+		const uint8_t d1 = value % radix;
+		value /= radix;
+
+		const uint8_t d0 = value % radix;
+
+		const uint8_t p0 = digitPattern(d0);
+		const uint8_t p1 = digitPattern(d1);
+		const uint8_t p2 = digitPattern(d2);
+
+		if (zero) {
+			return (*this)(p0, p1, p2);
+		}
+
+		if (d0 != 0) {
+			return (*this)(p0, p1, p2);
+		}
+
+		if (d1 != 0) {
+			return (*this)(0, p1, p2);
+		}
+
+		return (*this)(0, 0, p2);
 	}
 
 	void serviceTick() {
