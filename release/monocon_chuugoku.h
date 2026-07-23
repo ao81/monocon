@@ -982,13 +982,13 @@ public:
 
 	void cw() {
 		targetStep = currentStep;
-		stepCw();
+		stepCcw();
 		targetStep = currentStep;
 	}
 
 	void ccw() {
 		targetStep = currentStep;
-		stepCcw();
+		stepCw();
 		targetStep = currentStep;
 	}
 
