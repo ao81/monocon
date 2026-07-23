@@ -1,5 +1,16 @@
 <!-- markdownlint-disable -->
 
+## ジョイスティックの入力を8分割
+```c
+
+int getdir(int xx, int yy) {
+	long dx = xx - 511, dy = yy - 511;
+	if (dx * dx + dy * dy < 20000) return -1;
+	return (int)((atan2(dx, dy) + 2 * PI + PI / 8) / (PI / 4)) % 8;
+}
+
+```
+
 <details>
 <summary><h4>割り込みの書き方</summary>
 
