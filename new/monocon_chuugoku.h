@@ -104,14 +104,14 @@ extern "C" void TIMER3_COMPA_vect(void);
 class Led {
 private:
 	void update() {
-		static uint8_t pc = 0;
-		bool on = (((ledOpacity + 8) >> 4) > pc);
+		static uint8_t acc = 0;
+		uint8_t prev = acc;
+		acc += ledOpacity;
+		bool on = (acc < prev);
 
 		dw(LED_R_PIN, (on && (ledColor & 1)) ? HIGH : LOW);
 		dw(LED_B_PIN, (on && (ledColor & 2)) ? HIGH : LOW);
 		dw(LED_G_PIN, (on && (ledColor & 4)) ? HIGH : LOW);
-
-		pc = (pc + 1) & 15;
 	}
 
 	friend void TIMER3_COMPA_vect(void);
