@@ -4,12 +4,23 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/11
+// 作成年月日: 2026/07/16
 /**********************************************/
 
-#pragma once
+#ifndef MONOCON_CHUUGOKU_H
+#define MONOCON_CHUUGOKU_H
 
+#include <Arduino.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/atomic.h>
+#include <math.h>
+#include <stdint.h>
+#include <limits.h>
+
+#ifdef useir
+void ir();
+#endif
 
 constexpr uint8_t a1 = A0;
 constexpr uint8_t a2 = A1;
@@ -20,496 +31,9 @@ constexpr uint8_t d2 = 11;
 constexpr uint8_t d3 = 12;
 constexpr uint8_t d4 = 13;
 
-constexpr uint8_t SCK_PIN = 6;
-constexpr uint8_t SDI_PIN = 7;
-constexpr uint8_t LAT_PIN = 8;
-
-constexpr uint8_t BZ_PIN = 5;
-constexpr uint8_t LED_G_PIN = 2;
-constexpr uint8_t LED_B_PIN = 3;
-constexpr uint8_t LED_R_PIN = 4;
-
-constexpr uint8_t SPM1_PIN = 28;
-constexpr uint8_t SPM2_PIN = 26;
-constexpr uint8_t SPM3_PIN = 24;
-constexpr uint8_t SPM4_PIN = 22;
-
-constexpr uint8_t DCM1_PIN = 44;
-constexpr uint8_t DCM2_PIN = 46;
-
-constexpr uint8_t PH_PIN = 36;
-
-constexpr uint8_t SCK_BIT = (1 << PH3);
-constexpr uint8_t SDI_BIT = (1 << PH4);
-constexpr uint8_t LAT_BIT = (1 << PH5);
-
-void fsout(uint8_t v) {
-	for (uint8_t i = 0; i < 8; i++) {
-		if (v & 0x80) {
-			PORTH |= SDI_BIT;
-		} else {
-			PORTH &= ~SDI_BIT;
-		}
-		PORTH |= SCK_BIT;
-		PORTH &= ~SCK_BIT;
-		v <<= 1;
-	}
-}
-
-int ar(uint8_t pin) {
-	if (pin >= A0) pin -= A0;
-	ADMUX = (1 << REFS0) | (pin & 0x07);
-	ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 1) << MUX5);
-	ADCSRA |= (1 << ADSC);
-	while (ADCSRA & (1 << ADSC));
-	return ADC;
-}
-
-int dr(uint8_t pin) {
-	return (*portInputRegister(digitalPinToPort(pin)) & digitalPinToBitMask(pin)) ? HIGH : LOW;
-}
-
-void dw(uint8_t pin, uint8_t val) {
-	volatile uint8_t* out = portOutputRegister(digitalPinToPort(pin));
-	uint8_t mask = digitalPinToBitMask(pin);
-	uint8_t s = SREG;
-	cli();
-	if (val) *out |= mask;
-	else *out &= ~mask;
-	SREG = s;
-}
-
-long clampv(long v, long lo, long hi) {
-	return v < lo ? lo : (v > hi ? hi : v);
-}
-
-long toward(long cur, long target, long step) {
-	if (cur < target) return (cur + step > target) ? target : cur + step;
-	if (cur > target) return (cur - step < target) ? target : cur - step;
-	return cur;
-}
-
-struct de {
-	uint8_t level;
-	bool    ltoh;
-	bool    htol;
-
-	operator int() const {
-		return level;
-	}
-};
-
-struct Joy {
-	int x, y;
-
-	int dir(int div = 4) const {
-		long dx = x - 511, dy = y - 511;
-		if (dx * dx + dy * dy < 20000) return -1;
-		return (int)((atan2((double)dx, (double)dy) + 2 * PI + PI / div) / (2 * PI / div)) % div;
-	}
-};
-
-class In {
-	struct Dch {
-		uint8_t           pin;
-		volatile uint8_t* reg;
-		uint8_t           mask;
-		uint8_t           stable;
-		unsigned long     t;
-		bool              fired;
-		bool              init;
-	};
-	static const uint8_t NCH = 12;
-	Dch ch[NCH] = {};
-
-	static bool readPin(volatile uint8_t* reg, uint8_t mask) {
-		return (*reg & mask) ? HIGH : LOW;
-	}
-
-	Dch* findDch(uint8_t pin, Dch*& firstFree) {
-		firstFree = nullptr;
-		for (uint8_t i = 0; i < NCH; i++) {
-			if (ch[i].init && ch[i].pin == pin) return &ch[i];
-			if (!ch[i].init && !firstFree) firstFree = &ch[i];
-		}
-		return nullptr;
-	}
-
-	void initDch(Dch& c, uint8_t pin) {
-		c.pin = pin;
-		c.reg = portInputRegister(digitalPinToPort(pin));
-		c.mask = digitalPinToBitMask(pin);
-		c.stable = readPin(c.reg, c.mask);
-		c.t = millis();
-		c.fired = false;
-		c.init = true;
-	}
-
-	Dch* slot(uint8_t pin) {
-		Dch* freeCh;
-		Dch* found = findDch(pin, freeCh);
-		if (found) return found;
-		if (!freeCh) return nullptr;
-		initDch(*freeCh, pin);
-		return freeCh;
-	}
-
-	struct Ech {
-		uint8_t           pa, pb;
-		volatile uint8_t* ra;
-		uint8_t           ma;
-		volatile uint8_t* rb;
-		uint8_t           mb;
-		uint8_t           est;
-		long              c;
-		bool              init;
-	};
-	static const uint8_t NEC = 6;
-	Ech ec[NEC] = {};
-
-	Ech* findEch(uint8_t pa, uint8_t pb, Ech*& firstFree) {
-		firstFree = nullptr;
-		for (uint8_t i = 0; i < NEC; i++) {
-			if (ec[i].init && ec[i].pa == pa && ec[i].pb == pb) return &ec[i];
-			if (!ec[i].init && !firstFree) firstFree = &ec[i];
-		}
-		return nullptr;
-	}
-
-	void initEch(Ech& e, uint8_t pa, uint8_t pb) {
-		e.pa = pa;
-		e.pb = pb;
-		e.ra = portInputRegister(digitalPinToPort(pa));
-		e.ma = digitalPinToBitMask(pa);
-		e.rb = portInputRegister(digitalPinToPort(pb));
-		e.mb = digitalPinToBitMask(pb);
-		e.est = 0;
-		e.c = 0;
-		e.init = true;
-	}
-
-	Ech* eslot(uint8_t pa, uint8_t pb) {
-		Ech* freeCh;
-		Ech* found = findEch(pa, pb, freeCh);
-		if (found) return found;
-		if (!freeCh) return nullptr;
-		initEch(*freeCh, pa, pb);
-		return freeCh;
-	}
-
-public:
-	de d(uint8_t pin, uint16_t lock = 10) {
-		Dch* c = slot(pin);
-		if (!c) return { LOW, false, false };
-
-		uint8_t raw = readPin(c->reg, c->mask);
-		de r = { c->stable, false, false };
-
-		bool changed = (raw != c->stable);
-		if (!changed) return r;
-
-		unsigned long now = millis();
-		bool locked = (now - c->t < lock);
-		if (locked) return r;
-
-		r.level = raw;
-		r.ltoh = (c->stable == LOW);
-		r.htol = (c->stable == HIGH);
-
-		c->stable = raw;
-		c->t = now;
-		c->fired = false;
-		return r;
-	}
-
-	bool htol(uint8_t pin) {
-		return d(pin).htol;
-	}
-
-	bool ltoh(uint8_t pin) {
-		return d(pin).ltoh;
-	}
-
-	bool held(uint8_t pin, unsigned long ms, uint8_t lv = HIGH) {
-		Dch* c = slot(pin);
-		if (!c) return false;
-		if (c->stable != lv) return false;
-		if (c->fired) return false;
-		if (millis() - c->t >= ms) {
-			c->fired = true;
-			return true;
-		}
-		return false;
-	}
-
-	Joy joy(uint8_t px, uint8_t py) {
-		Joy j;
-		j.x = ar(px);
-		j.y = ar(py);
-		return j;
-	}
-
-	int encDelta(uint8_t pa, uint8_t pb, bool dir = true) {
-		Ech* e = eslot(pa, pb);
-		if (!e) return 0;
-		uint8_t a = (*e->ra & e->ma) ? 1 : 0;
-		uint8_t b = (*e->rb & e->mb) ? 1 : 0;
-
-		static const uint8_t table[7][4] = {
-			{ 0x00, 0x02, 0x04, 0x00 },
-			{ 0x00, 0x00, 0x00, 0x00 },
-			{ 0x13, 0x02, 0x00, 0x00 },
-			{ 0x03, 0x03, 0x03, 0x00 },
-			{ 0x26, 0x00, 0x04, 0x00 },
-			{ 0x00, 0x00, 0x00, 0x00 },
-			{ 0x06, 0x06, 0x06, 0x00 },
-		};
-		e->est = table[e->est & 0x0f][(a << 1) | b];
-		uint8_t dd = e->est & 0x30;
-		if (dd == 0x10)      return dir ? 1 : -1;
-		else if (dd == 0x20) return dir ? -1 : 1;
-		return 0;
-	}
-
-	long enc(uint8_t pa, uint8_t pb, bool dir = true) {
-		Ech* e = eslot(pa, pb);
-		if (!e) return 0;
-		e->c += encDelta(pa, pb, dir);
-		return e->c;
-	}
-
-	long encClamp(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
-		Ech* e = eslot(pa, pb);
-		if (!e) return lo;
-		e->c += encDelta(pa, pb, dir);
-		e->c = clampv(e->c, lo, hi);
-		return e->c;
-	}
-
-	long encLoop(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
-		Ech* e = eslot(pa, pb);
-		if (!e) return lo;
-		e->c += encDelta(pa, pb, dir);
-		long span = hi - lo + 1;
-		if (span < 1) span = 1;
-		e->c = lo + ((e->c - lo) % span + span) % span;
-		return e->c;
-	}
-
-	void encSet(uint8_t pa, uint8_t pb, long v = 0) {
-		Ech* e = eslot(pa, pb);
-		if (e) e->c = v;
-	}
-
-	int sokRaw(uint8_t pin, uint8_t n = 5) {
-		int v[9];
-		if (n > 9) n = 9;
-		for (uint8_t i = 0; i < n; i++) v[i] = ar(pin);
-		for (uint8_t i = 1; i < n; i++) {
-			int t = v[i];
-			int8_t j = i - 1;
-			while (j >= 0 && v[j] > t) {
-				v[j + 1] = v[j];
-				j--;
-			}
-			v[j + 1] = t;
-		}
-		return v[n / 2];
-	}
-
-	int sok10(uint8_t pin, int adNear = 450, int adFar = 10,
-		int nearMm = 40, int farMm = 500) {
-		long ad = sokRaw(pin);
-		long den = adNear - adFar;
-		if (den == 0) den = 1;
-
-		long mm = farMm + ((ad - adFar) * (long)(nearMm - farMm) + den / 2) / den;
-		return (int)clampv(mm, nearMm, farMm) / 1;
-	}
-
-	int sok(uint8_t pin, int adNear = 450, int adFar = 10,
-		int nearMm = 40, int farMm = 500) {
-		return (sok10(pin, adNear, adFar, nearMm, farMm) + 5) / 10;
-	}
-
-	bool ref(uint8_t pin, int th = 950, bool writeHigh = false) {
-		int v = ar(pin);
-		return writeHigh ? (v > th) : (v < th);
-	}
-};
-In in;
-
-const uint8_t seg[16] = {
-	0x3f, 0x06, 0x5b, 0x4f, 0x66,
-	0x6d, 0x7d, 0x27, 0x7f, 0x6f,
-	0x77, 0x7c, 0x58, 0x5e, 0x79, 0x71,
-};
-constexpr uint8_t SEG_DOT = 0x80;
-constexpr uint8_t SEG_MINUS = 0x40;
-
-volatile uint8_t segPat[3] = { 0, 0, 0 };
-volatile uint8_t segBri[3] = { 255, 255, 255 };
-
-void disp(char a, char b, char c, uint8_t ba = 255, uint8_t bb = 255, uint8_t bc = 255) {
-	segPat[0] = (uint8_t)a;
-	segBri[0] = ba;
-	segPat[1] = (uint8_t)b;
-	segBri[1] = bb;
-	segPat[2] = (uint8_t)c;
-	segBri[2] = bc;
-}
-
-void dispRefresh() {
-	static uint8_t pc = 0;
-	uint8_t a = (((segBri[0] + 8) >> 4) > pc) ? segPat[0] : 0;
-	uint8_t b = (((segBri[1] + 8) >> 4) > pc) ? segPat[1] : 0;
-	uint8_t c = (((segBri[2] + 8) >> 4) > pc) ? segPat[2] : 0;
-	PORTH &= ~LAT_BIT;
-	fsout(a);
-	fsout(b);
-	fsout(c);
-	PORTH |= LAT_BIT;
-	pc = (pc + 1) & 15;
-}
-
-void dispn(int n, bool pad = false) {
-	bool neg = n < 0;
-	if (neg) n = -n;
-	if (neg && n > 99) n = 99;
-	if (n > 999) n = 999;
-	uint8_t bh = ((pad && !neg) || n >= 100) ? seg[(n / 100) % 10] : 0x00;
-	uint8_t bt = ((pad && !neg) || n >= 10) ? seg[(n / 10) % 10] : 0x00;
-	uint8_t bo = seg[n % 10];
-	if (neg) {
-		if (n < 10) bt = SEG_MINUS;
-		else        bh = SEG_MINUS;
-	}
-	disp(bh, bt, bo);
-}
-
-void dispn(double f) {
-	bool neg = f < 0;
-	double a = neg ? -f : f;
-
-	if (neg) {
-		if (a < 9.95) {
-			int v = (int)(a * 10 + 0.5);
-			if (v > 99) v = 99;
-			disp(SEG_MINUS, seg[(v / 10) % 10] | SEG_DOT, seg[v % 10]);
-		} else {
-			int v = (int)(a + 0.5);
-			if (v > 99) v = 99;
-			disp(SEG_MINUS, seg[(v / 10) % 10], seg[v % 10]);
-		}
-	} else {
-		if (a < 9.995) {
-			int v = (int)(a * 100 + 0.5);
-			if (v > 999) v = 999;
-			disp(seg[(v / 100) % 10] | SEG_DOT, seg[(v / 10) % 10], seg[v % 10]);
-		} else if (a < 99.95) {
-			int v = (int)(a * 10 + 0.5);
-			if (v > 999) v = 999;
-			disp(seg[(v / 100) % 10], seg[(v / 10) % 10] | SEG_DOT, seg[v % 10]);
-		} else {
-			int v = (int)(a + 0.5);
-			if (v > 999) v = 999;
-			disp(seg[(v / 100) % 10], seg[(v / 10) % 10], seg[v % 10]);
-		}
-	}
-}
-
-void dispn(float f) {
-	dispn((double)f);
-}
-
-template <typename T>
-void dispn(T n, bool pad = false) {
-	dispn((int)n, pad);
-}
-
-void dispOff() {
-	disp(0, 0, 0);
-}
-
-void bz(int f) {
-	tone(BZ_PIN, f);
-}
-
-void bz(int f, unsigned long t) {
-	tone(BZ_PIN, f, t);
-}
-
-void bzoff() {
-	noTone(BZ_PIN);
-}
-
-constexpr int nc4 = 262;
-constexpr int nd4 = 294;
-constexpr int ne4 = 330;
-constexpr int nf4 = 349;
-constexpr int ng4 = 392;
-constexpr int na4 = 440;
-constexpr int nb4 = 494;
-constexpr int nc5 = 523;
-constexpr int nd5 = 587;
-constexpr int ne5 = 659;
-constexpr int nf5 = 698;
-constexpr int ng5 = 784;
-constexpr int na5 = 880;
-constexpr int nb5 = 988;
-constexpr int nc6 = 1047;
-constexpr int nr = 0;
-
-class Melody {
-	const int* ns = nullptr;
-	const int* ds = nullptr;
-	int len = 0, idx = 0;
-	unsigned long next = 0;
-	bool run = false;
-	bool rep = false;
-
-public:
-	void play(const int* notes, const int* durs, int n, bool repeat = false) {
-		ns = notes;
-		ds = durs;
-		len = n;
-		idx = 0;
-		run = true;
-		next = 0;
-		rep = repeat;
-	}
-
-	void stop() {
-		run = false;
-		noTone(BZ_PIN);
-	}
-
-	bool playing() {
-		return run;
-	}
-
-	void update() {
-		if (!run) return;
-		unsigned long now = millis();
-		if ((long)(now - next) < 0) return;
-
-		if (idx >= len) {
-			if (rep) {
-				idx = 0;
-			} else {
-				run = false;
-				noTone(BZ_PIN);
-				return;
-			}
-		}
-
-		if (ns[idx] > 0) tone(BZ_PIN, ns[idx]);
-		else noTone(BZ_PIN);
-		next = now + ds[idx];
-		idx++;
-	}
-};
-Melody mel;
+constexpr uint8_t SCK_BIT = _BV(PH3);
+constexpr uint8_t SDI_BIT = _BV(PH4);
+constexpr uint8_t LAT_BIT = _BV(PH5);
 
 constexpr uint8_t G = 0b100;
 constexpr uint8_t B = 0b010;
@@ -519,586 +43,1523 @@ constexpr uint8_t GR = 0b101;
 constexpr uint8_t BR = 0b011;
 constexpr uint8_t GBR = 0b111;
 
-volatile uint8_t ledMask = 0;
-volatile uint8_t ledBri = 0;
+constexpr uint8_t L = LOW;
+constexpr uint8_t H = HIGH;
 
-class Led {
-public:
-	void operator()(uint8_t m, int bri = 100) {
-		bri = (int)clampv(bri, 0, 100);
-		ledMask = m;
-		ledBri = (uint8_t)(bri * 255 / 100);
-	}
-	void off() {
-		ledMask = 0;
-		ledBri = 0;
-	}
-};
-Led led;
+template <typename T, typename U, typename V>
 
-void ledRefresh() {
-	static uint8_t pc = 0;
-	bool on = (((ledBri + 8) >> 4) > pc);
-	dw(LED_R_PIN, (on && (ledMask & 1)) ? HIGH : LOW);
-	dw(LED_B_PIN, (on && (ledMask & 2)) ? HIGH : LOW);
-	dw(LED_G_PIN, (on && (ledMask & 4)) ? HIGH : LOW);
-	pc = (pc + 1) & 15;
+inline T clamp(T v, U lo, V hi) {
+	return v < static_cast<T>(lo) ? static_cast<T>(lo)
+		: v > static_cast<T>(hi) ? static_cast<T>(hi) : v;
 }
 
-const long SPR = 2048;
+extern volatile uint32_t tms;
 
-class Spm {
-	volatile int8_t ix = 0;
-	volatile long   ps = 0;
-	unsigned long stepPre = 0;
+inline uint32_t monoconMillis() {
+	uint32_t v;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = tms; }
+	return v;
+}
 
-	volatile uint16_t ivFast = 0;
-	volatile uint16_t ivSlow = 0;
-	volatile uint16_t rampN = 0;
-	volatile uint16_t ivCur = 0;
-	volatile uint16_t isrCnt = 0;
+inline int monoconAtomicReadInt(volatile const int* p) {
+	int v;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = *p; }
+	return v;
+}
 
-	void phase(uint8_t s) {
-		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };
-		uint8_t b = tbl[s & 3];
-		dw(SPM1_PIN, (b & 1) ? HIGH : LOW);
-		dw(SPM2_PIN, (b & 2) ? HIGH : LOW);
-		dw(SPM3_PIN, (b & 4) ? HIGH : LOW);
-		dw(SPM4_PIN, (b & 8) ? HIGH : LOW);
-		ix = s & 3;
+bool adcReg(uint8_t pin, volatile int* dst);
+
+int ar(uint8_t pin);
+
+inline int dr(uint8_t pin) {
+	const uint8_t port = digitalPinToPort(pin);
+	if (port == NOT_A_PIN) return LOW;
+	return (*portInputRegister(port) & digitalPinToBitMask(pin)) ? HIGH : LOW;
+}
+
+inline void dw(uint8_t pin, uint8_t val) {
+	const uint8_t port = digitalPinToPort(pin);
+	if (port == NOT_A_PIN) return;
+	volatile uint8_t* const out = portOutputRegister(port);
+	const uint8_t mask = digitalPinToBitMask(pin);
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		if (val) *out |= mask;
+		else     *out &= static_cast<uint8_t>(~mask);
+	}
+}
+
+namespace monocon_detail {
+	extern uint8_t loopEpoch;
+
+	inline uint8_t percentToByte(uint8_t p) {
+		if (p >= 100) return 255;
+		return static_cast<uint8_t>((static_cast<uint16_t>(p) * 255U + 50U) / 100U);
+	}
+
+	inline void shiftBit(uint8_t high) __attribute__((always_inline));
+	inline void shiftBit(uint8_t high) {
+		if (high) PORTH |= SDI_BIT;
+		else      PORTH &= static_cast<uint8_t>(~SDI_BIT);
+		PORTH |= SCK_BIT;
+		PORTH &= static_cast<uint8_t>(~SCK_BIT);
+	}
+
+	inline void shiftByte(uint8_t v) __attribute__((always_inline));
+	inline void shiftByte(uint8_t v) {
+		shiftBit(v & 0x80);
+		shiftBit(v & 0x40);
+		shiftBit(v & 0x20);
+		shiftBit(v & 0x10);
+		shiftBit(v & 0x08);
+		shiftBit(v & 0x04);
+		shiftBit(v & 0x02);
+		shiftBit(v & 0x01);
+	}
+
+	inline void writeDisplay3(uint8_t a, uint8_t b, uint8_t c) {
+		PORTH &= static_cast<uint8_t>(~LAT_BIT);
+		shiftByte(a);
+		shiftByte(b);
+		shiftByte(c);
+		PORTH |= LAT_BIT;
+	}
+
+	inline void compareSwap(int& a, int& b) {
+		if (a > b) {
+			const int t = a;
+			a = b;
+			b = t;
+		}
+	}
+
+	inline int median5(int a, int b, int c, int d, int e) {
+		compareSwap(a, b);
+		compareSwap(c, d);
+		if (a > c) {
+			const int ta = a; a = c; c = ta;
+			const int tb = b; b = d; d = tb;
+		}
+		compareSwap(b, e);
+		compareSwap(b, c);
+		compareSwap(d, e);
+		compareSwap(c, d);
+		return c;
+	}
+}
+
+struct Dch {
+	uint8_t stable;
+	uint8_t candidate;
+	uint32_t stableSince;
+	uint32_t candidateSince;
+	bool candidateActive;
+	bool fired;
+};
+
+class InEdge {
+protected:
+	Dch st;
+	uint16_t lockMs;
+	bool first;
+	bool fLtoh;
+	bool fHtol;
+	uint8_t ltohEpoch;
+	uint8_t htolEpoch;
+
+	void pollWith(uint8_t raw, uint32_t now) {
+		raw = raw ? HIGH : LOW;
+
+		if (first) {
+			first = false;
+			st.stable = raw;
+			st.candidate = raw;
+			st.stableSince = now;
+			st.candidateSince = now;
+			st.candidateActive = false;
+			st.fired = false;
+			return;
+		}
+
+		if (raw == st.stable) {
+			st.candidateActive = false;
+			return;
+		}
+
+		if (!st.candidateActive || st.candidate != raw) {
+			st.candidate = raw;
+			st.candidateSince = now;
+			st.candidateActive = true;
+			if (lockMs != 0) return;
+		}
+
+		if (static_cast<uint32_t>(now - st.candidateSince) < lockMs) return;
+
+		const uint8_t old = st.stable;
+		st.stable = raw;
+		st.stableSince = now;
+		st.candidateActive = false;
+		st.fired = false;
+		if (old == LOW && raw == HIGH) {
+			fLtoh = true;
+			ltohEpoch = monocon_detail::loopEpoch;
+		}
+		if (old == HIGH && raw == LOW) {
+			fHtol = true;
+			htolEpoch = monocon_detail::loopEpoch;
+		}
+	}
+
+	void expireEdges(uint8_t epoch) {
+		if (fLtoh && static_cast<uint8_t>(epoch - ltohEpoch) > 1U) {
+			fLtoh = false;
+		}
+		if (fHtol && static_cast<uint8_t>(epoch - htolEpoch) > 1U) {
+			fHtol = false;
+		}
 	}
 
 public:
-	volatile long rem = 0;
-
-	void cw() {
-		phase((ix + 3) & 3);
-		ps++;
+	explicit InEdge(uint16_t lock = 10)
+		: lockMs(lock), first(true), fLtoh(false), fHtol(false),
+		ltohEpoch(0), htolEpoch(0) {
+		st.stable = LOW;
+		st.candidate = LOW;
+		st.stableSince = 0;
+		st.candidateSince = 0;
+		st.candidateActive = false;
+		st.fired = false;
 	}
 
-	void ccw() {
-		phase((ix + 1) & 3);
-		ps--;
+	bool ltoh() {
+		const bool v = fLtoh;
+		fLtoh = false;
+		return v;
 	}
 
-	void drive(int spd) {
-		if (spd == 0) return;
-		unsigned long ms = (spd > 0) ? spd : -spd;
-		unsigned long now = millis();
-		if (now - stepPre < ms) return;
-		stepPre = now;
-		if (spd > 0) cw();
-		else ccw();
+	bool htol() {
+		const bool v = fHtol;
+		fHtol = false;
+		return v;
 	}
 
-	void off() {
-		dw(SPM1_PIN, LOW);
-		dw(SPM2_PIN, LOW);
-		dw(SPM3_PIN, LOW);
-		dw(SPM4_PIN, LOW);
-	}
+	bool level() const { return st.stable; }
 
-	void mv(long n) {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			rem += n;
+	operator bool() const { return st.stable; }
+
+	bool held(uint16_t ms, bool lv = LOW) {
+		const uint32_t now = monoconMillis();
+		if (st.stable == static_cast<uint8_t>(lv) && !st.fired &&
+			static_cast<uint32_t>(now - st.stableSince) >= ms) {
+			st.fired = true;
+			return true;
 		}
-	}
-
-	void to(long t) {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			rem = t - ps;
-		}
-	}
-
-	void stop() {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			rem = 0;
-		}
-	}
-
-	void seek(long target) {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			long cur = ((ps % SPR) + SPR) % SPR;
-			long tgt = ((target % SPR) + SPR) % SPR;
-			long d = ((tgt - cur) % SPR + SPR) % SPR;
-			if (d > SPR / 2) d -= SPR;
-			rem = d;
-		}
-	}
-
-	void seek(long target, bool cw) {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			long cur = ((ps % SPR) + SPR) % SPR;
-			long tgt = ((target % SPR) + SPR) % SPR;
-			long d = ((tgt - cur) % SPR + SPR) % SPR;
-			if (cw)          rem = d;
-			else if (d == 0) rem = 0;
-			else             rem = d - SPR;
-		}
-	}
-
-	long divStep(long i, long n = 12) {
-		return lround((double)i * SPR / n);
-	}
-
-	void stepNow() {
-		if (rem > 0) {
-			cw();
-			rem--;
-		} else if (rem < 0) {
-			ccw();
-			rem++;
-		}
-	}
-
-	void step(unsigned long ms) {
-		if (rem == 0) return;
-		unsigned long now = millis();
-		if (now - stepPre < ms) return;
-		stepPre = now;
-		stepNow();
-	}
-
-	void run(unsigned long fast, unsigned long slow = 0, uint16_t ramp = 0) {
-		if (slow < fast) {
-			slow = fast;
-			ramp = 0;
-		}
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			ivFast = (uint16_t)(fast * 10);
-			ivSlow = (uint16_t)(slow * 10);
-			rampN = ramp;
-			ivCur = ivSlow;
-			isrCnt = 0;
-		}
-	}
-	void runOff() {
-		ivFast = 0;
-	}
-
-	void isrTick() {
-		if (ivFast == 0) return;
-		if (rem == 0) {
-			ivCur = ivSlow;
-			return;
-		}
-		if (++isrCnt < ivCur) return;
-		isrCnt = 0;
-		stepNow();
-		if (rampN == 0) {
-			ivCur = ivFast;
-			return;
-		}
-
-		uint16_t dec = (ivSlow - ivFast) / rampN;
-		if (dec == 0) dec = 1;
-		uint16_t acc = (ivCur > ivFast + dec) ? ivCur - dec : ivFast;
-
-		long r = (rem >= 0) ? rem : -rem;
-		uint16_t brk = ivFast;
-		if (r < (long)rampN) {
-			brk = ivFast + (uint16_t)(((uint32_t)(ivSlow - ivFast) * (rampN - r)) / rampN);
-		}
-		ivCur = (acc > brk) ? acc : brk;
-	}
-
-	bool moving() {
-		long r;
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			r = rem;
-		}
-		return r != 0;
-	}
-
-	long pos() {
-		long p;
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			p = ps;
-		}
-		return p;
-	}
-
-	void zero() {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			ps = 0;
-			rem = 0;
-		}
-	}
-
-	static long degToStep(float deg) {
-		return lround(deg * SPR / 360.0);
-	}
-
-	static float stepToDeg(long s) {
-		return s * 360.0 / SPR;
-	}
-
-	void toDeg(float deg) {
-		to(degToStep(deg));
-	}
-
-	void seekDeg(float deg) {
-		seek(degToStep(deg));
-	}
-
-	float posDeg() {
-		return stepToDeg(pos());
+		return false;
 	}
 };
-Spm sm;
 
-class Dcm {
-	int cs = 0;
+class di : public InEdge {
+private:
+	volatile uint8_t* reg;
+	uint8_t mask;
+	static di* list[8];
+	static uint8_t nList;
 
 public:
-	int8_t now = 0;
+	explicit di(uint8_t pin, uint16_t lock = 10)
+		: InEdge(lock),
+		reg(portInputRegister(digitalPinToPort(pin))),
+		mask(digitalPinToBitMask(pin)) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (nList < 8) list[nList++] = this;
+		}
+	}
+
+	static void serviceAll(uint32_t now) {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) {
+			di* const p = list[i];
+			p->pollWith((*p->reg & p->mask) ? HIGH : LOW, now);
+		}
+	}
+
+	static void expireAll(uint8_t epoch) {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) list[i]->expireEdges(epoch);
+	}
+};
+
+class pr : public InEdge {
+private:
+	int th;
+	volatile int _raw;
+	static pr* list[8];
+	static uint8_t nList;
+
+public:
+	explicit pr(uint8_t pin, int threshold = 950, uint16_t lock = 10)
+		: InEdge(lock), th(threshold), _raw(0) {
+		adcReg(pin, &_raw);
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (nList < 8) list[nList++] = this;
+		}
+	}
+
+	static void serviceAll(uint32_t now) {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) {
+			pr* const p = list[i];
+			const int value = monoconAtomicReadInt(&p->_raw);
+			p->pollWith(value > p->th ? HIGH : LOW, now);
+		}
+	}
+
+	static void expireAll(uint8_t epoch) {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) list[i]->expireEdges(epoch);
+	}
+};
+
+constexpr int SOK_N = 4;
+constexpr int sokAd[SOK_N] = { 450, 380, 260, 60 };
+constexpr int sokMm[SOK_N] = { 40, 150, 300, 500 };
+constexpr int32_t slopeQ8[3] = {
+	(static_cast<int32_t>(sokMm[1] - sokMm[0]) << 8) / (sokAd[0] - sokAd[1]),
+	(static_cast<int32_t>(sokMm[2] - sokMm[1]) << 8) / (sokAd[1] - sokAd[2]),
+	(static_cast<int32_t>(sokMm[3] - sokMm[2]) << 8) / (sokAd[2] - sokAd[3])
+};
+
+class sok {
+private:
+	int ring[5];
+	uint8_t ri;
+	uint8_t sampleCount;
+	static sok* list[2];
+	static uint8_t nList;
+
+	void serviceOne() {
+		const int sample = monoconAtomicReadInt(&_raw);
+		ring[ri] = sample;
+		if (++ri == 5) ri = 0;
+		if (sampleCount < 5) ++sampleCount;
+		if (sampleCount < 5) return;
+
+		const int med = monocon_detail::median5(
+			ring[0], ring[1], ring[2], ring[3], ring[4]);
+		if (med == raw) return;
+
+		raw = med;
+		int32_t m;
+		if (med >= sokAd[0]) {
+			m = sokMm[0];
+		} else if (med <= sokAd[SOK_N - 1]) {
+			m = sokMm[SOK_N - 1];
+		} else {
+			uint8_t i = 0;
+			while (i < SOK_N - 2 && med < sokAd[i + 1]) ++i;
+			m = sokMm[i] +
+				((static_cast<int32_t>(sokAd[i] - med) * slopeQ8[i] + 128) >> 8);
+		}
+		if (m < sokMm[0]) m = sokMm[0];
+		if (m > sokMm[SOK_N - 1]) m = sokMm[SOK_N - 1];
+		mm = static_cast<int>(m);
+		cm = static_cast<float>(m) * 0.1f;
+	}
+
+public:
+	volatile int _raw;
+	int raw;
+	int mm;
+	float cm;
+
+	explicit sok(uint8_t pin)
+		: ri(0), sampleCount(0), _raw(0), raw(0), mm(0), cm(0.0f) {
+		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
+		adcReg(pin, &_raw);
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (nList < 2) list[nList++] = this;
+		}
+	}
+
+	static void serviceAll() {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne();
+	}
+};
+
+class vr {
+public:
+	volatile int raw;
+
+	explicit vr(uint8_t pin) : raw(0) { adcReg(pin, &raw); }
+
+	int to(int lo, int hi) const {
+		const int v = monoconAtomicReadInt(&raw);
+		const int32_t span = static_cast<int32_t>(hi) - static_cast<int32_t>(lo);
+		return static_cast<int>(static_cast<int32_t>(lo) +
+			(static_cast<int32_t>(v) * span + 511L) / 1023L);
+	}
+};
+
+class joy {
+public:
+	volatile int x;
+	volatile int y;
+
+	joy(uint8_t px, uint8_t py) : x(0), y(0) {
+		adcReg(px, &x);
+		adcReg(py, &y);
+	}
+
+	int dir(int div, uint8_t rot = 0, bool mirror = false) const {
+		if (div <= 0) return -1;
+
+		int vx, vy;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			vx = x;
+			vy = y;
+		}
+
+		const int32_t dx = static_cast<int32_t>(vx) - 532;
+		const int32_t dy = static_cast<int32_t>(vy) - 532;
+		if (dx * dx + dy * dy < 165000L) return -1;
+
+		if (div == 4) {
+			const int32_t ax = dx < 0 ? -dx : dx;
+			const int32_t ay = dy < 0 ? -dy : dy;
+			int d;
+			if (ay >= ax) d = dy >= 0 ? 0 : 2;
+			else          d = dx >= 0 ? 1 : 3;
+			if (mirror) d = (4 - d) & 3;
+			return (d + (rot & 3)) & 3;
+		}
+
+		if (div == 8) {
+			const int32_t ax = dx < 0 ? -dx : dx;
+			const int32_t ay = dy < 0 ? -dy : dy;
+			int d;
+			if (ay * 1000L >= ax * 2414L) {
+				d = dy >= 0 ? 0 : 4;
+			} else if (ax * 1000L >= ay * 2414L) {
+				d = dx >= 0 ? 2 : 6;
+			} else if (dx >= 0) {
+				d = dy >= 0 ? 1 : 3;
+			} else {
+				d = dy >= 0 ? 7 : 5;
+			}
+			if (mirror) d = (8 - d) & 7;
+			return (d + ((rot & 3) << 1)) & 7;
+		}
+
+		double th = atan2(static_cast<double>(dx), static_cast<double>(dy));
+		if (mirror) th = -th;
+		th += (rot & 3) * (PI / 2.0);
+		int result = static_cast<int>((th + 4.0 * PI + PI / div) /
+			(2.0 * PI / div)) % div;
+		if (result < 0) result += div;
+		return result;
+	}
+};
+
+
+class enc {
+private:
+	volatile uint8_t* ra;
+	volatile uint8_t* rb;
+	uint8_t ma;
+	uint8_t mb;
+	bool samePort;
+	volatile uint8_t est;
+	volatile int32_t cnt;
+	int32_t last;
+	bool direction;
+
+	static enc* list[4];
+	static uint8_t nList;
+
+	inline void poll() {
+		static const uint8_t table[7][4] = {
+			{0x00, 0x02, 0x04, 0x00},
+			{0x00, 0x00, 0x00, 0x00},
+			{0x13, 0x02, 0x00, 0x00},
+			{0x03, 0x03, 0x03, 0x00},
+			{0x26, 0x00, 0x04, 0x00},
+			{0x00, 0x00, 0x00, 0x00},
+			{0x06, 0x06, 0x06, 0x00}
+		};
+
+		uint8_t a;
+		uint8_t b;
+		if (samePort) {
+			const uint8_t p = *ra;
+			a = (p & ma) ? 1 : 0;
+			b = (p & mb) ? 1 : 0;
+		} else {
+			a = (*ra & ma) ? 1 : 0;
+			b = (*rb & mb) ? 1 : 0;
+		}
+
+		const uint8_t next = table[est & 0x0F][(a << 1) | b];
+		est = next;
+		const uint8_t event = next & 0x30;
+		int8_t step = 0;
+		if (event == 0x10) step = direction ? 1 : -1;
+		else if (event == 0x20) step = direction ? -1 : 1;
+		if (step != 0) cnt += step;
+	}
+
+public:
+	enc(uint8_t pa, uint8_t pb, bool d = true)
+		: ra(portInputRegister(digitalPinToPort(pa))),
+		rb(portInputRegister(digitalPinToPort(pb))),
+		ma(digitalPinToBitMask(pa)), mb(digitalPinToBitMask(pb)),
+		samePort(ra == rb), est(0), cnt(0), last(0), direction(d) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (nList < 4) list[nList++] = this;
+		}
+	}
+
+	static inline void isrPollAll() {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) list[i]->poll();
+	}
+
+	int32_t count() const {
+		int32_t v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = cnt; }
+		return v;
+	}
+
+	int delta() {
+		const int32_t v = count();
+		const int32_t diff = v - last;
+		last = v;
+		if (diff > INT_MAX) return INT_MAX;
+		if (diff < INT_MIN) return INT_MIN;
+		return static_cast<int>(diff);
+	}
+
+	int32_t clampTo(int32_t lo, int32_t hi) {
+		if (hi < lo) {
+			const int32_t t = lo; lo = hi; hi = t;
+		}
+		for (;;) {
+			const int32_t before = count();
+			const int32_t after = clamp(before, lo, hi);
+			bool committed = false;
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				if (cnt == before) {
+					cnt = after;
+					committed = true;
+				}
+			}
+			if (committed) return after;
+		}
+	}
+
+	int32_t loopTo(int32_t lo, int32_t hi) {
+		if (hi < lo) {
+			const int32_t t = lo; lo = hi; hi = t;
+		}
+		for (;;) {
+			const int32_t before = count();
+			const int64_t span = static_cast<int64_t>(hi) -
+				static_cast<int64_t>(lo) + 1LL;
+			int64_t r = (static_cast<int64_t>(before) - lo) % span;
+			if (r < 0) r += span;
+			const int32_t after = static_cast<int32_t>(static_cast<int64_t>(lo) + r);
+			bool committed = false;
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				if (cnt == before) {
+					cnt = after;
+					committed = true;
+				}
+			}
+			if (committed) return after;
+		}
+	}
+
+	void set(int32_t v = 0) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			cnt = v;
+			est = 0;
+			last = v;
+		}
+	}
+};
+
+class Led {
+private:
+	uint8_t color;
+	uint8_t opacity;
+	uint8_t acc;
+	uint8_t previousState;
+
+	void writeState(uint8_t state) {
+		uint8_t pe = PORTE & static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
+		if (state & B) pe |= _BV(PE5);
+		if (state & G) pe |= _BV(PE4);
+		PORTE = pe;
+
+		if (state & R) PORTG |= _BV(PG5);
+		else           PORTG &= static_cast<uint8_t>(~_BV(PG5));
+	}
+
+public:
+	Led() : color(0), opacity(255), acc(0), previousState(0xFF) {}
+
+	void operator()(uint8_t newColor, uint8_t opacityPercent = 100) {
+		newColor &= 0x07;
+		const uint8_t newOpacity = monocon_detail::percentToByte(
+			clamp<uint8_t, int, int>(opacityPercent, 0, 100));
+		if (color == newColor && opacity == newOpacity) return;
+		color = newColor;
+		opacity = newOpacity;
+	}
+
+	void serviceTick() {
+		uint8_t state;
+		if (opacity == 0 || color == 0) {
+			state = 0;
+		} else if (opacity == 255) {
+			state = color;
+		} else {
+			const uint8_t old = acc;
+			acc = static_cast<uint8_t>(acc + opacity);
+			state = (acc < old) ? color : 0;
+		}
+		if (state != previousState) {
+			writeState(state);
+			previousState = state;
+		}
+	}
+};
+
+constexpr uint8_t seg[16] = {
+	0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x27,
+	0x7F, 0x6F, 0x77, 0x7C, 0x58, 0x5E, 0x79, 0x71
+};
+constexpr uint8_t alp[26] = {
+	0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71, 0x3D, 0x76, 0x06, 0x0E,
+	0x76, 0x38, 0x37, 0x54, 0x5C, 0x73, 0x67, 0x50, 0x6D, 0x78,
+	0x3E, 0x1C, 0x7E, 0x76, 0x6E, 0x5B
+};
+constexpr uint8_t SEG_DOT = 0x80;
+constexpr uint8_t SEG_MINUS = 0x40;
+constexpr uint8_t SEG_NONE = 0x00;
+
+class Disp {
+private:
+	uint8_t pattern[3];
+	uint8_t opacity[3];
+	uint8_t acc[3];
+	uint8_t previous[3];
+
+	static uint8_t toPattern(char c) {
+		if (c >= '0' && c <= '9') return seg[c - '0'];
+		if (c >= 'a' && c <= 'z') return alp[c - 'a'];
+		if (c >= 'A' && c <= 'Z') return alp[c - 'A'];
+		if (c == '-') return SEG_MINUS;
+		if (c == '.') return SEG_DOT;
+		if (c == '_') return SEG_NONE;
+		return static_cast<uint8_t>(c);
+	}
+
+public:
+	Disp() {
+		for (uint8_t i = 0; i < 3; ++i) {
+			pattern[i] = 0;
+			opacity[i] = 255;
+			acc[i] = 0;
+			previous[i] = 0xFF;
+		}
+	}
+
+	Disp& operator()(uint8_t a, uint8_t b, uint8_t c) {
+		if (pattern[0] == a && pattern[1] == b && pattern[2] == c) return *this;
+		pattern[0] = a;
+		pattern[1] = b;
+		pattern[2] = c;
+		return *this;
+	}
+
+	Disp& off() { return (*this)(0, 0, 0); }
+
+	Disp& s(const char* text) {
+		if (!text) return off();
+		return (*this)(toPattern(text[0]),
+			text[1] ? toPattern(text[1]) : 0,
+			text[1] && text[2] ? toPattern(text[2]) : 0);
+	}
+
+	Disp& n(int x, bool zero = false, bool left = false) {
+		int32_t value = x;
+		const bool neg = value < 0;
+		if (neg) value = -value;
+		if (neg && value > 99) value = 99;
+		if (value > 999) value = 999;
+
+		const uint8_t nd = value >= 100 ? 3 : value >= 10 ? 2 : 1;
+		uint8_t content[4];
+		uint8_t ci = 0;
+		if (neg) content[ci++] = SEG_MINUS;
+		if (nd >= 3) content[ci++] = seg[(value / 100) % 10];
+		if (nd >= 2) content[ci++] = seg[(value / 10) % 10];
+		content[ci++] = seg[value % 10];
+
+		uint8_t out[3] = { 0, 0, 0 };
+		if (zero && !neg) {
+			out[0] = seg[(value / 100) % 10];
+			out[1] = seg[(value / 10) % 10];
+			out[2] = seg[value % 10];
+		} else if (left) {
+			for (uint8_t i = 0; i < ci && i < 3; ++i) out[i] = content[i];
+		} else {
+			const uint8_t start = ci < 3 ? static_cast<uint8_t>(3 - ci) : 0;
+			const uint8_t source = ci > 3 ? static_cast<uint8_t>(ci - 3) : 0;
+			for (uint8_t i = source; i < ci; ++i) out[start + i - source] = content[i];
+		}
+		return (*this)(out[0], out[1], out[2]);
+	}
+
+	Disp& f(double f, bool zero = false, bool left = false) {
+		const bool neg = f < 0;
+		const double a = neg ? -f : f;
+		if (neg) {
+			const bool dot = a < 9.95;
+			int v = dot ? static_cast<int>(a * 10.0 + 0.5)
+				: static_cast<int>(a + 0.5);
+			if (v > 99) v = 99;
+			uint8_t p1 = seg[(v / 10) % 10];
+			if (dot) p1 |= SEG_DOT;
+			return (*this)(SEG_MINUS, p1, seg[v % 10]);
+		}
+
+		int v;
+		int8_t dot;
+		if (a < 9.995) {
+			v = static_cast<int>(a * 100.0 + 0.5);
+			dot = 0;
+		} else if (a < 99.95) {
+			v = static_cast<int>(a * 10.0 + 0.5);
+			dot = 1;
+		} else {
+			v = static_cast<int>(a + 0.5);
+			dot = -1;
+		}
+		if (v > 999) v = 999;
+		if (!zero && dot == 0 && v % 10 == 0) {
+			v /= 10;
+			dot = 1;
+		}
+		if (dot != 1) {
+			uint8_t p0 = seg[(v / 100) % 10];
+			const uint8_t p1 = seg[(v / 10) % 10];
+			if (dot == 0) p0 |= SEG_DOT;
+			return (*this)(p0, p1, seg[v % 10]);
+		}
+
+		const uint8_t p0 = seg[(v / 10) % 10] | SEG_DOT;
+		const uint8_t p1 = seg[v % 10];
+		if (v >= 100) return (*this)(seg[(v / 100) % 10], p0, p1);
+		if (left) return (*this)(p0, p1, 0);
+		return (*this)(0, p0, p1);
+	}
+
+	Disp& o(uint8_t oa, uint8_t ob = 0xFF, uint8_t oc = 0xFF) {
+		if (ob == 0xFF) ob = oa;
+		if (oc == 0xFF) oc = ob;
+		const uint8_t values[3] = { oa, ob, oc };
+		for (uint8_t i = 0; i < 3; ++i) {
+			const uint8_t p = clamp<uint8_t, int, int>(values[i], 0, 100);
+			opacity[i] = monocon_detail::percentToByte(p);
+		}
+		return *this;
+	}
+
+	void serviceTick() {
+		uint8_t out[3];
+		for (uint8_t i = 0; i < 3; ++i) {
+			if (opacity[i] == 0 || pattern[i] == 0) {
+				out[i] = 0;
+			} else if (opacity[i] == 255) {
+				out[i] = pattern[i];
+			} else {
+				const uint8_t old = acc[i];
+				acc[i] = static_cast<uint8_t>(acc[i] + opacity[i]);
+				out[i] = acc[i] < old ? pattern[i] : 0;
+			}
+		}
+
+		if (out[0] != previous[0] || out[1] != previous[1] || out[2] != previous[2]) {
+			monocon_detail::writeDisplay3(out[0], out[1], out[2]);
+			previous[0] = out[0];
+			previous[1] = out[1];
+			previous[2] = out[2];
+		}
+	}
+};
+
+
+class Dcm {
+public:
+	int8_t now;
+
+	Dcm() : now(0) {}
 
 	void cw(int spd) {
-		TCCR5A &= ~_BV(COM5C1);
-		dw(DCM1_PIN, LOW);
+		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
+		if (pwm == 0) { fr(); return; }
+		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
+		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
+		OCR5A = pwm;
 		TCCR5A |= _BV(COM5A1);
-		OCR5A = spd;
-		now = (spd > 0) ? 1 : 0;
+		now = 1;
 	}
 
 	void ccw(int spd) {
-		TCCR5A &= ~_BV(COM5A1);
-		dw(DCM2_PIN, LOW);
+		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
+		if (pwm == 0) { fr(); return; }
+		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
+		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
+		OCR5C = pwm;
 		TCCR5A |= _BV(COM5C1);
-		OCR5C = spd;
-		now = (spd > 0) ? -1 : 0;
+		now = -1;
 	}
 
 	void br() {
-		TCCR5A &= ~(_BV(COM5A1) | _BV(COM5C1));
-		dw(DCM1_PIN, HIGH);
-		dw(DCM2_PIN, HIGH);
+		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
+		PORTL |= _BV(PL5) | _BV(PL3);
 		now = 0;
 	}
 
 	void fr() {
-		TCCR5A &= ~(_BV(COM5A1) | _BV(COM5C1));
-		dw(DCM1_PIN, LOW);
-		dw(DCM2_PIN, LOW);
+		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
+		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
 		now = 0;
 	}
-
-	void drive(int spd) {
-		if (spd > 0) {
-			cw(spd > 255 ? 255 : spd);
-		} else if (spd < 0) {
-			ccw(-spd > 255 ? 255 : -spd);
-		} else {
-			br();
-		}
-		cs = (int)clampv(spd, -255, 255);
-	}
-
-	void ramp(int target, int step) {
-		cs = (int)toward(cs, target, step);
-		drive(cs);
-	}
-
-	int speed() {
-		return cs;
-	}
-};
-Dcm dm;
-
-long deadband(long v, long center, long width) {
-	return (v > center - width && v < center + width) ? center : v;
-}
-
-bool blink(unsigned long ms) {
-	return (millis() / ms) & 1;
-}
-
-long rnd(long n) {
-	return random(n);
-}
-
-long rnd(long n, long m) {
-	return random(n, m + 1);
-}
-
-long rndDiff(long n) {
-	static long last = -1;
-	long v;
-	do {
-		v = random(n);
-	} while (n > 1 && v == last);
-	last = v;
-	return v;
-}
-
-class iv {
-	unsigned long pre = 0;
-	unsigned long pausedAt = 0;
-	bool paused = false;
-
-public:
-	bool operator()(unsigned long ms) {
-		if (paused) return false;
-		unsigned long now = millis();
-		if (now - pre >= ms) {
-			pre = now;
-			return true;
-		}
-		return false;
-	}
-
-	void reset() {
-		pre = millis();
-	}
-
-	void wait() {
-		if (paused) return;
-		pausedAt = millis();
-		paused = true;
-	}
-
-	void go() {
-		if (!paused) return;
-		pre += millis() - pausedAt;
-		paused = false;
-	}
-
-	bool isWait() {
-		return paused;
-	}
 };
 
-class ti {
-	unsigned long lim = 0;
-	bool run = false;
+constexpr uint8_t spmPhaseMask[4] = {
+	static_cast<uint8_t>(_BV(PA6) | _BV(PA0)),
+	static_cast<uint8_t>(_BV(PA6) | _BV(PA4)),
+	static_cast<uint8_t>(_BV(PA4) | _BV(PA2)),
+	static_cast<uint8_t>(_BV(PA2) | _BV(PA0))
+};
+constexpr uint8_t SPM_MASK = _BV(PA6) | _BV(PA4) | _BV(PA2) | _BV(PA0);
+
+class Spm {
+private:
+	uint8_t ix;
+
+	void phase(uint8_t s) {
+		ix = s & 3;
+		PORTA = static_cast<uint8_t>((PORTA & ~SPM_MASK) | spmPhaseMask[ix]);
+	}
 
 public:
-	void start(unsigned long ms) {
-		lim = millis() + ms;
-		run = true;
+	Spm() : ix(0) {}
+
+	void cw() { phase((ix + 3) & 3); }
+
+	void ccw() { phase((ix + 1) & 3); }
+
+	void fr() { PORTA &= static_cast<uint8_t>(~SPM_MASK); }
+
+	void br() { phase(ix); }
+};
+
+
+class Bz {
+private:
+	int continuousFrequency;
+	volatile uint32_t remainingMs;
+	volatile bool timedActive;
+	const int* melodyNotes;
+	const int* melodyDurations;
+	int melodyLength;
+	int melodyIndex;
+	uint32_t melodyNext;
+	bool melodyRunning;
+	bool melodyRepeat;
+
+	static uint16_t topForFrequency(int f) {
+		if (f < 1) f = 1;
+		uint32_t clocks = (1000000UL + static_cast<uint32_t>(f) / 2UL) /
+			static_cast<uint32_t>(f);
+		if (clocks < 1UL) clocks = 1UL;
+		if (clocks > 65536UL) clocks = 65536UL;
+		return static_cast<uint16_t>(clocks - 1UL);
+	}
+
+	void start(int f, uint32_t durationMs, bool timed) {
+		if (f <= 0) {
+			off();
+			return;
+		}
+
+		const uint16_t top = topForFrequency(f);
+
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			TCCR3B = _BV(WGM32);
+			TCCR3A &= static_cast<uint8_t>(~_BV(COM3A0));
+			PORTE &= static_cast<uint8_t>(~_BV(PE3));
+
+			TCNT3 = 0;
+			OCR3A = top;
+			TIFR3 = _BV(OCF3A);
+
+			remainingMs = durationMs;
+			timedActive = timed && durationMs != 0;
+
+			TCCR3A |= _BV(COM3A0);
+			TCCR3B = _BV(WGM32) | _BV(CS31);
+		}
+	}
+
+	inline void stopFromIsr() {
+		TCCR3B = _BV(WGM32);
+		TCCR3A &= static_cast<uint8_t>(~_BV(COM3A0));
+		PORTE &= static_cast<uint8_t>(~_BV(PE3));
+		timedActive = false;
+		remainingMs = 0;
+	}
+
+public:
+	Bz()
+		: continuousFrequency(-1), remainingMs(0), timedActive(false),
+		melodyNotes(nullptr), melodyDurations(nullptr), melodyLength(0),
+		melodyIndex(0), melodyNext(0), melodyRunning(false),
+		melodyRepeat(false) {
+	}
+
+	void operator()(int f) {
+		melodyRunning = false;
+		if (f <= 0) { off(); return; }
+		if (!timedActive && f == continuousFrequency) return;
+		continuousFrequency = f;
+		start(f, 0, false);
+	}
+
+	void operator()(int f, uint32_t durationMs) {
+		if (durationMs == 0) {
+			(*this)(f);
+			return;
+		}
+		melodyRunning = false;
+		continuousFrequency = -1;
+		start(f, durationMs, true);
+	}
+
+	void play(const int* notes, const int* durations, int length,
+		bool repeat = false) {
+		if (!notes || !durations || length <= 0) {
+			stop();
+			return;
+		}
+		melodyNotes = notes;
+		melodyDurations = durations;
+		melodyLength = length;
+		melodyIndex = 0;
+		melodyNext = monoconMillis();
+		melodyRunning = true;
+		melodyRepeat = repeat;
 	}
 
 	void stop() {
-		run = false;
+		melodyRunning = false;
+		continuousFrequency = -1;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			stopFromIsr();
+		}
 	}
 
-	bool active() {
-		return run;
+	void off() { stop(); }
+
+	bool playing() const { return melodyRunning; }
+
+	void update() {
+		if (!melodyRunning) return;
+		const uint32_t now = monoconMillis();
+		if (static_cast<int32_t>(now - melodyNext) < 0) return;
+
+		if (melodyIndex >= melodyLength) {
+			if (melodyRepeat) melodyIndex = 0;
+			else {
+				stop();
+				return;
+			}
+		}
+
+		const int frequency = melodyNotes[melodyIndex];
+		const int duration = melodyDurations[melodyIndex];
+		++melodyIndex;
+		melodyNext = now + static_cast<uint32_t>(duration > 0 ? duration : 0);
+		continuousFrequency = -1;
+
+		if (frequency > 0) {
+			start(frequency, 0, false);
+		} else {
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				stopFromIsr();
+			}
+		}
+	}
+
+	inline void isrTick() {
+		if (!timedActive) return;
+		if (remainingMs > 0 && --remainingMs == 0) stopFromIsr();
+	}
+};
+
+extern Led led;
+extern Disp dp;
+extern Dcm dm;
+extern Spm sm;
+extern Bz bz;
+
+void begin();
+
+class Seq {
+private:
+	int current_ = 0;
+	int position_ = 0;
+	int count_ = 0;
+
+	uint32_t enteredAt_ = 0;
+	uint8_t lastEpoch_ = 0xFF;
+
+	bool initialized_ = false;
+	bool moved_ = false;
+	bool entryPending_ = true;
+	bool exitPending_ = false;
+
+	void syncLoop() {
+		const uint8_t epoch = monocon_detail::loopEpoch;
+
+		if (lastEpoch_ == epoch) {
+			return;
+		}
+
+		if (position_ > count_) {
+			count_ = position_;
+		}
+
+		if (count_ > 0 && current_ >= count_) {
+			current_ = 0;
+		}
+
+		position_ = 0;
+		moved_ = false;
+		exitPending_ = false;
+		lastEpoch_ = epoch;
+
+		if (!initialized_) {
+			enteredAt_ = millis();
+			initialized_ = true;
+		}
+	}
+
+	void moveTo(int state) {
+		syncLoop();
+
+		if (state < 0) {
+			state = 0;
+		}
+
+		if (count_ > 0 && state >= count_) {
+			state = count_ - 1;
+		}
+
+		if (state == current_) {
+			return;
+		}
+
+		current_ = state;
+		enteredAt_ = millis();
+
+		entryPending_ = true;
+		exitPending_ = true;
+		moved_ = true;
+	}
+
+public:
+	Seq() = default;
+
+	Seq(const Seq&) = delete;
+
+	Seq& operator=(const Seq&) = delete;
+
+	bool on() {
+		syncLoop();
+
+		if (moved_) {
+			++position_;
+			return false;
+		}
+
+		return position_++ == current_;
+	}
+
+	bool operator()() {
+		return on();
+	}
+
+	explicit operator bool() {
+		return on();
+	}
+
+	void next() {
+		syncLoop();
+
+		int target = current_ + 1;
+
+		if (count_ > 0 && target >= count_) {
+			target = 0;
+		}
+
+		moveTo(target);
+	}
+
+	void prev() {
+		syncLoop();
+
+		int target = current_ - 1;
+
+		if (target < 0) {
+			target = count_ > 0 ? count_ - 1 : 0;
+		}
+
+		moveTo(target);
+	}
+
+	void to(int state) {
+		moveTo(state);
+	}
+
+	void restart() {
+		syncLoop();
+
+		enteredAt_ = millis();
+		entryPending_ = true;
+		exitPending_ = false;
+		moved_ = true;
+	}
+
+	bool is(int state) {
+		syncLoop();
+		return current_ == state;
+	}
+
+	int now() {
+		syncLoop();
+		return current_;
+	}
+
+	int steps() {
+		syncLoop();
+		return count_;
+	}
+
+	bool in() {
+		syncLoop();
+
+		if (!entryPending_) {
+			return false;
+		}
+
+		entryPending_ = false;
+		return true;
+	}
+
+	bool out() {
+		syncLoop();
+
+		if (!exitPending_) {
+			return false;
+		}
+
+		exitPending_ = false;
+		return true;
+	}
+
+	uint32_t elapsed() {
+		syncLoop();
+		return static_cast<uint32_t>(millis() - enteredAt_);
+	}
+
+	bool after(uint32_t ms) {
+		return elapsed() >= ms;
+	}
+};
+
+class Iv {
+private:
+	uint32_t previous_ = 0;
+	uint32_t pausedAt_ = 0;
+	bool paused_ = false;
+
+public:
+	bool operator()(uint32_t ms) {
+		if (paused_) return false;
+		const uint32_t now = millis();
+		if (static_cast<uint32_t>(now - previous_) < ms) return false;
+		previous_ = now;
+		return true;
+	}
+
+	void reset() {
+		previous_ = millis();
+	}
+
+	void wait() {
+		if (paused_) return;
+		pausedAt_ = millis();
+		paused_ = true;
+	}
+
+	void go() {
+		if (!paused_) return;
+		const uint32_t now = millis();
+		previous_ += static_cast<uint32_t>(now - pausedAt_);
+		paused_ = false;
+	}
+
+	bool isWait() const {
+		return paused_;
+	}
+};
+
+class Ti {
+private:
+	uint32_t deadline_ = 0;
+	bool running_ = false;
+
+public:
+	void start(uint32_t ms) {
+		if (ms > 0x7FFFFFFFUL) ms = 0x7FFFFFFFUL;
+		deadline_ = millis() + ms;
+		running_ = true;
+	}
+
+	void stop() {
+		running_ = false;
+	}
+
+	bool active() const {
+		return running_;
 	}
 
 	bool done() {
-		if (run && (long)(millis() - lim) >= 0) {
-			run = false;
-			return true;
-		}
-		return false;
+		if (!running_) return false;
+		const uint32_t now = millis();
+		if (static_cast<int32_t>(now - deadline_) < 0) return false;
+		running_ = false;
+		return true;
 	}
 
-	unsigned long remain() {
-		if (!run) return 0;
-		long r = (long)(lim - millis());
-		return r > 0 ? (unsigned long)r : 0;
+	uint32_t remain() const {
+		if (!running_) return 0;
+		const int32_t remaining = static_cast<int32_t>(deadline_ - millis());
+		return remaining > 0 ? static_cast<uint32_t>(remaining) : 0;
 	}
 };
 
 class Sw {
-	unsigned long t0 = 0;
-	unsigned long fix = 0;
-	bool run = false;
+private:
+	uint32_t startedAt_ = 0;
+	uint32_t fixed_ = 0;
+	bool running_ = false;
 
 public:
 	void start() {
-		t0 = millis();
-		run = true;
+		startedAt_ = millis();
+		fixed_ = 0;
+		running_ = true;
 	}
 
 	void stop() {
-		if (run) {
-			fix = millis() - t0;
-			run = false;
-		}
+		if (!running_) return;
+		fixed_ = static_cast<uint32_t>(millis() - startedAt_);
+		running_ = false;
 	}
 
 	void reset() {
-		run = false;
-		fix = 0;
+		running_ = false;
+		fixed_ = 0;
 	}
 
-	bool running() {
-		return run;
+	bool running() const {
+		return running_;
 	}
 
-	unsigned long ms() {
-		return run ? millis() - t0 : fix;
+	uint32_t ms() const {
+		return running_
+			? static_cast<uint32_t>(millis() - startedAt_)
+			: fixed_;
 	}
 
-	unsigned long operator()() {
+	uint32_t operator()() const {
 		return ms();
 	}
 
-	operator unsigned long() {
+	operator uint32_t() const {
 		return ms();
 	}
 };
 
-class Seq {
-	int  cur = 0;
-	int  pos = 0;
-	int  count = 0;
-	unsigned long t0 = 0;
-	bool moved = false;
-	bool exited = false;
+namespace monocon_detail {
+	void service();
 
-public:
-	bool fresh = true;
+	struct AdcSlot {
+		uint8_t admux;
+		uint8_t mux5;
+		uint8_t channel;
+		volatile int* dst;
+	};
 
-	void top() {
-		if (pos > count) count = pos;
-		if (count > 0 && cur >= count) cur = 0;
+	AdcSlot adcSlots[16];
+	volatile uint8_t adcCount = 0;
+	volatile uint8_t adcIndex = 0;
+	volatile bool adcRunning = false;
+	bool adcHardwareReady = false;
+	volatile int adcFallback[16] = { 0 };
+	volatile uint8_t serviceDue = 0;
+	uint8_t loopEpoch = 0;
 
-		pos = 0;
-		moved = false;
-		exited = false;
+	inline uint8_t analogChannel(uint8_t pin) {
+		if (pin >= A0) pin = static_cast<uint8_t>(pin - A0);
+		return pin;
 	}
 
-	bool on(bool isTop = false) {
-		if (isTop) {
-			if (pos > count) count = pos;
-			if (count > 0 && cur >= count) cur = 0;
-			pos = 0;
-			moved = false;
-			exited = false;
+	inline void selectAdcSlot(uint8_t index) {
+		ADMUX = adcSlots[index].admux;
+		ADCSRB = static_cast<uint8_t>((ADCSRB & ~_BV(MUX5)) | adcSlots[index].mux5);
+	}
+
+	inline void startAdcLocked() {
+		if (!adcHardwareReady || adcRunning || adcCount == 0) return;
+		adcIndex = 0;
+		selectAdcSlot(0);
+		ADCSRA |= _BV(ADIF);
+		ADCSRA |= _BV(ADSC);
+		adcRunning = true;
+	}
+
+	inline void adcIsrBody() {
+		if (adcCount == 0) {
+			adcRunning = false;
+			return;
 		}
-		if (moved) {
-			pos++;
-			return false;
+
+		const uint8_t current = adcIndex;
+		*adcSlots[current].dst = ADC;
+
+		uint8_t next = static_cast<uint8_t>(current + 1);
+		if (next >= adcCount) next = 0;
+		adcIndex = next;
+
+		if (next != current) {
+			selectAdcSlot(next);
 		}
-		return (pos++ == cur);
+		ADCSRA |= _BV(ADSC);
 	}
+}
 
-	bool operator()(bool isTop = false) {
-		return on(isTop);
-	}
+volatile uint32_t tms = 0;
 
-	operator bool() {
-		return (*this)();
-	}
+di* di::list[8] = {};
+uint8_t di::nList = 0;
+pr* pr::list[8] = {};
+uint8_t pr::nList = 0;
+sok* sok::list[2] = {};
+uint8_t sok::nList = 0;
+enc* enc::list[4] = {};
+uint8_t enc::nList = 0;
 
-	void next() {
-		cur++;
-		if (count > 0 && cur >= count) cur = 0;
-		t0 = millis();
-		fresh = true;
-		moved = true;
-	}
+Led led;
+Disp dp;
+Dcm dm;
+Spm sm;
+Bz bz;
 
-	void prev() {
-		cur--;
-		if (cur < 0) cur = (count > 0) ? count - 1 : 0;
-		t0 = millis();
-		fresh = true;
-		moved = true;
-	}
+bool adcReg(uint8_t pin, volatile int* dst) {
+	if (!dst) return false;
+	const uint8_t channel = monocon_detail::analogChannel(pin);
+	if (channel > 15) return false;
 
-	void to(int s) {
-		cur = s;
-		t0 = millis();
-		fresh = true;
-		moved = true;
-	}
-
-	bool is(int s) {
-		return cur == s;
-	}
-
-	int now() {
-		return cur;
-	}
-
-	int steps() {
-		return count;
-	}
-
-	bool in() {
-		if (fresh) {
-			fresh = false;
-			return true;
+	bool added = false;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		for (uint8_t i = 0; i < monocon_detail::adcCount; ++i) {
+			if (monocon_detail::adcSlots[i].dst == dst) {
+				added = true;
+				break;
+			}
 		}
-		return false;
-	}
 
-	bool out() {
-		if (moved && !exited) {
-			exited = true;
-			return true;
+		if (!added && monocon_detail::adcCount < 16) {
+			const uint8_t index = monocon_detail::adcCount;
+			monocon_detail::adcSlots[index].admux =
+				static_cast<uint8_t>(_BV(REFS0) | (channel & 0x07));
+			monocon_detail::adcSlots[index].mux5 =
+				channel >= 8 ? _BV(MUX5) : 0;
+			monocon_detail::adcSlots[index].channel = channel;
+			monocon_detail::adcSlots[index].dst = dst;
+
+			monocon_detail::adcCount = static_cast<uint8_t>(index + 1);
+			if (channel < 8) DIDR0 |= _BV(channel);
+			else             DIDR2 |= _BV(channel - 8);
+			monocon_detail::startAdcLocked();
+			added = true;
 		}
-		return false;
+	}
+	return added;
+}
+
+int ar(uint8_t pin) {
+	const uint8_t channel = monocon_detail::analogChannel(pin);
+	if (channel > 15) return 0;
+
+	volatile int* source = nullptr;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		const uint8_t n = monocon_detail::adcCount;
+		for (uint8_t i = 0; i < n; ++i) {
+			if (monocon_detail::adcSlots[i].channel == channel) {
+				source = monocon_detail::adcSlots[i].dst;
+				break;
+			}
+		}
 	}
 
-	unsigned long elapsed() {
-		return millis() - t0;
+	if (!source) {
+		source = &monocon_detail::adcFallback[channel];
+		if (!adcReg(pin, source)) return 0;
 	}
+	return monoconAtomicReadInt(source);
+}
 
-	bool after(unsigned long ms) {
-		return millis() - t0 >= ms;
-	}
-};
+ISR(ADC_vect) {
+	monocon_detail::adcIsrBody();
+}
 
-#ifdef timer3
-void isr();
-#endif
-
-ISR(TIMER3_COMPA_vect) {
-	dispRefresh();
-	ledRefresh();
-	sm.isrTick();
-#ifdef timer3
-	isr();
+ISR(TIMER1_COMPA_vect) {
+	enc::isrPollAll();
+#ifdef useir
+	ir();
 #endif
 }
 
-void begin(void) {
-	pinMode(a1, INPUT);
-	pinMode(a2, INPUT);
-	pinMode(a3, INPUT);
-	pinMode(a4, INPUT);
-	pinMode(d1, INPUT);
-	pinMode(d2, INPUT);
-	pinMode(d3, INPUT);
-	pinMode(d4, INPUT);
+ISR(TIMER2_COMPA_vect) {
+	++tms;
+	monocon_detail::serviceDue = 1;
+	bz.isrTick();
+}
 
-	pinMode(LAT_PIN, OUTPUT);
-	pinMode(SCK_PIN, OUTPUT);
-	pinMode(SDI_PIN, OUTPUT);
-	dw(LAT_PIN, HIGH);
-	dw(SCK_PIN, LOW);
-	dw(SDI_PIN, LOW);
+inline void monocon_detail::service() {
+	uint8_t due;
+	uint32_t now;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		due = monocon_detail::serviceDue;
+		monocon_detail::serviceDue = 0;
+		now = tms;
+	}
+	if (!due) return;
 
-	pinMode(BZ_PIN, OUTPUT);
-	pinMode(LED_R_PIN, OUTPUT);
-	pinMode(LED_G_PIN, OUTPUT);
-	pinMode(LED_B_PIN, OUTPUT);
-	pinMode(SPM1_PIN, OUTPUT);
-	pinMode(SPM2_PIN, OUTPUT);
-	pinMode(SPM3_PIN, OUTPUT);
-	pinMode(SPM4_PIN, OUTPUT);
-	pinMode(DCM1_PIN, OUTPUT);
-	pinMode(DCM2_PIN, OUTPUT);
-	pinMode(PH_PIN, INPUT);
+	di::serviceAll(now);
+	pr::serviceAll(now);
+	sok::serviceAll();
+	bz.update();
+	led.serviceTick();
+	dp.serviceTick();
+}
 
-	sm.off();
-	dm.fr();
-	dispOff();
+void serialEventRun() {
+	monocon_detail::service();
+	const uint8_t epoch = ++monocon_detail::loopEpoch;
+	di::expireAll(epoch);
+	pr::expireAll(epoch);
+}
 
-	randomSeed(ar(A15) ^ micros());
+void yield() {
+	monocon_detail::service();
+}
 
-	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
-
+void begin() {
 	cli();
-	TCCR3A = TCCR3B = TCNT3 = 0;
-	OCR3A = F_CPU / 64 / 10000 - 1;
-	TCCR3B |= (1 << WGM32);
-	TCCR3B |= (1 << CS31) | (1 << CS30);
-	TIMSK3 |= (1 << OCIE3A);
+
+	DDRF &= static_cast<uint8_t>(~(_BV(PF0) | _BV(PF1) | _BV(PF2) | _BV(PF3)));
+	DDRB &= static_cast<uint8_t>(~(_BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7)));
+
+	DDRH |= SCK_BIT | SDI_BIT | LAT_BIT;
+	PORTH = static_cast<uint8_t>(
+		(PORTH & static_cast<uint8_t>(~(SCK_BIT | SDI_BIT))) | LAT_BIT);
+
+	DDRE |= _BV(PE3) | _BV(PE4) | _BV(PE5);
+	DDRG |= _BV(PG5);
+	PORTE &= static_cast<uint8_t>(~(_BV(PE3) | _BV(PE4) | _BV(PE5)));
+	PORTG &= static_cast<uint8_t>(~_BV(PG5));
+
+	DDRA |= SPM_MASK;
+	PORTA &= static_cast<uint8_t>(~SPM_MASK);
+
+	DDRL |= _BV(PL5) | _BV(PL3);
+	PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
+
+	DDRC &= static_cast<uint8_t>(~_BV(PC1));
+
+	TCCR5A = _BV(WGM50);
+	TCCR5B = _BV(CS51) | _BV(CS50);
+	TCNT5 = 0;
+	OCR5A = 0;
+	OCR5C = 0;
+
+	TCCR3A = 0;
+	TCCR3B = _BV(WGM32);
+	TCNT3 = 0;
+	OCR3A = 0;
+	TIMSK3 = 0;
+	TIFR3 = _BV(OCF3A);
+
+	TCCR1A = 0;
+	TCCR1B = 0;
+	TCNT1 = 0;
+	OCR1A = static_cast<uint16_t>((F_CPU / 8UL / 10000UL) - 1UL);
+	TCCR1B = _BV(WGM12) | _BV(CS11);
+	TIMSK1 = _BV(OCIE1A);
+	TIFR1 = _BV(OCF1A);
+
+	TCCR2A = 0;
+	TCCR2B = 0;
+	TCNT2 = 0;
+	OCR2A = static_cast<uint8_t>((F_CPU / 64UL / 1000UL) - 1UL);
+	TCCR2A = _BV(WGM21);
+	TCCR2B = _BV(CS22);
+	TIMSK2 = _BV(OCIE2A);
+	TIFR2 = _BV(OCF2A);
+
+	ADCSRA = 0;
+	ADCSRB &= static_cast<uint8_t>(~(_BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0)));
+	ADMUX = _BV(REFS0);
+	ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
+	monocon_detail::adcHardwareReady = true;
+	monocon_detail::adcRunning = false;
+	monocon_detail::startAdcLocked();
+
+	tms = 0;
+	monocon_detail::serviceDue = 1;
+	monocon_detail::loopEpoch = 0;
+
 	sei();
+
+	led(0);
+	dp.off();
+	dm.fr();
+	sm.fr();
+	bz.off();
+	monocon_detail::service();
+
+	randomSeed(static_cast<unsigned long>(micros()) ^
+		static_cast<unsigned long>(TCNT0) ^
+		(static_cast<unsigned long>(TCNT1) << 8));
 }
+
+#endif
