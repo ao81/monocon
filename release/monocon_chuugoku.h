@@ -492,6 +492,10 @@ public:
 		}
 	}
 
+	int raw() const {
+		return atomicReadInt(&_raw);
+	}
+
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
