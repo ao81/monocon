@@ -11,14 +11,14 @@
 
 #include <util/atomic.h>
 
-constexpr uint8_t a0 = A0;
-constexpr uint8_t a1 = A1;
-constexpr uint8_t a2 = A2;
-constexpr uint8_t a3 = A3;
-constexpr uint8_t d0 = 10;
-constexpr uint8_t d1 = 11;
-constexpr uint8_t d2 = 12;
-constexpr uint8_t d3 = 13;
+constexpr uint8_t a1 = A0;
+constexpr uint8_t a2 = A1;
+constexpr uint8_t a3 = A2;
+constexpr uint8_t a4 = A3;
+constexpr uint8_t d1 = 10;
+constexpr uint8_t d2 = 11;
+constexpr uint8_t d3 = 12;
+constexpr uint8_t d4 = 13;
 
 constexpr uint8_t SCK_PIN = 6;
 constexpr uint8_t SDI_PIN = 7;
@@ -37,7 +37,7 @@ constexpr uint8_t SPM4_PIN = 22;
 constexpr uint8_t DCM1_PIN = 44;
 constexpr uint8_t DCM2_PIN = 46;
 
-constexpr uint8_t PH = 36;
+constexpr uint8_t PH_PIN = 36;
 
 constexpr uint8_t SCK_BIT = (1 << PH3);
 constexpr uint8_t SDI_BIT = (1 << PH4);
@@ -1006,14 +1006,14 @@ ISR(TIMER3_COMPA_vect) {
 }
 
 void begin(void) {
-	pinMode(a0, INPUT);
 	pinMode(a1, INPUT);
 	pinMode(a2, INPUT);
 	pinMode(a3, INPUT);
-	pinMode(d0, INPUT);
+	pinMode(a4, INPUT);
 	pinMode(d1, INPUT);
 	pinMode(d2, INPUT);
 	pinMode(d3, INPUT);
+	pinMode(d4, INPUT);
 
 	pinMode(LAT_PIN, OUTPUT);
 	pinMode(SCK_PIN, OUTPUT);
@@ -1032,7 +1032,7 @@ void begin(void) {
 	pinMode(SPM4_PIN, OUTPUT);
 	pinMode(DCM1_PIN, OUTPUT);
 	pinMode(DCM2_PIN, OUTPUT);
-	pinMode(PH, INPUT);
+	pinMode(PH_PIN, INPUT);
 
 	sm.off();
 	dm.fr();
