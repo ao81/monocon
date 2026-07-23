@@ -71,6 +71,21 @@ inline T clamp(T v, U lo, V hi) {
 		: v > static_cast<T>(hi) ? static_cast<T>(hi) : v;
 }
 
+template <typename T, typename U, typename V>
+inline T wrap(T value, U low, V high) {
+	int64_t lo = static_cast<int64_t>(low);
+	int64_t hi = static_cast<int64_t>(high);
+	if (hi < lo) {
+		const int64_t t = lo;
+		lo = hi;
+		hi = t;
+	}
+	const int64_t span = hi - lo + 1LL;
+	int64_t result = (static_cast<int64_t>(value) - lo) % span;
+	if (result < 0) result += span;
+	return static_cast<T>(lo + result);
+}
+
 extern volatile uint32_t tms;
 
 inline uint32_t atomicMillis() {
@@ -288,15 +303,15 @@ public:
 	}
 
 	bool ltoh() {
-		const bool v = fLtoh;
+		const bool value = fLtoh;
 		fLtoh = false;
-		return v;
+		return value;
 	}
 
 	bool htol() {
-		const bool v = fHtol;
+		const bool value = fHtol;
 		fHtol = false;
-		return v;
+		return value;
 	}
 
 	bool level() const {
@@ -332,10 +347,10 @@ public:
 	}
 
 	bool change() {
-		const bool v = fHtol || fLtoh;
+		const bool value = fHtol || fLtoh;
 		fHtol = false;
 		fLtoh = false;
-		return v;
+		return value;
 	}
 };
 
@@ -401,8 +416,8 @@ public:
 		st.candidateSince = now;
 		st.candidateActive = false;
 		st.fired = false;
-		fLtoh = false;
-		fHtol = false;
+		fLtoh = 0;
+		fHtol = 0;
 		ltohEpoch = board_detail::loopEpoch;
 		htolEpoch = board_detail::loopEpoch;
 	}
@@ -413,8 +428,8 @@ public:
 
 	bool changed() {
 		const bool result = fLtoh || fHtol;
-		fLtoh = false;
-		fHtol = false;
+		fLtoh = 0;
+		fHtol = 0;
 		return result;
 	}
 
@@ -656,8 +671,23 @@ public:
 	}
 };
 
+extern "C" {
+	void PCINT0_vect(void);
+	void PCINT1_vect(void);
+	void PCINT2_vect(void);
+	void TIMER1_COMPA_vect(void);
+}
+
 class Enc {
+	friend void begin();
+	friend void ::PCINT0_vect(void);
+	friend void ::PCINT1_vect(void);
+	friend void ::PCINT2_vect(void);
+	friend void ::TIMER1_COMPA_vect(void);
+
 private:
+	uint8_t pinA;
+	uint8_t pinB;
 	volatile uint8_t* ra;
 	volatile uint8_t* rb;
 	uint8_t ma;
@@ -669,6 +699,12 @@ private:
 
 	static Enc* list[4];
 	static uint8_t nList;
+	static Enc* fallback[4];
+	static uint8_t nFallback;
+	static Enc* pcOwner[3][8];
+	static volatile uint8_t* pcPort[3];
+	static uint8_t pcWatched[3];
+	static uint8_t pcPrevious[3];
 
 	inline void poll() {
 		static const uint8_t table[7][4] = {
@@ -728,7 +764,9 @@ private:
 
 public:
 	Enc(uint8_t pa, uint8_t pb, bool d = true)
-		: ra(portInputRegister(digitalPinToPort(pa))),
+		: pinA(pa),
+		pinB(pb),
+		ra(portInputRegister(digitalPinToPort(pa))),
 		rb(portInputRegister(digitalPinToPort(pb))),
 		ma(digitalPinToBitMask(pa)),
 		mb(digitalPinToBitMask(pb)),
@@ -743,14 +781,117 @@ public:
 		}
 	}
 
-	static inline void isrPollAll() {
-		const uint8_t n = nList;
+private:
+	static void beginPolling(bool forceTimer = false) {
+		nFallback = 0;
+		for (uint8_t g = 0; g < 3; ++g) {
+			pcPort[g] = nullptr;
+			pcWatched[g] = 0;
+			pcPrevious[g] = 0;
+			for (uint8_t b = 0; b < 8; ++b) {
+				pcOwner[g][b] = nullptr;
+			}
+		}
 
-		for (uint8_t i = 0; i < n; ++i) {
-			list[i]->poll();
+		uint8_t enabledGroups = 0;
+
+		for (uint8_t i = 0; i < nList; ++i) {
+			Enc* const p = list[i];
+			bool attached = false;
+
+#if defined(digitalPinToPCICR) && defined(digitalPinToPCICRbit) && \
+	defined(digitalPinToPCMSK) && defined(digitalPinToPCMSKbit)
+			volatile uint8_t* const pcrA = digitalPinToPCICR(p->pinA);
+			volatile uint8_t* const pcrB = digitalPinToPCICR(p->pinB);
+			volatile uint8_t* const pmskA = digitalPinToPCMSK(p->pinA);
+			volatile uint8_t* const pmskB = digitalPinToPCMSK(p->pinB);
+
+			if (pcrA && pcrB && pmskA && pmskB) {
+				const uint8_t groupA = digitalPinToPCICRbit(p->pinA);
+				const uint8_t groupB = digitalPinToPCICRbit(p->pinB);
+				const uint8_t bitA = digitalPinToPCMSKbit(p->pinA);
+				const uint8_t bitB = digitalPinToPCMSKbit(p->pinB);
+
+				if (groupA < 3 && groupB < 3 && bitA < 8 && bitB < 8 &&
+					!(groupA == groupB && bitA == bitB) &&
+					(!pcPort[groupA] || pcPort[groupA] == p->ra) &&
+					(!pcPort[groupB] || pcPort[groupB] == p->rb) &&
+					!pcOwner[groupA][bitA] && !pcOwner[groupB][bitB]) {
+					pcPort[groupA] = p->ra;
+					pcPort[groupB] = p->rb;
+					pcOwner[groupA][bitA] = p;
+					pcOwner[groupB][bitB] = p;
+					pcWatched[groupA] |= _BV(bitA);
+					pcWatched[groupB] |= _BV(bitB);
+					*pmskA |= _BV(bitA);
+					*pmskB |= _BV(bitB);
+					*pcrA |= _BV(groupA);
+					*pcrB |= _BV(groupB);
+					enabledGroups |= _BV(groupA) | _BV(groupB);
+					attached = true;
+				}
+			}
+#endif
+
+			if (!attached && nFallback < 4) {
+				fallback[nFallback++] = p;
+			}
+		}
+
+		for (uint8_t g = 0; g < 3; ++g) {
+			if (pcPort[g]) {
+				pcPrevious[g] = *pcPort[g];
+			}
+		}
+
+		if (enabledGroups) {
+			PCIFR = enabledGroups;
+		}
+
+		TCCR1A = 0;
+		TCCR1B = 0;
+		TCNT1 = 0;
+		OCR1A = static_cast<uint16_t>((F_CPU / 8UL / 10000UL) - 1UL);
+		TIFR1 = _BV(OCF1A);
+		TIMSK1 = (nFallback || forceTimer) ? _BV(OCIE1A) : 0;
+		if (nFallback || forceTimer) {
+			TCCR1B = _BV(WGM12) | _BV(CS11);
 		}
 	}
 
+	static inline void isrPollFallback() {
+		const uint8_t n = nFallback;
+		if (n > 0) fallback[0]->poll();
+		if (n > 1) fallback[1]->poll();
+		if (n > 2) fallback[2]->poll();
+		if (n > 3) fallback[3]->poll();
+	}
+
+	static inline void isrPcint(uint8_t group) {
+		volatile uint8_t* const port = pcPort[group];
+		if (!port) return;
+
+		const uint8_t now = *port;
+		uint8_t changed =
+			static_cast<uint8_t>((now ^ pcPrevious[group]) & pcWatched[group]);
+		pcPrevious[group] = now;
+
+		while (changed) {
+			uint8_t bit = 0;
+			while (!(changed & _BV(bit))) ++bit;
+			changed &= static_cast<uint8_t>(~_BV(bit));
+			Enc* const p = pcOwner[group][bit];
+			if (!p) continue;
+			for (uint8_t next = static_cast<uint8_t>(bit + 1); next < 8; ++next) {
+				if (pcOwner[group][next] == p) {
+					changed &= static_cast<uint8_t>(~_BV(next));
+				}
+			}
+			p->poll();
+		}
+	}
+
+public:
 	int32_t delta() {
 		return take();
 	}
@@ -1071,12 +1212,32 @@ public:
 };
 
 class Dcm {
-public:
-	int8_t now;
+private:
+	volatile uint32_t remainingMs;
+	volatile bool timedActive;
+	volatile bool donePending;
 
-	Dcm() : now(0) {}
+	inline void stopFromIsr() {
+		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
+		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
+		now = 0;
+		timedActive = false;
+		remainingMs = 0;
+	}
+
+public:
+	volatile int8_t now;
+
+	Dcm()
+		: remainingMs(0), timedActive(false), donePending(false), now(0) {
+	}
 
 	void cw(int spd) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			timedActive = false;
+			remainingMs = 0;
+			donePending = false;
+		}
 		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
 		if (pwm == 0) { fr(); return; }
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
@@ -1086,7 +1247,22 @@ public:
 		now = 1;
 	}
 
+	void cw(int spd, uint32_t durationMs) {
+		cw(spd);
+		if (now == 0 || durationMs == 0) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			remainingMs = durationMs;
+			timedActive = true;
+			donePending = false;
+		}
+	}
+
 	void ccw(int spd) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			timedActive = false;
+			remainingMs = 0;
+			donePending = false;
+		}
 		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
 		if (pwm == 0) { fr(); return; }
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
@@ -1096,16 +1272,53 @@ public:
 		now = -1;
 	}
 
+	void ccw(int spd, uint32_t durationMs) {
+		ccw(spd);
+		if (now == 0 || durationMs == 0) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			remainingMs = durationMs;
+			timedActive = true;
+			donePending = false;
+		}
+	}
+
 	void br() {
-		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
-		PORTL |= _BV(PL5) | _BV(PL3);
-		now = 0;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			timedActive = false;
+			remainingMs = 0;
+			donePending = false;
+			TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
+			PORTL |= _BV(PL5) | _BV(PL3);
+			now = 0;
+		}
 	}
 
 	void fr() {
-		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
-		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
-		now = 0;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			stopFromIsr();
+			donePending = false;
+		}
+	}
+
+	bool busy() const {
+		return timedActive;
+	}
+
+	bool done() {
+		bool value;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			value = donePending;
+			donePending = false;
+		}
+		return value;
+	}
+
+	inline void isrTick() {
+		if (!timedActive) return;
+		if (remainingMs > 0 && --remainingMs == 0) {
+			stopFromIsr();
+			donePending = true;
+		}
 	}
 };
 
@@ -1899,7 +2112,7 @@ namespace board_detail {
 	volatile bool adcRunning = false;
 	bool adcHardwareReady = false;
 	volatile int adcFallback[16] = { 0 };
-	volatile uint8_t serviceDue = 0;
+	volatile bool servicePending = false;
 	uint8_t loopEpoch = 0;
 
 	inline uint8_t analogChannel(uint8_t pin) {
@@ -1952,6 +2165,12 @@ Sok* Sok::list[2] = {};
 uint8_t Sok::nList = 0;
 Enc* Enc::list[4] = {};
 uint8_t Enc::nList = 0;
+Enc* Enc::fallback[4] = {};
+uint8_t Enc::nFallback = 0;
+Enc* Enc::pcOwner[3][8] = {};
+volatile uint8_t* Enc::pcPort[3] = {};
+uint8_t Enc::pcWatched[3] = {};
+uint8_t Enc::pcPrevious[3] = {};
 
 Led led;
 Disp dp;
@@ -2018,8 +2237,20 @@ ISR(ADC_vect) {
 	board_detail::adcIsrBody();
 }
 
+ISR(PCINT0_vect) {
+	Enc::isrPcint(0);
+}
+
+ISR(PCINT1_vect) {
+	Enc::isrPcint(1);
+}
+
+ISR(PCINT2_vect) {
+	Enc::isrPcint(2);
+}
+
 ISR(TIMER1_COMPA_vect) {
-	Enc::isrPollAll();
+	Enc::isrPollFallback();
 #ifdef useir
 	ir();
 #endif
@@ -2027,31 +2258,28 @@ ISR(TIMER1_COMPA_vect) {
 
 ISR(TIMER2_COMPA_vect) {
 	++tms;
-	if (board_detail::serviceDue < UINT8_MAX) {
-		++board_detail::serviceDue;
-	}
+	board_detail::servicePending = true;
+	dm.isrTick();
 	bz.isrTick();
 }
 
 inline void board_detail::service() {
 	lockDigitalInputs();
-	uint8_t due;
+	bool pending;
 	uint32_t now;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		due = board_detail::serviceDue;
-		board_detail::serviceDue = 0;
+		pending = board_detail::servicePending;
+		board_detail::servicePending = false;
 		now = tms;
 	}
-	if (!due) return;
+	if (!pending) return;
 
 	Di::serviceAll(now);
 	Pr::serviceAll(now);
-	while (due--) {
-		Sok::serviceAll();
-		bz.update();
-		led.serviceTick();
-		dp.serviceTick();
-	}
+	Sok::serviceAll();
+	bz.update();
+	led.serviceTick();
+	dp.serviceTick();
 }
 
 void yield() {
@@ -2094,13 +2322,11 @@ void begin() {
 	TIMSK3 = 0;
 	TIFR3 = _BV(OCF3A);
 
-	TCCR1A = 0;
-	TCCR1B = 0;
-	TCNT1 = 0;
-	OCR1A = static_cast<uint16_t>((F_CPU / 8UL / 10000UL) - 1UL);
-	TCCR1B = _BV(WGM12) | _BV(CS11);
-	TIMSK1 = _BV(OCIE1A);
-	TIFR1 = _BV(OCF1A);
+#ifdef useir
+	Enc::beginPolling(true);
+#else
+	Enc::beginPolling(false);
+#endif
 
 	TCCR2A = 0;
 	TCCR2B = 0;
@@ -2120,7 +2346,7 @@ void begin() {
 	board_detail::startAdcLocked();
 
 	tms = 0;
-	board_detail::serviceDue = 1;
+	board_detail::servicePending = true;
 	board_detail::loopEpoch = 0;
 
 	sei();
