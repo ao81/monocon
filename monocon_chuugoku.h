@@ -34,8 +34,12 @@
 #define SPM3_PIN 24
 #define SPM4_PIN 22
 
-#define DCM1_PIN 30
-#define DCM2_PIN 32
+///////////////////////////////
+// PWM出力に対応したピンに変更 //
+///////////////////////////////
+#define DCM1_PIN 44
+#define DCM2_PIN 46
+
 #define PH_PIN 36
 
 // ピン6/7/8 = PORTH(PH3/PH4/PH5)
@@ -58,7 +62,7 @@ inline void fsout(uint8_t v) {
 
 inline int ar(uint8_t pin) {
 	if (pin >= A0) pin -= A0;
-	ADMUX  = (1 << REFS0) | (pin & 0x07);
+	ADMUX = (1 << REFS0) | (pin & 0x07);
 	ADCSRB = (ADCSRB & ~(1 << MUX5)) | (((pin >> 3) & 1) << MUX5);
 	ADCSRA |= (1 << ADSC);
 	while (ADCSRA & (1 << ADSC));
@@ -154,16 +158,16 @@ public:
 };
 In in;
 
-int& sw  = in.sw;
-int& ts  = in.ts;
-int& ph  = in.ph;
-int& rm  = in.rm;
+int& sw = in.sw;
+int& ts = in.ts;
+int& ph = in.ph;
+int& rm = in.rm;
 int& cnt = in.c;
-int& p   = in.p;
-int& x   = in.x;
-int& y   = in.y;
+int& p = in.p;
+int& x = in.x;
+int& y = in.y;
 
-//================ 7セグ3桁(変化時のみ送出) ================
+//================ 7セグ（3桁） ================
 void disp(char a, char b, char c) {
 	static int pa = -1, pb = -1, pc = -1;
 	if (pa != (uint8_t)a || pb != (uint8_t)b || pc != (uint8_t)c) {
@@ -203,10 +207,10 @@ public:
 };
 Led led;
 
-//================ ステッピング(28BYJ-48, 2相励磁) ================
+//================ ステッピングモータ (28BYJ-48, 2相励磁) ================
 class Spm {
-	int8_t ix  = 0;
-	long   ps  = 0;
+	int8_t ix = 0;
+	long   ps = 0;
 	int    rem = 0;
 public:
 	void set(uint8_t s) {
@@ -256,7 +260,7 @@ public:
 };
 Spm spm;
 
-//================ DCモータ(DRV8835) ================
+//================ DCモータ (DRV8835) ================
 #define CW  0xff
 #define CCW 0xfe
 #define BR  0xfd
@@ -264,13 +268,13 @@ Spm spm;
 
 class Dcm {
 public:
-	void cw() {
-		digitalWrite(DCM1_PIN, HIGH);
+	void cw(int spd) {
+		analogWrite(DCM1_PIN, spd);
 		digitalWrite(DCM2_PIN, LOW);
 	}
-	void ccw() {
+	void ccw(int spd) {
 		digitalWrite(DCM1_PIN, LOW);
-		digitalWrite(DCM2_PIN, HIGH);
+		analogWrite(DCM2_PIN, spd);
 	}
 	void br() {
 		digitalWrite(DCM1_PIN, HIGH);
@@ -280,22 +284,22 @@ public:
 		digitalWrite(DCM1_PIN, LOW);
 		digitalWrite(DCM2_PIN, LOW);
 	}
-	void operator()(uint8_t m) {
-		switch (m) {
-			case CW:
-				cw();
-				break;
-			case CCW:
-				ccw();
-				break;
-			case BR:
-				br();
-				break;
-			default:
-				fr();
-				break;
-		}
-	}
+	// void operator()(uint8_t m) {
+	// 	switch (m) {
+	// 	case CW:
+	// 		cw();
+	// 		break;
+	// 	case CCW:
+	// 		ccw();
+	// 		break;
+	// 	case BR:
+	// 		br();
+	// 		break;
+	// 	default:
+	// 		fr();
+	// 		break;
+	// 	}
+	// }
 };
 Dcm dcm;
 
