@@ -151,10 +151,14 @@ int& x = in.x;
 int& y = in.y;
 
 void disp(char a, char b) {
-	PORTA &= ~LAT1_BIT;
-	fsout(a);
-	fsout(b);
-	PORTA |= LAT1_BIT;
+	static int pa = -1, pb = -1;
+	if (pa != (uint8_t)a || pb != (uint8_t)b) {
+		pa = (uint8_t)a; pb = (uint8_t)b;
+		PORTA &= ~LAT1_BIT;
+		fsout(a);
+		fsout(b);
+		PORTA |= LAT1_BIT;
+	}
 }
 
 void isr();
