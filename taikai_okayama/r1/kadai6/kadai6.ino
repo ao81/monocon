@@ -46,7 +46,15 @@ Data getData(int n) {
 	Data res = { 0, 0 };
 	int sr = getSeireki(n);
 
-	if (sr >= 1921 && sr <= 1925) { sr -= 1911; res.nengou_idx = 0; } else if (sr >= 1926 && sr <= 1988) { sr -= 1925; res.nengou_idx = 1; } else if (sr >= 1989 && sr <= 2018) { sr -= 1988; res.nengou_idx = 2; } else { sr -= 2018; res.nengou_idx = 3; }
+	if (sr >= 1921 && sr <= 1925) {
+		sr -= 1911; res.nengou_idx = 0;
+	} else if (sr >= 1926 && sr <= 1988) {
+		sr -= 1925; res.nengou_idx = 1;
+	} else if (sr >= 1989 && sr <= 2018) {
+		sr -= 1988; res.nengou_idx = 2;
+	} else {
+		sr -= 2018; res.nengou_idx = 3;
+	}
 
 	res.wareki = sr;
 	return res;
