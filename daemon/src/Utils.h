@@ -1,5 +1,8 @@
 #pragma once
 
+// windows.h を間接的に引き込むヘッダより前に NOMINMAX を定義しておく
+// これにより min/max マクロと std::max/std::min の衝突を全翻訳単位で防ぐ
+
 #include <string>
 #include <vector>
 #include <filesystem>

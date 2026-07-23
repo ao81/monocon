@@ -25,11 +25,13 @@ namespace Builder {
 	struct CompileResult {
 		bool success = false;
 		bool cached = false;       // ソース変更なしでスキップしたか
+		int  recompiledFiles = 0;  // 今回コンパイルしたファイル数
+		int  totalFiles = 0;       // スケッチ内の総ソースファイル数
 		std::string hexFile;
 		std::string elfFile;
 		double buildTimeMs = 0;
 		std::string errorMessage;
-		std::string compilerOutput; // avr-g++ などの stderr/stdout
+		std::string compilerOutput;
 	};
 
 	struct UploadRequest {

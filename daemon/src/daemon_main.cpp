@@ -5,6 +5,7 @@
 #include "port_scanner.h"
 
 #include <windows.h>
+
 #include <sddl.h>
 
 #include <atomic>
@@ -64,6 +65,23 @@ static SECURITY_ATTRIBUTES* makePipeSecurity(SECURITY_ATTRIBUTES& sa,
 	sa.lpSecurityDescriptor = pSD;
 	sa.bInheritHandle = FALSE;
 	return &sa;
+}
+
+// =============================================================================
+// シャットダウン用イベント
+//   SetEvent(g_hShutdownEvent) を呼ぶと、
+//   WaitForSingleObject でブロック中の全スレッドが即座に起きる。
+// =============================================================================
+static HANDLE g_hShutdownEvent = nullptr;
+
+static void triggerShutdown() {
+	g_state.shutdownRequested = true;
+	if (g_hShutdownEvent) SetEvent(g_hShutdownEvent);
+	// ConnectNamedPipe でブロック中のパイプサーバも起こす
+	HANDLE h = CreateFileA(PipeIO::makePipeName().c_str(),
+		GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+		OPEN_EXISTING, 0, nullptr);
+	if (h != INVALID_HANDLE_VALUE) CloseHandle(h);
 }
 
 // =============================================================================
@@ -190,7 +208,7 @@ static void processOneConnection(HANDLE hPipe) {
 		else if (method == "invalidateCache") result = handleInvalidateCache(params);
 		else if (method == "shutdown") {
 			result = json::object();
-			g_state.shutdownRequested = true;
+			triggerShutdown();
 		} else throw std::runtime_error("Unknown method: " + method);
 		resp = buildOkResponse(reqId, result);
 	} catch (std::exception& e) {
@@ -261,22 +279,26 @@ static void runPipeServer() {
 }
 
 // =============================================================================
-// アイドル監視: 30 分無リクエストで shutdown
+// アイドル監視: N 分無リクエストで自動 shutdown
+//   WaitForSingleObject でシャットダウンイベントを待つため、
+//   shutdown 指示が来た瞬間に即座に終了する。
 // =============================================================================
 static void idleWatchdog(int idleMinutes) {
 	using namespace std::chrono;
 	const auto timeout = minutes(idleMinutes);
+	// チェック間隔: 30 秒。体感の遅延をなくしつつ CPU は使わない。
+	constexpr DWORD kCheckIntervalMs = 30 * 1000;
+
 	while (!g_state.shutdownRequested) {
-		std::this_thread::sleep_for(seconds(60));
+		// シャットダウンイベントか、タイムアウトまで待機
+		DWORD wr = WaitForSingleObject(g_hShutdownEvent, kCheckIntervalMs);
+		if (wr == WAIT_OBJECT_0) break;  // shutdown 通知を受けた
+
 		auto idle = steady_clock::now() - g_state.lastRequestAt;
 		if (idle > timeout) {
-			logInfo("Idle timeout reached - shutting down.");
-			g_state.shutdownRequested = true;
-			// パイプサーバの ConnectNamedPipe を起こすため自分で 1 回 connect
-			HANDLE h = CreateFileA(PipeIO::makePipeName().c_str(),
-				GENERIC_READ | GENERIC_WRITE, 0, nullptr,
-				OPEN_EXISTING, 0, nullptr);
-			if (h != INVALID_HANDLE_VALUE) CloseHandle(h);
+			logInfo("Idle timeout (" + std::to_string(idleMinutes)
+				+ " min) reached - shutting down.");
+			triggerShutdown();
 			break;
 		}
 	}
@@ -294,26 +316,30 @@ static void portChangeWatcher() {
 		logWarn("Cannot open SERIALCOMM for change notify");
 		return;
 	}
-	HANDLE hEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+	HANDLE hRegEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+
+	// 監視対象を shutdown イベントとレジストリ変化イベントの 2 つにする
+	HANDLE waitHandles[2] = { g_hShutdownEvent, hRegEvent };
 
 	while (!g_state.shutdownRequested) {
-		ResetEvent(hEvent);
+		ResetEvent(hRegEvent);
 		LONG nr = RegNotifyChangeKeyValue(hKey, FALSE,
-			REG_NOTIFY_CHANGE_LAST_SET, hEvent, TRUE);
+			REG_NOTIFY_CHANGE_LAST_SET, hRegEvent, TRUE);
 		if (nr != ERROR_SUCCESS) {
-			Sleep(2000);
+			// 登録失敗: shutdown イベントだけ待って再試行
+			WaitForSingleObject(g_hShutdownEvent, 2000);
 			continue;
 		}
-		// 5 秒タイムアウトで shutdown チェックを兼ねる
-		DWORD wr = WaitForSingleObject(hEvent, 5000);
-		if (g_state.shutdownRequested) break;
-		if (wr == WAIT_OBJECT_0) {
+		// どちらかが先に来るまで待機
+		DWORD wr = WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
+		if (wr == WAIT_OBJECT_0) break;          // shutdown イベント
+		if (wr == WAIT_OBJECT_0 + 1) {           // レジストリ変化
 			refreshComPorts();
 			logInfo("COM port list refreshed (registry changed)");
 		}
 	}
 
-	CloseHandle(hEvent);
+	CloseHandle(hRegEvent);
 	RegCloseKey(hKey);
 }
 
@@ -324,11 +350,7 @@ static BOOL WINAPI consoleHandler(DWORD signal) {
 	if (signal == CTRL_C_EVENT || signal == CTRL_BREAK_EVENT
 		|| signal == CTRL_CLOSE_EVENT) {
 		logInfo("Console signal received, shutting down");
-		g_state.shutdownRequested = true;
-		HANDLE h = CreateFileA(PipeIO::makePipeName().c_str(),
-			GENERIC_READ | GENERIC_WRITE, 0, nullptr,
-			OPEN_EXISTING, 0, nullptr);
-		if (h != INVALID_HANDLE_VALUE) CloseHandle(h);
+		triggerShutdown();
 		return TRUE;
 	}
 	return FALSE;
@@ -342,7 +364,7 @@ int main(int argc, char* argv[]) {
 	SetConsoleCP(CP_UTF8);
 
 	// --- 引数 ---
-	int idleMinutes = 30;
+	int idleMinutes = 5;   // デフォルト: 5 分無操作で自動終了
 	for (int i = 1; i < argc; ++i) {
 		std::string a = argv[i];
 		if (a == "--no-daemonize" || a == "--foreground") g_foreground = true;
@@ -352,24 +374,46 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	initLogger();
-	logInfo("=== arduino-build-daemon starting ===");
+	// =========================================================================
+	// 【重要】シングルインスタンス保証は main() の先頭で行う。
+	// ロガー初期化やツールチェーン解決などより前に実施しないと、
+	// 複数の daemon がログファイルやキャッシュを同時に書く競合が起きる。
+	//
+	// CreateMutex は GetLastError() を直前に呼ばないと値が信用できないので、
+	// 同じ行内で取得する。
+	// =========================================================================
+	const std::string mutexName = PipeIO::makeMutexName();
+	HANDLE hMutex = CreateMutexA(nullptr, FALSE, mutexName.c_str());
+	const DWORD mutexErr = GetLastError();   // ← 取得直後に固定
 
-	// --- シングルインスタンス ---
-	HANDLE hMutex = CreateMutexA(nullptr, FALSE, PipeIO::makeMutexName().c_str());
 	if (hMutex == nullptr) {
-		logErr("CreateMutex failed");
+		// CreateMutex 自体が失敗した稀なケース
+		std::cerr << "CreateMutex failed: " << mutexErr << std::endl;
 		return 1;
 	}
-	if (GetLastError() == ERROR_ALREADY_EXISTS) {
-		logInfo("Another instance is already running. Exiting.");
+	if (mutexErr == ERROR_ALREADY_EXISTS) {
+		// 別の daemon が既に走っている → 即終了 (ログも書かない)
+		CloseHandle(hMutex);
 		return 0;
+	}
+
+	// ここに来た時点で「自分が唯一の daemon」が確定
+	initLogger();
+	logInfo("=== arduino-build-daemon starting (pid=" +
+		std::to_string(GetCurrentProcessId()) +
+		", idle=" + std::to_string(idleMinutes) + "min) ===");
+
+	// --- シャットダウンイベント作成 ---
+	g_hShutdownEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+	if (!g_hShutdownEvent) {
+		logErr("CreateEvent failed");
+		CloseHandle(hMutex);
+		return 1;
 	}
 
 	// --- ツールチェーン解決 ---
 	if (!initializeDaemonState()) {
 		logErr("Toolchain init failed: " + g_state.toolchain.errorMessage);
-		// 起動だけは継続。ping で error を返せるように。
 	} else {
 		logInfo("Toolchain OK: " + g_state.toolchain.compilerVersion);
 	}
@@ -384,10 +428,12 @@ int main(int argc, char* argv[]) {
 	runPipeServer();
 
 	g_state.shutdownRequested = true;
+	if (g_hShutdownEvent) SetEvent(g_hShutdownEvent);
 	if (idleThread.joinable()) idleThread.join();
 	if (portThread.joinable()) portThread.join();
 
 	logInfo("=== daemon exit ===");
 	CloseHandle(hMutex);
+	CloseHandle(g_hShutdownEvent);
 	return 0;
 }
