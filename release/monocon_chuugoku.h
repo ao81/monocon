@@ -189,6 +189,10 @@ protected:
 	bool fHtol;
 	uint8_t ltohEpoch;
 	uint8_t htolEpoch;
+	bool fHeldRelease;
+	uint8_t heldReleaseLevel;
+	uint32_t heldReleaseDuration;
+	uint8_t heldReleaseEpoch;
 
 	void pollWith(uint8_t raw, uint32_t now) {
 		raw = raw ? HIGH : LOW;
@@ -216,17 +220,29 @@ protected:
 			if (lockMs != 0) return;
 		}
 
-		if (static_cast<uint32_t>(now - st.candidateSince) < lockMs) return;
+		if (static_cast<uint32_t>(now - st.candidateSince) < lockMs) {
+			return;
+		}
 
 		const uint8_t old = st.stable;
+		const uint32_t duration =
+			static_cast<uint32_t>(st.candidateSince - st.stableSince);
+
 		st.stable = raw;
 		st.stableSince = now;
 		st.candidateActive = false;
 		st.fired = false;
+
+		fHeldRelease = true;
+		heldReleaseLevel = old;
+		heldReleaseDuration = duration;
+		heldReleaseEpoch = board_detail::loopEpoch;
+
 		if (old == LOW && raw == HIGH) {
 			fLtoh = true;
 			ltohEpoch = board_detail::loopEpoch;
 		}
+
 		if (old == HIGH && raw == LOW) {
 			fHtol = true;
 			htolEpoch = board_detail::loopEpoch;
@@ -237,15 +253,29 @@ protected:
 		if (fLtoh && static_cast<uint8_t>(epoch - ltohEpoch) > 1U) {
 			fLtoh = false;
 		}
+
 		if (fHtol && static_cast<uint8_t>(epoch - htolEpoch) > 1U) {
 			fHtol = false;
+		}
+
+		if (fHeldRelease &&
+			static_cast<uint8_t>(epoch - heldReleaseEpoch) > 1U) {
+			fHeldRelease = false;
 		}
 	}
 
 public:
 	explicit InEdge(uint16_t lock = 10)
-		: lockMs(lock), first(true), fLtoh(false), fHtol(false),
-		ltohEpoch(0), htolEpoch(0) {
+		: lockMs(lock),
+		first(true),
+		fLtoh(false),
+		fHtol(false),
+		ltohEpoch(0),
+		htolEpoch(0),
+		fHeldRelease(false),
+		heldReleaseLevel(LOW),
+		heldReleaseDuration(0),
+		heldReleaseEpoch(0) {
 		st.stable = LOW;
 		st.candidate = LOW;
 		st.stableSince = 0;
@@ -266,17 +296,35 @@ public:
 		return v;
 	}
 
-	bool level() const { return st.stable; }
+	bool level() const {
+		return st.stable;
+	}
 
-	operator bool() const { return st.stable; }
+	operator bool() const {
+		return st.stable;
+	}
 
-	bool held(uint16_t ms, bool lv) {
+	bool held(uint16_t ms, bool lv, bool release = false) {
+		const uint8_t target = lv ? HIGH : LOW;
+
+		if (release) {
+			if (!fHeldRelease || heldReleaseLevel != target) {
+				return false;
+			}
+
+			fHeldRelease = false;
+			return heldReleaseDuration >= ms;
+		}
+
 		const uint32_t now = atomicMillis();
-		if (st.stable == static_cast<uint8_t>(lv) && !st.fired &&
+
+		if (st.stable == target &&
+			!st.fired &&
 			static_cast<uint32_t>(now - st.stableSince) >= ms) {
 			st.fired = true;
 			return true;
 		}
+
 		return false;
 	}
 
