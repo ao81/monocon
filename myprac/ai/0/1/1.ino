@@ -1,13 +1,14 @@
-// 途中まで
-
 #define USE_TIMER3_ISR
 #include "mono_con.h"
 
 const int bz_c4 = 262;
+const int speed = 100;
+
+const int yoko = 0x49;
 
 int tsw, sw, ph, x, y;
-int preph;
-bool phpsd = false, phpsu = false;
+int pretsw, presw, preph;
+bool swps = false, phpsd = false, phpsu = false;
 
 int phase = 0;
 int idx = 4;
@@ -19,6 +20,8 @@ int tgl = 1;
 int cnt = 0;
 bool led = false;
 bool close = false;
+
+bool sto = false;
 
 word spm, tc;
 
@@ -38,6 +41,16 @@ void ccw() {
 	lm.color.SM = stepm_init(phase);
 }
 
+void dmcw() {
+	analogWrite(FIN_PIN, speed);
+	digitalWrite(RIN_PIN, LOW);
+}
+
+void stop() {
+	digitalWrite(FIN_PIN, HIGH);
+	digitalWrite(RIN_PIN, HIGH);
+}
+
 ISR(TIMER3_COMPA_vect) {
 	static word in = 0;
 	if (in++ > 5) {
@@ -51,9 +64,11 @@ ISR(TIMER3_COMPA_vect) {
 
 		idx = getidx(x, y);
 
+		if (sw == LOW && presw == HIGH) swps = true;
 		if (tsw == HIGH && ph == HIGH && preph == LOW) phpsd = true;
 		if (tsw == HIGH && ph == LOW && preph == HIGH) phpsu = true;
 
+		presw = sw;
 		preph = ph;
 	}
 
@@ -65,74 +80,100 @@ void setup() {
 	config_init();
 	serial_init();
 
-	tsw = digitalRead(_USER_CON_5PIN);
-	sw = digitalRead(_USER_CON_4PIN);
+	tsw = pretsw = digitalRead(_USER_CON_5PIN);
+	sw = presw = digitalRead(_USER_CON_4PIN);
 	ph = preph = digitalRead(_USER_CON_3PIN);
 }
 
 void loop() {
-	if (tsw == LOW) {
-		lm.color.GBR = B100;
+	if (tsw != pretsw) {
+		pretsw = tsw;
+		if (sto) sto = false;
+	}
 
-		if (idx >= 0 && idx <= 2) {
-			if (spm >= 40) {
-				spm = 0;
-				cw();
-			}
-		} else if (idx >= 6 && idx <= 8) {
-			if (spm >= 40) {
-				spm = 0;
-				ccw();
-			}
+	if (swps) {
+		swps = false;
+		sto = true;
+		tc = 500;
+		tgl = 1;
+	}
+
+	if (sto) {
+		lm.color.GBR = B000;
+		if (tc >= 500) {
+			tc = 0;
+			disp(yoko, yoko);
+			if (tgl) tone(BZ_PIN, 1600);
+			else tone(BZ_PIN, 800);
+			tgl = !tgl;
 		}
 
-		disp(0x00, 0x00);
 	} else {
-		if (!led) lm.color.GBR = B010;
+		noTone(BZ_PIN);
 
-		if (phpsd) {
-			phpsd = false;
+		if (tsw == LOW) {
+			lm.color.GBR = B100;
 
-			tone(BZ_PIN, bz_c4);
-			angle = 30;
-		}
-
-		if (phpsu) {
-			phpsu = false;
-			led = true;
-			tc = 500;
-			tgl = 1;
-			cnt = 0;
-		}
-
-		if (led) {
-			if (tc >= 500) {
-				tc = 0;
-
-				lm.color.GBR = (tgl ? B100 : B000);
-				tgl = !tgl;
-				if (++cnt > 6) {
-					led = false;
-					angle = 30;
-					close = true;
+			if (idx >= 0 && idx <= 2) {
+				if (spm >= 40) {
+					spm = 0;
+					cw();
+				}
+			} else if (idx >= 6 && idx <= 8) {
+				if (spm >= 40) {
+					spm = 0;
+					ccw();
 				}
 			}
-		}
 
-		if (angle != 0) {
-			if (spm >= 40) {
-				spm = 0;
-				cw();
-				angle--;
-			}
-		} else if (close) {
-			close = false;
-			incar++;
+			disp(0x00, 0x00);
 		} else {
-			noTone(BZ_PIN);
-		}
+			if (!led) lm.color.GBR = B010;
 
-		disp(num[incar], 0x00);
+			if (phpsd) {
+				phpsd = false;
+
+				tone(BZ_PIN, bz_c4);
+				angle = 30;
+			}
+
+			if (phpsu) {
+				phpsu = false;
+				led = true;
+				tc = 500;
+				tgl = 1;
+				cnt = 0;
+			}
+
+			if (led) {
+				if (tc >= 500) {
+					tc = 0;
+
+					lm.color.GBR = (tgl ? B100 : B000);
+					tgl = !tgl;
+					if (++cnt > 6) {
+						led = false;
+						angle = 30;
+						close = true;
+					}
+				}
+			}
+
+			if (angle != 0) {
+				if (spm >= 40) {
+					spm = 0;
+					cw();
+					angle--;
+				}
+			} else if (close) {
+				close = false;
+				incar++;
+			} else {
+				noTone(BZ_PIN);
+			}
+
+			disp(num[incar], 0x00);
+		}
 	}
 
 	led_stepmotor(lm.b8);
