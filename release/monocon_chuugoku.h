@@ -252,7 +252,7 @@ protected:
 		}
 	}
 
-	void expireEdges(uint8_t epoch) {
+	void serviceEdges(uint8_t epoch) {
 		if (fLtoh && static_cast<uint8_t>(epoch - ltohEpoch) > 1U) {
 			fLtoh = false;
 		}
@@ -339,6 +339,97 @@ public:
 	}
 };
 
+class Sig : public InEdge {
+private:
+	static Sig* head_;
+	Sig* next_;
+
+	void attach() {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			next_ = head_;
+			head_ = this;
+		}
+	}
+
+	void detach() {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			Sig** link = &head_;
+			while (*link && *link != this) {
+				link = &((*link)->next_);
+			}
+			if (*link == this) {
+				*link = next_;
+			}
+			next_ = nullptr;
+		}
+	}
+
+public:
+	explicit Sig(uint16_t lock = 0)
+		: InEdge(lock), next_(nullptr) {
+		attach();
+	}
+
+	~Sig() {
+		detach();
+	}
+
+	Sig(const Sig&) = delete;
+	Sig& operator=(const Sig&) = delete;
+
+	bool set(bool condition) {
+		pollWith(condition ? HIGH : LOW, atomicMillis());
+		return level();
+	}
+
+	bool update(bool condition) {
+		return set(condition);
+	}
+
+	bool operator()(bool condition) {
+		return set(condition);
+	}
+
+	void reset(bool level = false) {
+		const uint8_t raw = level ? HIGH : LOW;
+		const uint32_t now = atomicMillis();
+
+		first = false;
+		st.stable = raw;
+		st.candidate = raw;
+		st.stableSince = now;
+		st.candidateSince = now;
+		st.candidateActive = false;
+		st.fired = false;
+		fLtoh = false;
+		fHtol = false;
+		ltohEpoch = board_detail::loopEpoch;
+		htolEpoch = board_detail::loopEpoch;
+	}
+
+	bool initialized() const {
+		return !first;
+	}
+
+	bool changed() {
+		const bool result = fLtoh || fHtol;
+		fLtoh = false;
+		fHtol = false;
+		return result;
+	}
+
+	uint32_t elapsed() const {
+		if (first) return 0;
+		return static_cast<uint32_t>(atomicMillis() - st.stableSince);
+	}
+
+	static void serviceAll(uint8_t epoch) {
+		for (Sig* p = head_; p; p = p->next_) {
+			p->serviceEdges(epoch);
+		}
+	}
+};
+
 class Di : public InEdge {
 private:
 	volatile uint8_t* reg;
@@ -364,9 +455,9 @@ public:
 		}
 	}
 
-	static void expireAll(uint8_t epoch) {
+	static void serviceAll(uint8_t epoch) {
 		const uint8_t n = nList;
-		for (uint8_t i = 0; i < n; ++i) list[i]->expireEdges(epoch);
+		for (uint8_t i = 0; i < n; ++i) list[i]->serviceEdges(epoch);
 	}
 };
 
@@ -395,9 +486,9 @@ public:
 		}
 	}
 
-	static void expireAll(uint8_t epoch) {
+	static void serviceAll(uint8_t epoch) {
 		const uint8_t n = nList;
-		for (uint8_t i = 0; i < n; ++i) list[i]->expireEdges(epoch);
+		for (uint8_t i = 0; i < n; ++i) list[i]->serviceEdges(epoch);
 	}
 };
 
@@ -1852,6 +1943,7 @@ namespace board_detail {
 
 volatile uint32_t tms = 0;
 
+Sig* Sig::head_ = nullptr;
 Di* Di::list[8] = {};
 uint8_t Di::nList = 0;
 Pr* Pr::list[8] = {};
@@ -2068,8 +2160,9 @@ void loop() {
 	board_detail::service();
 
 	const uint8_t epoch = ++board_detail::loopEpoch;
-	Di::expireAll(epoch);
-	Pr::expireAll(epoch);
+	Sig::serviceAll(epoch);
+	Di::serviceAll(epoch);
+	Pr::serviceAll(epoch);
 }
 
 #define setup userSetup
