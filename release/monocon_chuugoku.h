@@ -122,20 +122,35 @@ class In {
 	static const uint8_t NCH = 12;
 	Dch ch[NCH] = {};
 
-	Dch* slot(uint8_t pin) {
-		Dch* freeCh = nullptr;
+	static bool readPin(volatile uint8_t* reg, uint8_t mask) {
+		return (*reg & mask) ? HIGH : LOW;
+	}
+
+	Dch* findDch(uint8_t pin, Dch*& firstFree) {
+		firstFree = nullptr;
 		for (uint8_t i = 0; i < NCH; i++) {
 			if (ch[i].init && ch[i].pin == pin) return &ch[i];
-			if (!ch[i].init && !freeCh) freeCh = &ch[i];
+			if (!ch[i].init && !firstFree) firstFree = &ch[i];
 		}
+		return nullptr;
+	}
+
+	void initDch(Dch& c, uint8_t pin) {
+		c.pin = pin;
+		c.reg = portInputRegister(digitalPinToPort(pin));
+		c.mask = digitalPinToBitMask(pin);
+		c.stable = readPin(c.reg, c.mask);
+		c.t = millis();
+		c.fired = false;
+		c.init = true;
+	}
+
+	Dch* slot(uint8_t pin) {
+		Dch* freeCh;
+		Dch* found = findDch(pin, freeCh);
+		if (found) return found;
 		if (!freeCh) return nullptr;
-		freeCh->pin = pin;
-		freeCh->reg = portInputRegister(digitalPinToPort(pin));
-		freeCh->mask = digitalPinToBitMask(pin);
-		freeCh->stable = (*freeCh->reg & freeCh->mask) ? HIGH : LOW;
-		freeCh->t = millis();
-		freeCh->fired = false;
-		freeCh->init = true;
+		initDch(*freeCh, pin);
 		return freeCh;
 	}
 
@@ -152,22 +167,33 @@ class In {
 	static const uint8_t NEC = 6;
 	Ech ec[NEC] = {};
 
-	Ech* eslot(uint8_t pa, uint8_t pb) {
-		Ech* freeCh = nullptr;
+	Ech* findEch(uint8_t pa, uint8_t pb, Ech*& firstFree) {
+		firstFree = nullptr;
 		for (uint8_t i = 0; i < NEC; i++) {
 			if (ec[i].init && ec[i].pa == pa && ec[i].pb == pb) return &ec[i];
-			if (!ec[i].init && !freeCh) freeCh = &ec[i];
+			if (!ec[i].init && !firstFree) firstFree = &ec[i];
 		}
+		return nullptr;
+	}
+
+	void initEch(Ech& e, uint8_t pa, uint8_t pb) {
+		e.pa = pa;
+		e.pb = pb;
+		e.ra = portInputRegister(digitalPinToPort(pa));
+		e.ma = digitalPinToBitMask(pa);
+		e.rb = portInputRegister(digitalPinToPort(pb));
+		e.mb = digitalPinToBitMask(pb);
+		e.est = 0;
+		e.c = 0;
+		e.init = true;
+	}
+
+	Ech* eslot(uint8_t pa, uint8_t pb) {
+		Ech* freeCh;
+		Ech* found = findEch(pa, pb, freeCh);
+		if (found) return found;
 		if (!freeCh) return nullptr;
-		freeCh->pa = pa;
-		freeCh->pb = pb;
-		freeCh->ra = portInputRegister(digitalPinToPort(pa));
-		freeCh->ma = digitalPinToBitMask(pa);
-		freeCh->rb = portInputRegister(digitalPinToPort(pb));
-		freeCh->mb = digitalPinToBitMask(pb);
-		freeCh->est = 0;
-		freeCh->c = 0;
-		freeCh->init = true;
+		initEch(*freeCh, pa, pb);
 		return freeCh;
 	}
 
@@ -175,14 +201,21 @@ public:
 	de d(uint8_t pin, uint16_t lock = 10) {
 		Dch* c = slot(pin);
 		if (!c) return { LOW, false, false };
-		uint8_t raw = (*c->reg & c->mask) ? HIGH : LOW;
+
+		uint8_t raw = readPin(c->reg, c->mask);
 		de r = { c->stable, false, false };
-		if (raw == c->stable) return r;
+
+		bool changed = (raw != c->stable);
+		if (!changed) return r;
+
 		unsigned long now = millis();
-		if (now - c->t < lock) return r;
-		r.ltoh = (c->stable == LOW && raw == HIGH);
-		r.htol = (c->stable == HIGH && raw == LOW);
+		bool locked = (now - c->t < lock);
+		if (locked) return r;
+
 		r.level = raw;
+		r.ltoh = (c->stable == LOW);
+		r.htol = (c->stable == HIGH);
+
 		c->stable = raw;
 		c->t = now;
 		c->fired = false;
