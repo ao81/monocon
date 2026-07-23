@@ -37,8 +37,10 @@ void ccw() {
 }
 
 int getdir(int from, int to) {
+	from = (from + 120) % 120;
 	int diff = to - from;
 	if (diff > 60) diff -= 120;
+	if (diff < -60) diff += 120;
 	return diff;
 }
 
@@ -84,6 +86,7 @@ void loop() {
 			lm.color.GBR = B001;
 			move = false;
 			ok = false;
+			swps = phps = false;
 		} else lm.color.GBR = B100;
 	}
 
@@ -94,6 +97,7 @@ void loop() {
 				move = true;
 				tgl = true;
 			}
+			phps = false;
 		}
 
 		if (move) {
@@ -147,6 +151,7 @@ void loop() {
 				to++;
 				angle--;
 			}
+			angle = (angle + 120) % 120;
 		}
 
 		disp(num[yidx], num[4 - xidx]);
