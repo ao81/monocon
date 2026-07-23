@@ -2,102 +2,227 @@
 #include "mono_con.h"
 
 const int x_pin = A1;
-const int D1    = 17; // PH
-const int D2    = 18; // SW
-const int D3    = 19; // TSW
+const int D1 = 17;  // PH
+const int D2 = 18;  // SW
+const int D3 = 19;  // TSW
+
+const int ledParam[2] = { B100, B000 };                                              // green, blank
+const int handLed[3] = { 0x3f, 0x3e, 0x73 };                                            // グー, チョキ, パーのled表示
+const int char_cnt[3] = { 3, 6, 6 };                                                 // グリコゲームの文字数
+const int pitch_hz[11] = { 254, 262, 277, 293, 311, 329, 349, 391, 440, 493, 523 };  // 音程ごとの周波数
+const int se_pitch_idx[3][6] = {
+  { 6, 0, 1, -1, -1, -1 },
+  { 1, 5, 7, 10, 0, 1 },
+  { 5, 3, 1, 8, 0, 1 }
+};
 
 int x_pos = 0;
-int PH    = 0;
-int SW    = 0;
-int TSW   = 0;
+int PH = 0;
+int SW = HIGH;
+int TSW = 0;
 
-int prev_SW  = 0;
-int prev_TSW = 0;
+int prev_sw = HIGH, prev_tsw = HIGH;
+int ex = 0;
 
-const int ledColor[2] = { B000, B100 };
-const int hand7seg[3] = { 0x3f, 0x3e, 0x73 };
+int step_rem = 0;
+int step_dir = 1;
 
-typedef enum {
-	INIT,
-	PLAYING,
-	WAITING,
-} GameStatus;
-GameStatus gs = INIT;
-
-typedef enum {
-	GU,
-	TYO,
-	PA,
-} Hand;
-Hand pl_hand = GU, cp_hand = GU;
-
-word in;
+word in, spm, ff, se;
 int cnt = -1;
 
-ISR (TIMER3_COMPA_vect) {
-	if (in > 5) {
-		in = 0;
+int playing_ff = 2;  // 0:pl 1:cp 2:stop
+int se_index = 0;   // 0~5
 
-		x_pos = analogRead(x_pin);
-		PH    = digitalRead(D1);
-		SW    = digitalRead(D2);
-		TSW   = digitalRead(D3);
-	}
+bool result_check = false;
 
-	in++;
+typedef enum {
+  PLAYING,
+  WAITING,
+  GAMEEND
+} GameState;
+GameState gs = GAMEEND;
 
-	if (cnt > -1) cnt--;
-
-	/* カウントダウン開始 */
-	if (SW == LOW && prev_SW == HIGH && gs == PLAYING) {
-		cnt = 3000;
-		gs = WAITING;
-	}
-	prev_SW  = SW;
-}
+typedef enum {
+  GU,
+  TYO,
+  PA,
+  NONE
+} Hand;
+Hand cp_hand = NONE, pl_hand = NONE;
+Hand se_hand = NONE;
 
 void setup() {
-	config_init();
-	serial_init();
+  config_init();
+  serial_init();
+  noTone(BZ_PIN);
+
+  disp(num[10], num[10]);
+}
+
+ISR(TIMER3_COMPA_vect) {
+  if (in > 5) {
+    in = 0;
+
+    x_pos = analogRead(A1);
+    PH = digitalRead(D1);
+    SW = digitalRead(D2);
+    TSW = digitalRead(D3);
+  }
+  in++;
+
+  if (spm > 400) {
+    spm = 0;
+    if (step_rem > 0) {
+      lm.bit.SM = stepm_init(((ex % 4) + 4) % 4);
+      led_stepmotor(lm.b8);
+      ex += step_dir;
+      step_rem--;
+
+      se = 400;
+    }
+  }
+  spm++;
+
+  if (se > 0) {
+    se--;
+    if (se == 399) {
+      if (se_index < char_cnt[se_hand]) {
+        tone(BZ_PIN, pitch_hz[se_pitch_idx[se_hand][se_index++]]);
+      }
+    } else if (se == 0) {
+      noTone(BZ_PIN);
+    }
+  }
+
+  if (cnt > 0) cnt--;
+  if (SW == LOW && prev_sw == HIGH && gs == PLAYING) {
+    cnt = 3000; // じゃんけんのカウントダウン
+    gs = WAITING;
+  }
+  prev_sw = SW;
+
+  if (playing_ff == 0) {  // pl
+    if (ff <= 2800) ff++;
+  } else if (playing_ff == 1) {  // cp
+    if (ff <= 800) ff++;
+  }
 }
 
 Hand input_hand() {
-	if (x_pos > 800) return GU;
-	else if (x_pos < 300) return PA;
-	else return TYO;
+  if (x_pos < 225) {
+    return PA;
+  } else if (x_pos > 775) {
+    return GU;
+  } else {
+    return TYO;
+  }
+}
+
+int judge(int p, int c) {  // じゃんけんの勝敗
+  return (p - c + 3) % 3;
+}
+
+void step_n(int n, Hand winner) {  // +:cw -:ccw
+  step_dir = (n > 0) ? 1 : -1;
+  step_rem = abs(n);
+  se_index = 0;
+  se_hand = winner;
+}
+
+void fanfare(int type) {
+  playing_ff = type;
+
+  if (type == 0) { // pl
+    playing_ff = 0;
+
+    if (ff < 400) {
+      tone(BZ_PIN, pitch_hz[1]);
+    } else if (ff < 600) {
+      tone(BZ_PIN, pitch_hz[5]);
+    } else if (ff < 800) {
+      tone(BZ_PIN, pitch_hz[7]);
+    } else if (ff < 1600) {
+      tone(BZ_PIN, pitch_hz[10]);
+    } else if (ff < 2400) {
+      tone(BZ_PIN, pitch_hz[9]);
+    } else if (ff < 2800) {
+      tone(BZ_PIN, pitch_hz[10]);
+    } else {
+      noTone(BZ_PIN);
+      playing_ff = 2;
+    }
+
+  } else if (type == 1) { // cp
+    playing_ff = 1;
+
+    int phase = (ff / 200) % 4;
+    int step = (ff % 200) / 50;
+
+    if (ff < 800) {
+      tone(BZ_PIN, pitch_hz[1 + step]);
+    } else {
+      noTone(BZ_PIN);
+      playing_ff = 2;
+    }
+  }
 }
 
 void loop() {
-	if (TSW == HIGH) {
-		if (TSW != prev_TSW) {
-			gs = PLAYING;
-		}
-		
-		/* カウントダウンの処理 */
-		if (cnt == 3000) disp(num[2], num[10]);
-		if (cnt == 2000) disp(num[1], num[10]);
-		if (cnt == 1000) disp(num[0], num[10]);
-		if (cnt == 0) {
-			gs = PLAYING; ////////////
-			
-			pl_hand = input_hand();
-			do {
-				cp_hand = random(1, 1000) % 3;
-			} while (pl_hand == cp_hand);
+  if (playing_ff == 0) fanfare(0);
+  else if (playing_ff == 1) fanfare(1);
 
-			disp(hand7seg[pl_hand], hand7seg[cp_hand]);
-		}
+  /* ゲームの勝敗判定 */
+  if (result_check && step_rem == 0) {
+    result_check = false;
+    gs = PLAYING;
+    ff = 0;
+    if (ex <= -14) {
+      fanfare(0);
+      gs = GAMEEND;
+    } else if (ex >= 14) {
+      fanfare(1);
+      gs = GAMEEND;
+    }
+  }
 
-	} else {
-		if (TSW != prev_TSW) {
-			gs = INIT;
-			disp(num[10], num[10]);
-		}
-		noTone(BZ_PIN);
-	}
-	
-	lm.color.GBR = ledColor[TSW];
-	led_stepmotor(lm.b8);
+  if (TSW == LOW) {
+    if (prev_tsw != TSW) gs = PLAYING;
 
-	prev_TSW = TSW;
+    lm.color.GBR = ledParam[0];
+    if (cnt == 3000) disp(num[2], num[10]);
+    if (cnt == 2000) disp(num[1], num[10]);
+    if (cnt == 1000) disp(num[0], num[10]);
+    if (cnt == 0) {
+      cnt = -1;
+
+      pl_hand = input_hand();
+      do {  // あいこにならないため
+        cp_hand = random(0, 3);
+      } while (pl_hand == cp_hand);
+
+      int result = judge(pl_hand, cp_hand);
+      if (result == 1) {  // cpの勝ち
+        disp(handLed[pl_hand], handLed[cp_hand] | 0x80);
+        step_n(char_cnt[cp_hand], cp_hand);
+      } else if (result == 2) {  // playerの勝ち
+        disp(handLed[pl_hand] | 0x80, handLed[cp_hand]);
+        step_n(-char_cnt[pl_hand], pl_hand);
+      }
+
+      result_check = true;
+    }
+
+  } else {
+    if (prev_tsw != TSW) {
+      gs = GAMEEND;
+      ex = 0;
+
+      noTone(BZ_PIN);
+      disp(num[10], num[10]);
+      lm.color.GBR = ledParam[1];
+    }
+  }
+
+  prev_tsw = TSW;
+  led_stepmotor(lm.b8);
 }
