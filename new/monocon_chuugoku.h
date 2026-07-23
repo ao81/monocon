@@ -18,7 +18,12 @@
 #include <stdint.h>
 #include <limits.h>
 
+// ============================================================================
+// よく使う部分: ピン名、色、基本入出力
+// ============================================================================
+
 #ifdef useir
+// 赤外線入力処理を呼び出す。
 void ir();
 #endif
 
@@ -31,7 +36,7 @@ constexpr uint8_t d2 = 11;
 constexpr uint8_t d3 = 12;
 constexpr uint8_t d4 = 13;
 
-// 7セグ固定配線: D6=PH3, D7=PH4, D8=PH5
+// 7セグ固定配線を表すビット定義。
 
 constexpr uint8_t SCK_BIT = _BV(PH3);
 constexpr uint8_t SDI_BIT = _BV(PH4);
@@ -49,6 +54,7 @@ constexpr uint8_t L = LOW;
 constexpr uint8_t H = HIGH;
 
 template <typename T, typename U, typename V>
+// 値を指定した下限と上限の範囲へ収める。
 inline T clamp(T v, U lo, V hi) {
 	return v < static_cast<T>(lo) ? static_cast<T>(lo)
 		: v > static_cast<T>(hi) ? static_cast<T>(hi) : v;
@@ -56,33 +62,33 @@ inline T clamp(T v, U lo, V hi) {
 
 extern volatile uint32_t tms;
 
+// 割り込み更新されるミリ秒時刻を安全に取得する。
 inline uint32_t monoconMillis() {
 	uint32_t v;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = tms; }
 	return v;
 }
 
+// 割り込み更新されるint値を安全に取得する。
 inline int monoconAtomicReadInt(volatile const int* p) {
 	int v;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = *p; }
 	return v;
 }
 
-// -------------------------------------------------------------
-// ADC: ADC完了割り込みで連続スキャン。待機ループは一切使用しない。
-// -------------------------------------------------------------
+// ADCを非同期の連続スキャンへ登録する。
 bool adcReg(uint8_t pin, volatile int* dst);
+// 指定アナログピンの最新値を取得する。
 int ar(uint8_t pin);
 
-// -------------------------------------------------------------
-// 共通GPIO
-// -------------------------------------------------------------
+// GPIOの入力値を直接読み取る。
 inline int dr(uint8_t pin) {
 	const uint8_t port = digitalPinToPort(pin);
 	if (port == NOT_A_PIN) return LOW;
 	return (*portInputRegister(port) & digitalPinToBitMask(pin)) ? HIGH : LOW;
 }
 
+// GPIOへ出力値を直接書き込む。
 inline void dw(uint8_t pin, uint8_t val) {
 	const uint8_t port = digitalPinToPort(pin);
 	if (port == NOT_A_PIN) return;
@@ -94,15 +100,21 @@ inline void dw(uint8_t pin, uint8_t val) {
 	}
 }
 
+// ============================================================================
+// 技術的な部分: 公開クラスを支える内部基盤
+// ============================================================================
+
 namespace monocon_detail {
 
 	extern uint8_t loopEpoch;
 
+	// パーセント値を0～255へ変換する。
 	inline uint8_t percentToByte(uint8_t p) {
 		if (p >= 100) return 255;
 		return static_cast<uint8_t>((static_cast<uint16_t>(p) * 255U + 50U) / 100U);
 	}
 
+	// シフトレジスタへ1ビットを送信する。
 	inline void shiftBit(uint8_t high) __attribute__((always_inline));
 	inline void shiftBit(uint8_t high) {
 		if (high) PORTH |= SDI_BIT;
@@ -111,7 +123,7 @@ namespace monocon_detail {
 		PORTH &= static_cast<uint8_t>(~SCK_BIT);
 	}
 
-	// 配線変更なし（D6/D7/D8）のため、8ビットを完全展開して送信する。
+	// 固定配線のシフトレジスタへ1バイトを完全展開して送信する。
 	inline void shiftByte(uint8_t v) __attribute__((always_inline));
 	inline void shiftByte(uint8_t v) {
 		shiftBit(v & 0x80);
@@ -124,6 +136,7 @@ namespace monocon_detail {
 		shiftBit(v & 0x01);
 	}
 
+	// 3桁分の表示データをシフトレジスタへ書き込む。
 	inline void writeDisplay3(uint8_t a, uint8_t b, uint8_t c) {
 		PORTH &= static_cast<uint8_t>(~LAT_BIT);
 		shiftByte(a);
@@ -132,6 +145,7 @@ namespace monocon_detail {
 		PORTH |= LAT_BIT;
 	}
 
+	// 2値を昇順になるよう交換する。
 	inline void compareSwap(int& a, int& b) {
 		if (a > b) {
 			const int t = a;
@@ -140,7 +154,7 @@ namespace monocon_detail {
 		}
 	}
 
-	// 固定7比較のmedian-of-five。コピー後の挿入ソートより実行時間が一定で短い。
+	// 固定7比較で5値の中央値を求める。
 	inline int median5(int a, int b, int c, int d, int e) {
 		compareSwap(a, b);
 		compareSwap(c, d);
@@ -157,9 +171,7 @@ namespace monocon_detail {
 
 } // namespace monocon_detail
 
-// -------------------------------------------------------------
-// 入力エッジ・安定時間デバウンス
-// -------------------------------------------------------------
+// 入力の安定状態とエッジ検出状態を保持する。
 struct Dch {
 	uint8_t stable;
 	uint8_t candidate;
@@ -169,6 +181,7 @@ struct Dch {
 	bool fired;
 };
 
+// 入力エッジを安定時間付きで検出する基底クラス。
 class InEdge {
 protected:
 	Dch st;
@@ -179,6 +192,7 @@ protected:
 	uint8_t ltohEpoch;
 	uint8_t htolEpoch;
 
+	// 生入力を安定時間でデバウンスし、エッジを記録する。
 	void pollWith(uint8_t raw, uint32_t now) {
 		raw = raw ? HIGH : LOW;
 
@@ -222,8 +236,7 @@ protected:
 		}
 	}
 
-	// 読まれなかったエッジは、検出後に1回の完全なloop()実行機会を
-	// 与えた後、自動的に破棄する。
+	// 未読エッジを1回の完全なloop()実行機会の後に破棄する。
 	void expireEdges(uint8_t epoch) {
 		if (fLtoh && static_cast<uint8_t>(epoch - ltohEpoch) > 1U) {
 			fLtoh = false;
@@ -234,6 +247,7 @@ protected:
 	}
 
 public:
+	// デバウンス時間を指定して入力エッジ状態を初期化する。
 	explicit InEdge(uint16_t lock = 10)
 		: lockMs(lock), first(true), fLtoh(false), fHtol(false),
 		ltohEpoch(0), htolEpoch(0) {
@@ -245,21 +259,26 @@ public:
 		st.fired = false;
 	}
 
+	// LOWからHIGHへのエッジを1回だけ取得する。
 	bool ltoh() {
 		const bool v = fLtoh;
 		fLtoh = false;
 		return v;
 	}
 
+	// HIGHからLOWへのエッジを1回だけ取得する。
 	bool htol() {
 		const bool v = fHtol;
 		fHtol = false;
 		return v;
 	}
 
+	// 現在の安定入力値を取得する。
 	bool level() const { return st.stable; }
+	// 現在の安定入力値を真偽値として取得する。
 	operator bool() const { return st.stable; }
 
+	// 指定レベルが指定時間続いたことを1回だけ通知する。
 	bool held(uint16_t ms, bool lv = LOW) {
 		const uint32_t now = monoconMillis();
 		if (st.stable == static_cast<uint8_t>(lv) && !st.fired &&
@@ -271,6 +290,11 @@ public:
 	}
 };
 
+// ============================================================================
+// よく使う部分: 入力・センサークラス
+// ============================================================================
+
+// デジタル入力のエッジと長押しを扱う。
 class di : public InEdge {
 private:
 	volatile uint8_t* reg;
@@ -279,6 +303,7 @@ private:
 	static uint8_t nList;
 
 public:
+	// デジタル入力ピンとデバウンス時間を登録する。
 	explicit di(uint8_t pin, uint16_t lock = 10)
 		: InEdge(lock),
 		reg(portInputRegister(digitalPinToPort(pin))),
@@ -288,6 +313,7 @@ public:
 		}
 	}
 
+	// 登録済みデジタル入力をすべて更新する。
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
@@ -296,12 +322,14 @@ public:
 		}
 	}
 
+	// 登録済みデジタル入力の未読エッジを整理する。
 	static void expireAll(uint8_t epoch) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->expireEdges(epoch);
 	}
 };
 
+// アナログ入力をしきい値判定してエッジとして扱う。
 class pr : public InEdge {
 private:
 	int th;
@@ -310,6 +338,7 @@ private:
 	static uint8_t nList;
 
 public:
+	// アナログ入力ピン、しきい値、デバウンス時間を登録する。
 	explicit pr(uint8_t pin, int threshold = 950, uint16_t lock = 10)
 		: InEdge(lock), th(threshold), _raw(0) {
 		adcReg(pin, &_raw);
@@ -318,6 +347,7 @@ public:
 		}
 	}
 
+	// 登録済みしきい値入力をすべて更新する。
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
@@ -327,6 +357,7 @@ public:
 		}
 	}
 
+	// 登録済みしきい値入力の未読エッジを整理する。
 	static void expireAll(uint8_t epoch) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->expireEdges(epoch);
@@ -342,6 +373,7 @@ constexpr int32_t slopeQ8[3] = {
 	(static_cast<int32_t>(sokMm[3] - sokMm[2]) << 8) / (sokAd[2] - sokAd[3])
 };
 
+// 測距センサーの値を中央値処理して距離へ変換する。
 class sok {
 private:
 	int ring[5];
@@ -350,6 +382,7 @@ private:
 	static sok* list[2];
 	static uint8_t nList;
 
+	// 1サンプルを中央値処理し、距離へ変換する。
 	void serviceOne() {
 		const int sample = monoconAtomicReadInt(&_raw);
 		ring[ri] = sample;
@@ -376,7 +409,7 @@ private:
 		if (m < sokMm[0]) m = sokMm[0];
 		if (m > sokMm[SOK_N - 1]) m = sokMm[SOK_N - 1];
 		mm = static_cast<int>(m);
-		cm = static_cast<float>(m) * 0.1f; // ISR外でのみ計算
+		cm = static_cast<float>(m) * 0.1f;
 	}
 
 public:
@@ -385,6 +418,7 @@ public:
 	int mm;
 	float cm;
 
+	// 測距センサーのアナログ入力ピンを登録する。
 	explicit sok(uint8_t pin)
 		: ri(0), sampleCount(0), _raw(0), raw(0), mm(0), cm(0.0f) {
 		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
@@ -394,18 +428,22 @@ public:
 		}
 	}
 
+	// 登録済み測距センサーをすべて更新する。
 	static void serviceAll() {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne();
 	}
 };
 
+// 可変抵抗の値を指定範囲へ変換する。
 class vr {
 public:
 	volatile int raw;
 
+	// 可変抵抗のアナログ入力ピンを登録する。
 	explicit vr(uint8_t pin) : raw(0) { adcReg(pin, &raw); }
 
+	// 入力値を指定範囲へ線形変換する。
 	int to(int lo, int hi) const {
 		const int v = monoconAtomicReadInt(&raw);
 		const int32_t span = static_cast<int32_t>(hi) - static_cast<int32_t>(lo);
@@ -414,16 +452,19 @@ public:
 	}
 };
 
+// 2軸ジョイスティックの方向を求める。
 class joy {
 public:
 	volatile int x;
 	volatile int y;
 
+	// ジョイスティックのX軸とY軸の入力ピンを登録する。
 	joy(uint8_t px, uint8_t py) : x(0), y(0) {
 		adcReg(px, &x);
 		adcReg(py, &y);
 	}
 
+	// 分割数、回転、反転を指定して入力方向を取得する。
 	int dir(int div, uint8_t rot = 0, bool mirror = false) const {
 		if (div <= 0) return -1;
 
@@ -437,7 +478,6 @@ public:
 		const int32_t dy = static_cast<int32_t>(vy) - 532;
 		if (dx * dx + dy * dy < 165000L) return -1;
 
-		// 使用頻度の高い4/8方向は浮動小数点とatan2を使わない。
 		if (div == 4) {
 			const int32_t ax = dx < 0 ? -dx : dx;
 			const int32_t ay = dy < 0 ? -dy : dy;
@@ -452,7 +492,6 @@ public:
 			const int32_t ax = dx < 0 ? -dx : dx;
 			const int32_t ay = dy < 0 ? -dy : dy;
 			int d;
-			// tan(22.5°) ≈ 0.414214, 1/tan ≈ 2.414214
 			if (ay * 1000L >= ax * 2414L) {
 				d = dy >= 0 ? 0 : 4;
 			} else if (ax * 1000L >= ay * 2414L) {
@@ -466,7 +505,6 @@ public:
 			return (d + ((rot & 3) << 1)) & 7;
 		}
 
-		// 任意分割数だけ互換性のためatan2を使用。ISR外なのでブザーには影響しない。
 		double th = atan2(static_cast<double>(dx), static_cast<double>(dy));
 		if (mirror) th = -th;
 		th += (rot & 3) * (PI / 2.0);
@@ -477,9 +515,7 @@ public:
 	}
 };
 
-// -------------------------------------------------------------
-// ロータリーエンコーダ: 10 kHz Timer1 ISR内は入力・FSM・有効時加算のみ。
-// -------------------------------------------------------------
+// ロータリーエンコーダを10 kHzで読み取り、回転量を管理する。
 class enc {
 private:
 	volatile uint8_t* ra;
@@ -495,6 +531,7 @@ private:
 	static enc* list[4];
 	static uint8_t nList;
 
+	// 2相入力を状態表で処理し、有効な回転だけ加算する。
 	inline void poll() {
 		static const uint8_t table[7][4] = {
 			{0x00, 0x02, 0x04, 0x00},
@@ -527,6 +564,7 @@ private:
 	}
 
 public:
+	// 2相の入力ピンと回転方向を登録する。
 	enc(uint8_t pa, uint8_t pb, bool d = true)
 		: ra(portInputRegister(digitalPinToPort(pa))),
 		rb(portInputRegister(digitalPinToPort(pb))),
@@ -537,17 +575,20 @@ public:
 		}
 	}
 
+	// 登録済みエンコーダを割り込みからすべて更新する。
 	static inline void isrPollAll() {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->poll();
 	}
 
+	// 累積回転数を安全に取得する。
 	int32_t count() const {
 		int32_t v;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = cnt; }
 		return v;
 	}
 
+	// 前回取得時からの回転差分を取得する。
 	int delta() {
 		const int32_t v = count();
 		const int32_t diff = v - last;
@@ -557,6 +598,7 @@ public:
 		return static_cast<int>(diff);
 	}
 
+	// 累積回転数を指定範囲へ収める。
 	int32_t clampTo(int32_t lo, int32_t hi) {
 		if (hi < lo) {
 			const int32_t t = lo; lo = hi; hi = t;
@@ -575,6 +617,7 @@ public:
 		}
 	}
 
+	// 累積回転数を指定範囲で循環させる。
 	int32_t loopTo(int32_t lo, int32_t hi) {
 		if (hi < lo) {
 			const int32_t t = lo; lo = hi; hi = t;
@@ -597,6 +640,7 @@ public:
 		}
 	}
 
+	// 累積回転数と差分基準を指定値へ設定する。
 	void set(int32_t v = 0) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			cnt = v;
@@ -606,9 +650,11 @@ public:
 	}
 };
 
-// -------------------------------------------------------------
-// フルカラーLED: PWM計算・ポート更新はISR外。
-// -------------------------------------------------------------
+// ============================================================================
+// よく使う部分: 表示・出力クラス
+// ============================================================================
+
+// フルカラーLEDの色と明るさを制御する。
 class Led {
 private:
 	uint8_t color;
@@ -616,6 +662,7 @@ private:
 	uint8_t acc;
 	uint8_t previousState;
 
+	// LEDの各色ポートへ出力状態を書き込む。
 	void writeState(uint8_t state) {
 		uint8_t pe = PORTE & static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
 		if (state & B) pe |= _BV(PE5);
@@ -627,8 +674,10 @@ private:
 	}
 
 public:
+	// LEDを消灯状態で初期化する。
 	Led() : color(0), opacity(255), acc(0), previousState(0xFF) {}
 
+	// LEDの色と明るさを設定する。
 	void operator()(uint8_t newColor, uint8_t opacityPercent = 100) {
 		newColor &= 0x07;
 		const uint8_t newOpacity = monocon_detail::percentToByte(
@@ -638,12 +687,13 @@ public:
 		opacity = newOpacity;
 	}
 
+	// LEDのPWM状態を1回更新する。
 	void serviceTick() {
 		uint8_t state;
 		if (opacity == 0 || color == 0) {
 			state = 0;
 		} else if (opacity == 255) {
-			state = color; // 真の100%。周期的な1 ms消灯を発生させない。
+			state = color;
 		} else {
 			const uint8_t old = acc;
 			acc = static_cast<uint8_t>(acc + opacity);
@@ -669,6 +719,7 @@ constexpr uint8_t SEG_DOT = 0x80;
 constexpr uint8_t SEG_MINUS = 0x40;
 constexpr uint8_t SEG_NONE = 0x00;
 
+// 3桁7セグメント表示器へ文字・数値・明るさを設定する。
 class Disp {
 private:
 	uint8_t pattern[3];
@@ -676,6 +727,7 @@ private:
 	uint8_t acc[3];
 	uint8_t previous[3];
 
+	// 文字を7セグメントの点灯パターンへ変換する。
 	static uint8_t toPattern(char c) {
 		if (c >= '0' && c <= '9') return seg[c - '0'];
 		if (c >= 'a' && c <= 'z') return alp[c - 'a'];
@@ -687,6 +739,7 @@ private:
 	}
 
 public:
+	// 3桁表示を消灯状態で初期化する。
 	Disp() {
 		for (uint8_t i = 0; i < 3; ++i) {
 			pattern[i] = 0;
@@ -696,6 +749,7 @@ public:
 		}
 	}
 
+	// 3桁分の点灯パターンを直接設定する。
 	Disp& operator()(uint8_t a, uint8_t b, uint8_t c) {
 		if (pattern[0] == a && pattern[1] == b && pattern[2] == c) return *this;
 		pattern[0] = a;
@@ -704,8 +758,10 @@ public:
 		return *this;
 	}
 
+	// 3桁をすべて消灯する。
 	Disp& off() { return (*this)(0, 0, 0); }
 
+	// 文字列の先頭3文字を表示する。
 	Disp& s(const char* text) {
 		if (!text) return off();
 		return (*this)(toPattern(text[0]),
@@ -713,6 +769,7 @@ public:
 			text[1] && text[2] ? toPattern(text[2]) : 0);
 	}
 
+	// 整数を3桁へ整形して表示する。
 	Disp& n(int x, bool zero = false, bool left = false) {
 		int32_t value = x;
 		const bool neg = value < 0;
@@ -743,6 +800,7 @@ public:
 		return (*this)(out[0], out[1], out[2]);
 	}
 
+	// 小数を3桁へ整形して表示する。
 	Disp& f(double f, bool zero = false, bool left = false) {
 		const bool neg = f < 0;
 		const double a = neg ? -f : f;
@@ -787,6 +845,7 @@ public:
 		return (*this)(0, p0, p1);
 	}
 
+	// 各桁の明るさを設定する。
 	Disp& o(uint8_t oa, uint8_t ob = 0xFF, uint8_t oc = 0xFF) {
 		if (ob == 0xFF) ob = oa;
 		if (oc == 0xFF) oc = ob;
@@ -798,6 +857,7 @@ public:
 		return *this;
 	}
 
+	// 3桁表示のPWM状態を1回更新する。
 	void serviceTick() {
 		uint8_t out[3];
 		for (uint8_t i = 0; i < 3; ++i) {
@@ -821,15 +881,15 @@ public:
 	}
 };
 
-// -------------------------------------------------------------
-// DCモータ: Timer5設定をbegin()内で明示し、入力値を0..255に制限。
-// -------------------------------------------------------------
+// DCモーターの回転方向、速度、ブレーキ、フリーを制御する。
 class Dcm {
 public:
 	int8_t now;
 
+	// DCモーターを停止状態で初期化する。
 	Dcm() : now(0) {}
 
+	// 指定速度で正転する。
 	void cw(int spd) {
 		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
 		if (pwm == 0) { fr(); return; }
@@ -840,6 +900,7 @@ public:
 		now = 1;
 	}
 
+	// 指定速度で逆転する。
 	void ccw(int spd) {
 		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
 		if (pwm == 0) { fr(); return; }
@@ -850,12 +911,14 @@ public:
 		now = -1;
 	}
 
+	// DCモーターへブレーキをかける。
 	void br() {
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
 		PORTL |= _BV(PL5) | _BV(PL3);
 		now = 0;
 	}
 
+	// DCモーターをフリー状態にする。
 	void fr() {
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
 		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
@@ -871,34 +934,38 @@ constexpr uint8_t spmPhaseMask[4] = {
 };
 constexpr uint8_t SPM_MASK = _BV(PA6) | _BV(PA4) | _BV(PA2) | _BV(PA0);
 
+// ステッピングモーターを1相分ずつ駆動する。
 class Spm {
 private:
 	uint8_t ix;
 
+	// 指定相をステッピングモーターへ出力する。
 	void phase(uint8_t s) {
 		ix = s & 3;
 		PORTA = static_cast<uint8_t>((PORTA & ~SPM_MASK) | spmPhaseMask[ix]);
 	}
 
 public:
+	// ステッピングモーターを初期相で初期化する。
 	Spm() : ix(0) {}
+	// ステッピングモーターを正転方向へ1相進める。
 	void cw() { phase((ix + 3) & 3); }
+	// ステッピングモーターを逆転方向へ1相進める。
 	void ccw() { phase((ix + 1) & 3); }
+	// ステッピングモーターをフリー状態にする。
 	void fr() { PORTA &= static_cast<uint8_t>(~SPM_MASK); }
+	// 現在相を再出力してブレーキをかける。
 	void br() { phase(ix); }
 };
 
-// -------------------------------------------------------------
-// 圧電ブザー: Timer3 OC3Aハードウェア出力。
-// 周波数変更時はタイマー停止→出力切断→TCNT/OCR更新→既知位相で再開。
-// CTCの「新TOPが現在TCNTより小さいと比較一致を逃す」問題を回避する。
-// -------------------------------------------------------------
+// 圧電ブザーをTimer3のOC3Aで連続または指定時間鳴らす。
 class Bz {
 private:
 	int continuousFrequency;
 	volatile uint32_t remainingMs;
 	volatile bool timedActive;
 
+	// 周波数からTimer3のTOP値を求める。
 	static uint16_t topForFrequency(int f) {
 		if (f < 1) f = 1;
 		uint32_t clocks = (1000000UL + static_cast<uint32_t>(f) / 2UL) /
@@ -908,17 +975,16 @@ private:
 		return static_cast<uint16_t>(clocks - 1UL);
 	}
 
+	// 指定周波数と時間でブザー出力を開始する。
 	void start(int f, uint32_t durationMs, bool timed) {
 		if (f <= 0) {
 			off();
 			return;
 		}
 
-		// 32ビット除算は割り込みを許可した状態で済ませる。
 		const uint16_t top = topForFrequency(f);
 
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			// Timer3停止。OC3A切断後、ピンをLOWへ固定。
 			TCCR3B = _BV(WGM32);
 			TCCR3A &= static_cast<uint8_t>(~_BV(COM3A0));
 			PORTE &= static_cast<uint8_t>(~_BV(PE3));
@@ -931,10 +997,11 @@ private:
 			timedActive = timed && durationMs != 0;
 
 			TCCR3A |= _BV(COM3A0);
-			TCCR3B = _BV(WGM32) | _BV(CS31); // /8、OC3Aトグル
+			TCCR3B = _BV(WGM32) | _BV(CS31);
 		}
 	}
 
+	// 割り込み内からブザー出力を停止する。
 	inline void stopFromIsr() {
 		TCCR3B = _BV(WGM32);
 		TCCR3A &= static_cast<uint8_t>(~_BV(COM3A0));
@@ -944,8 +1011,10 @@ private:
 	}
 
 public:
+	// ブザーを停止状態で初期化する。
 	Bz() : continuousFrequency(-1), remainingMs(0), timedActive(false) {}
 
+	// 指定周波数で連続発音する。
 	void operator()(int f) {
 		if (f <= 0) { off(); return; }
 		if (!timedActive && f == continuousFrequency) return;
@@ -953,16 +1022,17 @@ public:
 		start(f, 0, false);
 	}
 
+	// 指定周波数で指定時間だけ発音する。
 	void operator()(int f, uint32_t durationMs) {
 		if (durationMs == 0) {
 			(*this)(f);
 			return;
 		}
-		// 同じ周波数・時間でも毎回必ず再トリガーする。
 		continuousFrequency = -1;
 		start(f, durationMs, true);
 	}
 
+	// ブザー出力を停止する。
 	void off() {
 		continuousFrequency = -1;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -970,6 +1040,7 @@ public:
 		}
 	}
 
+	// 発音残り時間を割り込み周期で更新する。
 	inline void isrTick() {
 		if (!timedActive) return;
 		if (remainingMs > 0 && --remainingMs == 0) stopFromIsr();
@@ -982,8 +1053,14 @@ extern Dcm dm;
 extern Spm sm;
 extern Bz bz;
 
+// ハードウェアとライブラリ内部状態を初期化する。
 void begin();
 
+// ============================================================================
+// よく使う部分: シーケンス・時間管理クラス
+// ============================================================================
+
+// loop()ごとの状態遷移を管理する。
 class Seq {
 private:
 	int current_ = 0;
@@ -998,7 +1075,7 @@ private:
 	bool entryPending_ = true;
 	bool exitPending_ = false;
 
-	// 新しいloop()に入ったことを自動検出する
+	// 新しいloop()を検出して状態位置と初期化時刻を同期する。
 	void syncLoop() {
 		const uint8_t epoch = monocon_detail::loopEpoch;
 
@@ -1006,12 +1083,10 @@ private:
 			return;
 		}
 
-		// 前回のloop()で記述されていた状態数を記録
 		if (position_ > count_) {
 			count_ = position_;
 		}
 
-		// 状態番号が範囲外なら状態0へ戻す
 		if (count_ > 0 && current_ >= count_) {
 			current_ = 0;
 		}
@@ -1027,6 +1102,7 @@ private:
 		}
 	}
 
+	// 指定状態へ遷移して入出フラグを更新する。
 	void moveTo(int state) {
 		syncLoop();
 
@@ -1034,12 +1110,11 @@ private:
 			state = 0;
 		}
 
-		// 状態数が判明している場合だけ上限を制限
+		// 指定状態を有効範囲へ収め、実際に変わる場合だけ遷移する。
 		if (count_ > 0 && state >= count_) {
 			state = count_ - 1;
 		}
 
-		// 同じ状態を指定した場合は何もしない
 		if (state == current_) {
 			return;
 		}
@@ -1053,16 +1128,18 @@ private:
 	}
 
 public:
+	// 状態0からシーケンスを初期化する。
 	Seq() = default;
 
+	// シーケンス状態のコピーを禁止する。
 	Seq(const Seq&) = delete;
+	// シーケンス状態のコピー代入を禁止する。
 	Seq& operator=(const Seq&) = delete;
 
-	// 現在の状態に対応する場所だけtrue
+	// 現在の状態に対応する場所だけtrueを返す。
 	bool on() {
 		syncLoop();
 
-		// 同じloop()内で遷移した後は、後続状態を実行しない
 		if (moved_) {
 			++position_;
 			return false;
@@ -1071,15 +1148,17 @@ public:
 		return position_++ == current_;
 	}
 
+	// 現在の状態に対応する場所だけtrueを返す。
 	bool operator()() {
 		return on();
 	}
 
+	// 現在の状態に対応する場所だけ真偽値としてtrueを返す。
 	explicit operator bool() {
 		return on();
 	}
 
-	// 次の状態へ進む
+	// 次の状態へ進む。
 	void next() {
 		syncLoop();
 
@@ -1092,7 +1171,7 @@ public:
 		moveTo(target);
 	}
 
-	// 前の状態へ戻る
+	// 前の状態へ戻る。
 	void prev() {
 		syncLoop();
 
@@ -1105,12 +1184,12 @@ public:
 		moveTo(target);
 	}
 
-	// 指定した状態へ移動する
+	// 指定した状態へ移動する。
 	void to(int state) {
 		moveTo(state);
 	}
 
-	// 現在の状態を最初からやり直す
+	// 現在の状態を最初からやり直す。
 	void restart() {
 		syncLoop();
 
@@ -1120,25 +1199,25 @@ public:
 		moved_ = true;
 	}
 
-	// 指定した状態か確認する
+	// 指定した状態か確認する。
 	bool is(int state) {
 		syncLoop();
 		return current_ == state;
 	}
 
-	// 現在の状態番号
+	// 現在の状態番号を取得する。
 	int now() {
 		syncLoop();
 		return current_;
 	}
 
-	// 状態数
+	// 検出済みの状態数を取得する。
 	int steps() {
 		syncLoop();
 		return count_;
 	}
 
-	// 状態に入った直後に1回だけtrue
+	// 状態に入った直後に1回だけtrueを返す。
 	bool in() {
 		syncLoop();
 
@@ -1150,7 +1229,7 @@ public:
 		return true;
 	}
 
-	// 状態を移動した直後に1回だけtrue
+	// 状態を移動した直後に1回だけtrueを返す。
 	bool out() {
 		syncLoop();
 
@@ -1162,22 +1241,19 @@ public:
 		return true;
 	}
 
-	// 状態に入ってからの経過時間
+	// 状態に入ってからの経過時間を取得する。
 	uint32_t elapsed() {
 		syncLoop();
 		return static_cast<uint32_t>(millis() - enteredAt_);
 	}
 
-	// 指定時間が経過したか
+	// 指定時間が経過したか確認する。
 	bool after(uint32_t ms) {
 		return elapsed() >= ms;
 	}
 };
 
-// -------------------------------------------------------------
-// 一定間隔タイマー: if (timer(100)) { ... }
-// wait()/go()で停止・再開しても周期の残り時間を維持する。
-// -------------------------------------------------------------
+// 一定間隔でtrueを返し、停止・再開時も残り周期を維持する。
 class Iv {
 private:
 	uint32_t previous_ = 0;
@@ -1185,6 +1261,7 @@ private:
 	bool paused_ = false;
 
 public:
+	// 指定間隔が経過したときだけtrueを返す。
 	bool operator()(uint32_t ms) {
 		if (paused_) return false;
 		const uint32_t now = millis();
@@ -1193,16 +1270,19 @@ public:
 		return true;
 	}
 
+	// 周期の基準時刻を現在時刻へ戻す。
 	void reset() {
 		previous_ = millis();
 	}
 
+	// 残り周期を保持してタイマーを一時停止する。
 	void wait() {
 		if (paused_) return;
 		pausedAt_ = millis();
 		paused_ = true;
 	}
 
+	// 保持した残り周期からタイマーを再開する。
 	void go() {
 		if (!paused_) return;
 		const uint32_t now = millis();
@@ -1210,35 +1290,37 @@ public:
 		paused_ = false;
 	}
 
+	// タイマーが一時停止中か確認する。
 	bool isWait() const {
 		return paused_;
 	}
 };
 
-// -------------------------------------------------------------
-// ワンショットタイマー: start(ms)後、done()が1回だけtrue。
-// 安全に扱える最大時間は約24.8日。
-// -------------------------------------------------------------
+// 指定時間後に1回だけ完了を通知するワンショットタイマー。
 class Ti {
 private:
 	uint32_t deadline_ = 0;
 	bool running_ = false;
 
 public:
+	// 指定時間のワンショット計測を開始する。
 	void start(uint32_t ms) {
 		if (ms > 0x7FFFFFFFUL) ms = 0x7FFFFFFFUL;
 		deadline_ = millis() + ms;
 		running_ = true;
 	}
 
+	// ワンショット計測を停止する。
 	void stop() {
 		running_ = false;
 	}
 
+	// ワンショット計測中か確認する。
 	bool active() const {
 		return running_;
 	}
 
+	// 期限到達時に1回だけtrueを返す。
 	bool done() {
 		if (!running_) return false;
 		const uint32_t now = millis();
@@ -1247,6 +1329,7 @@ public:
 		return true;
 	}
 
+	// 期限までの残り時間を取得する。
 	uint32_t remain() const {
 		if (!running_) return 0;
 		const int32_t remaining = static_cast<int32_t>(deadline_ - millis());
@@ -1254,9 +1337,7 @@ public:
 	}
 };
 
-// -------------------------------------------------------------
-// ストップウォッチ: start()/stop()/reset()、経過時間は sw()。
-// -------------------------------------------------------------
+// 開始・停止・リセットができるストップウォッチ。
 class Sw {
 private:
 	uint32_t startedAt_ = 0;
@@ -1264,48 +1345,58 @@ private:
 	bool running_ = false;
 
 public:
+	// ストップウォッチを0から開始する。
 	void start() {
 		startedAt_ = millis();
 		fixed_ = 0;
 		running_ = true;
 	}
 
+	// 経過時間を固定してストップウォッチを停止する。
 	void stop() {
 		if (!running_) return;
 		fixed_ = static_cast<uint32_t>(millis() - startedAt_);
 		running_ = false;
 	}
 
+	// ストップウォッチを停止して0へ戻す。
 	void reset() {
 		running_ = false;
 		fixed_ = 0;
 	}
 
+	// ストップウォッチが計測中か確認する。
 	bool running() const {
 		return running_;
 	}
 
+	// 現在の経過ミリ秒を取得する。
 	uint32_t ms() const {
 		return running_
 			? static_cast<uint32_t>(millis() - startedAt_)
 			: fixed_;
 	}
 
+	// 現在の経過ミリ秒を関数形式で取得する。
 	uint32_t operator()() const {
 		return ms();
 	}
 
+	// 現在の経過ミリ秒へ暗黙変換する。
 	operator uint32_t() const {
 		return ms();
 	}
 };
 
-// 内部実装
+// ============================================================================
+// 技術的な部分: 内部状態、割り込み、初期化の実装
+// ============================================================================
 
 namespace monocon_detail {
 
 	void service();
 
+	// ADCの1チャンネル分の設定と保存先を保持する。
 	struct AdcSlot {
 		uint8_t admux;
 		uint8_t mux5;
@@ -1322,25 +1413,29 @@ namespace monocon_detail {
 	volatile uint8_t serviceDue = 0;
 	uint8_t loopEpoch = 0;
 
+	// Arduinoピン番号をADCチャンネル番号へ変換する。
 	inline uint8_t analogChannel(uint8_t pin) {
 		if (pin >= A0) pin = static_cast<uint8_t>(pin - A0);
 		return pin;
 	}
 
+	// ADCマルチプレクサを指定スロットへ切り替える。
 	inline void selectAdcSlot(uint8_t index) {
 		ADMUX = adcSlots[index].admux;
 		ADCSRB = static_cast<uint8_t>((ADCSRB & ~_BV(MUX5)) | adcSlots[index].mux5);
 	}
 
+	// ADCが利用可能なら連続スキャンを開始する。
 	inline void startAdcLocked() {
 		if (!adcHardwareReady || adcRunning || adcCount == 0) return;
 		adcIndex = 0;
 		selectAdcSlot(0);
-		ADCSRA |= _BV(ADIF); // 1を書いて既存フラグをクリア
+		ADCSRA |= _BV(ADIF);
 		ADCSRA |= _BV(ADSC);
 		adcRunning = true;
 	}
 
+	// ADC変換値を保存し、次チャンネルの変換を開始する。
 	inline void adcIsrBody() {
 		if (adcCount == 0) {
 			adcRunning = false;
@@ -1386,7 +1481,6 @@ bool adcReg(uint8_t pin, volatile int* dst) {
 
 	bool added = false;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		// 同じ保存先の二重登録を防ぐ。
 		for (uint8_t i = 0; i < monocon_detail::adcCount; ++i) {
 			if (monocon_detail::adcSlots[i].dst == dst) {
 				added = true;
@@ -1403,7 +1497,6 @@ bool adcReg(uint8_t pin, volatile int* dst) {
 			monocon_detail::adcSlots[index].channel = channel;
 			monocon_detail::adcSlots[index].dst = dst;
 
-			// スロットを完全に書き終えてから公開する。
 			monocon_detail::adcCount = static_cast<uint8_t>(index + 1);
 			if (channel < 8) DIDR0 |= _BV(channel);
 			else             DIDR2 |= _BV(channel - 8);
@@ -1430,17 +1523,18 @@ int ar(uint8_t pin) {
 	}
 
 	if (!source) {
-		// 未登録ピンもブロッキングanalogReadをせず、非同期スキャンへ追加する。
 		source = &monocon_detail::adcFallback[channel];
 		if (!adcReg(pin, source)) return 0;
 	}
 	return monoconAtomicReadInt(source);
 }
 
+// ADC変換完了時に次チャンネルへスキャンを進める。
 ISR(ADC_vect) {
 	monocon_detail::adcIsrBody();
 }
 
+// 10 kHz周期でエンコーダと赤外線入力を更新する。
 ISR(TIMER1_COMPA_vect) {
 	enc::isrPollAll();
 #ifdef useir
@@ -1448,12 +1542,14 @@ ISR(TIMER1_COMPA_vect) {
 #endif
 }
 
+// 1 ms周期で内部時刻とブザー残り時間を更新する。
 ISR(TIMER2_COMPA_vect) {
 	++tms;
 	monocon_detail::serviceDue = 1;
 	bz.isrTick();
 }
 
+// 保留された入力・センサー・表示更新をloop()側で実行する。
 inline void monocon_detail::service() {
 	uint8_t due;
 	uint32_t now;
@@ -1471,7 +1567,7 @@ inline void monocon_detail::service() {
 	dp.serviceTick();
 }
 
-// loop()終了時に更新し、未読エッジへ1回分のloop()実行機会を与える。
+// loop()終了時に内部更新を実行し、未読エッジの寿命を進める。
 void serialEventRun() {
 	monocon_detail::service();
 	const uint8_t epoch = ++monocon_detail::loopEpoch;
@@ -1479,8 +1575,7 @@ void serialEventRun() {
 	pr::expireAll(epoch);
 }
 
-// delay()中は入力更新だけ行い、エッジの寿命は進めない。
-// そのためdelay()中に発生したエッジも、次のloop()で1回読み取れる。
+// delay()中は入力更新だけを実行し、エッジの寿命を進めない。
 void yield() {
 	monocon_detail::service();
 }
@@ -1488,11 +1583,9 @@ void yield() {
 void begin() {
 	cli();
 
-	// Mega 2560の固定ピン配置を直接設定。
 	DDRF &= static_cast<uint8_t>(~(_BV(PF0) | _BV(PF1) | _BV(PF2) | _BV(PF3)));
 	DDRB &= static_cast<uint8_t>(~(_BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7)));
 
-	// 7セグ用固定配線：D6=PH3(SCK), D7=PH4(DATA), D8=PH5(LATCH)。
 	DDRH |= SCK_BIT | SDI_BIT | LAT_BIT;
 	PORTH = static_cast<uint8_t>(
 		(PORTH & static_cast<uint8_t>(~(SCK_BIT | SDI_BIT))) | LAT_BIT);
@@ -1508,16 +1601,14 @@ void begin() {
 	DDRL |= _BV(PL5) | _BV(PL3);
 	PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
 
-	DDRC &= static_cast<uint8_t>(~_BV(PC1)); // D36
+	DDRC &= static_cast<uint8_t>(~_BV(PC1));
 
-	// Timer5: 8-bit phase-correct PWM、/64。Arduino Coreへの暗黙依存を排除。
 	TCCR5A = _BV(WGM50);
 	TCCR5B = _BV(CS51) | _BV(CS50);
 	TCNT5 = 0;
 	OCR5A = 0;
 	OCR5C = 0;
 
-	// Timer3: ブザー。停止状態のCTC、OC3A切断、ピンLOW。
 	TCCR3A = 0;
 	TCCR3B = _BV(WGM32);
 	TCNT3 = 0;
@@ -1525,7 +1616,6 @@ void begin() {
 	TIMSK3 = 0;
 	TIFR3 = _BV(OCF3A);
 
-	// Timer1: 10 kHz、エンコーダ専用。
 	TCCR1A = 0;
 	TCCR1B = 0;
 	TCNT1 = 0;
@@ -1534,7 +1624,6 @@ void begin() {
 	TIMSK1 = _BV(OCIE1A);
 	TIFR1 = _BV(OCF1A);
 
-	// Timer2: 1 kHz。ISRは時刻・実行要求・ブザー時間だけ。
 	TCCR2A = 0;
 	TCCR2B = 0;
 	TCNT2 = 0;
@@ -1544,7 +1633,6 @@ void begin() {
 	TIMSK2 = _BV(OCIE2A);
 	TIFR2 = _BV(OCF2A);
 
-	// ADC: 単発変換をADC ISRで連鎖。完了待ちポーリングなし。
 	ADCSRA = 0;
 	ADCSRB &= static_cast<uint8_t>(~(_BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0)));
 	ADMUX = _BV(REFS0);
@@ -1559,7 +1647,6 @@ void begin() {
 
 	sei();
 
-	// 初期出力。delay()は使用しない。
 	led(0);
 	dp.off();
 	dm.fr();
@@ -1567,7 +1654,6 @@ void begin() {
 	bz.off();
 	monocon_detail::service();
 
-	// 暗号用途ではない簡易シード。ADC完了待ちはしない。
 	randomSeed(static_cast<unsigned long>(micros()) ^
 		static_cast<unsigned long>(TCNT0) ^
 		(static_cast<unsigned long>(TCNT1) << 8));
