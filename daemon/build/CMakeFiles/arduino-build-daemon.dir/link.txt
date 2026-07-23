@@ -1,3 +1,3 @@
 "C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\arduino-build-daemon.dir/objects.a
 C:\PROGRA~2\mingw64\bin\ar.exe qc CMakeFiles\arduino-build-daemon.dir/objects.a @CMakeFiles\arduino-build-daemon.dir\objects1.rsp
-C:\PROGRA~2\mingw64\bin\C__~1.EXE -O3 -DNDEBUG -O3 -mconsole -Wl,--whole-archive CMakeFiles\arduino-build-daemon.dir/objects.a -Wl,--no-whole-archive -o bin\arduino-build-daemon.exe -Wl,--out-implib,libarduino-build-daemon.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\arduino-build-daemon.dir\linkLibs.rsp
+C:\PROGRA~2\mingw64\bin\C__~1.EXE -O3 -DNDEBUG -O3 -static -static-libgcc -static-libstdc++ -mconsole -Wl,--whole-archive CMakeFiles\arduino-build-daemon.dir/objects.a -Wl,--no-whole-archive -o bin\arduino-build-daemon.exe -Wl,--out-implib,libarduino-build-daemon.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\arduino-build-daemon.dir\linkLibs.rsp
