@@ -75,15 +75,14 @@ void loop() {
 				tc = 0;
 				blinkCnt = 1;
 				isBlinking = true;
-				goto blink;
 			}
 		}
 
+	if (!isBlinking) {
 		onedisp(Lcnt, Rcnt);
+	}
 
 	} else {
-	blink:
-
 		if (blinkCnt >= 6) {
 			isBlinking = false;
 
