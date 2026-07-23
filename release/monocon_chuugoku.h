@@ -79,14 +79,6 @@ void dw(uint8_t pin, uint8_t val) {
 	SREG = s;
 }
 
-const uint8_t seg[16] = {
-	0x3f, 0x06, 0x5b, 0x4f, 0x66,
-	0x6d, 0x7d, 0x27, 0x7f, 0x6f,
-	0x77, 0x7c, 0x58, 0x5e, 0x79, 0x71,
-};
-constexpr uint8_t SEG_DOT = 0x80;
-constexpr uint8_t SEG_MINUS = 0x40;
-
 long clampv(long v, long lo, long hi) {
 	return v < lo ? lo : (v > hi ? hi : v);
 }
@@ -95,28 +87,6 @@ long toward(long cur, long target, long step) {
 	if (cur < target) return (cur + step > target) ? target : cur + step;
 	if (cur > target) return (cur - step < target) ? target : cur - step;
 	return cur;
-}
-
-long deadband(long v, long center, long width) {
-	return (v > center - width && v < center + width) ? center : v;
-}
-
-bool blink(unsigned long ms) {
-	return (millis() / ms) & 1;
-}
-
-long rnd(long n) {
-	return random(n);
-}
-
-long rndDiff(long n) {
-	static long last = -1;
-	long v;
-	do {
-		v = random(n);
-	} while (n > 1 && v == last);
-	last = v;
-	return v;
 }
 
 struct de {
@@ -140,7 +110,6 @@ struct Joy {
 };
 
 class In {
-
 	struct Dch {
 		uint8_t           pin;
 		volatile uint8_t* reg;
@@ -203,7 +172,6 @@ class In {
 	}
 
 public:
-
 	de d(uint8_t pin, uint16_t lock = 10) {
 		Dch* c = slot(pin);
 		if (!c) return { LOW, false, false };
@@ -338,110 +306,13 @@ public:
 };
 In in;
 
-class iv {
-	unsigned long pre = 0;
-	unsigned long pausedAt = 0;
-	bool paused = false;
-
-public:
-	bool operator()(unsigned long ms) {
-		if (paused) return false;
-		unsigned long now = millis();
-		if (now - pre >= ms) {
-			pre = now;
-			return true;
-		}
-		return false;
-	}
-	void reset() {
-		pre = millis();
-	}
-
-	void wait() {
-		if (paused) return;
-		pausedAt = millis();
-		paused = true;
-	}
-
-	void go() {
-		if (!paused) return;
-		pre += millis() - pausedAt;
-		paused = false;
-	}
-
-	bool isWait() {
-		return paused;
-	}
+const uint8_t seg[16] = {
+	0x3f, 0x06, 0x5b, 0x4f, 0x66,
+	0x6d, 0x7d, 0x27, 0x7f, 0x6f,
+	0x77, 0x7c, 0x58, 0x5e, 0x79, 0x71,
 };
-
-class ti {
-	unsigned long lim = 0;
-	bool run = false;
-
-public:
-	void start(unsigned long ms) {
-		lim = millis() + ms;
-		run = true;
-	}
-
-	void stop() {
-		run = false;
-	}
-
-	bool active() {
-		return run;
-	}
-
-	bool done() {
-		if (run && (long)(millis() - lim) >= 0) {
-			run = false;
-			return true;
-		}
-		return false;
-	}
-
-	unsigned long remain() {
-		if (!run) return 0;
-		long r = (long)(lim - millis());
-		return r > 0 ? (unsigned long)r : 0;
-	}
-};
-
-class Sw {
-	unsigned long t0 = 0;
-	unsigned long fix = 0;
-	bool run = false;
-
-public:
-	void start() {
-		t0 = millis();
-		run = true;
-	}
-
-	void stop() {
-		if (run) {
-			fix = millis() - t0;
-			run = false;
-		}
-	}
-
-	void reset() {
-		run = false;
-		fix = 0;
-	}
-
-	bool running() {
-		return run;
-	}
-
-	unsigned long ms() {
-		return run ? millis() - t0 : fix;
-	}
-
-	unsigned long operator()() {
-		return ms();
-	}
-};
+constexpr uint8_t SEG_DOT = 0x80;
+constexpr uint8_t SEG_MINUS = 0x40;
 
 volatile uint8_t segPat[3] = { 0, 0, 0 };
 volatile uint8_t segBri[3] = { 255, 255, 255 };
@@ -620,7 +491,6 @@ volatile uint8_t ledBri = 0;
 
 class Led {
 public:
-
 	void operator()(uint8_t m, int bri = 100) {
 		bri = (int)clampv(bri, 0, 100);
 		ledMask = m;
@@ -902,6 +772,134 @@ public:
 };
 Dcm dm;
 
+long deadband(long v, long center, long width) {
+	return (v > center - width && v < center + width) ? center : v;
+}
+
+bool blink(unsigned long ms) {
+	return (millis() / ms) & 1;
+}
+
+long rnd(long n) {
+	return random(n);
+}
+
+long rndDiff(long n) {
+	static long last = -1;
+	long v;
+	do {
+		v = random(n);
+	} while (n > 1 && v == last);
+	last = v;
+	return v;
+}
+
+class iv {
+	unsigned long pre = 0;
+	unsigned long pausedAt = 0;
+	bool paused = false;
+
+public:
+	bool operator()(unsigned long ms) {
+		if (paused) return false;
+		unsigned long now = millis();
+		if (now - pre >= ms) {
+			pre = now;
+			return true;
+		}
+		return false;
+	}
+
+	void reset() {
+		pre = millis();
+	}
+
+	void wait() {
+		if (paused) return;
+		pausedAt = millis();
+		paused = true;
+	}
+
+	void go() {
+		if (!paused) return;
+		pre += millis() - pausedAt;
+		paused = false;
+	}
+
+	bool isWait() {
+		return paused;
+	}
+};
+
+class ti {
+	unsigned long lim = 0;
+	bool run = false;
+
+public:
+	void start(unsigned long ms) {
+		lim = millis() + ms;
+		run = true;
+	}
+
+	void stop() {
+		run = false;
+	}
+
+	bool active() {
+		return run;
+	}
+
+	bool done() {
+		if (run && (long)(millis() - lim) >= 0) {
+			run = false;
+			return true;
+		}
+		return false;
+	}
+
+	unsigned long remain() {
+		if (!run) return 0;
+		long r = (long)(lim - millis());
+		return r > 0 ? (unsigned long)r : 0;
+	}
+};
+
+class Sw {
+	unsigned long t0 = 0;
+	unsigned long fix = 0;
+	bool run = false;
+
+public:
+	void start() {
+		t0 = millis();
+		run = true;
+	}
+
+	void stop() {
+		if (run) {
+			fix = millis() - t0;
+			run = false;
+		}
+	}
+
+	void reset() {
+		run = false;
+		fix = 0;
+	}
+
+	bool running() {
+		return run;
+	}
+
+	unsigned long ms() {
+		return run ? millis() - t0 : fix;
+	}
+
+	unsigned long operator()() {
+		return ms();
+	}
+};
+
 class Seq {
 	int  cur = 0;
 	int  pos = 0;
@@ -921,6 +919,7 @@ public:
 		moved = false;
 		exited = false;
 	}
+
 	bool on() {
 		if (moved) {
 			pos++;
