@@ -1,5 +1,5 @@
 .arduino-build/
 .tmp/
 .vscode/build/
-.VSCode-win32-x64-1.118.1/
-.vsix/
+VSCode-win32-x64-1.118.1/
+vsix/
