@@ -19,4 +19,4 @@
 
 </details>
 
-### [snippets](./snippets.md) (2026中国大会)
+### [snippets](./~ARCHIVE_2026_CHUUGOKU/snippets.md) (2026中国大会)
