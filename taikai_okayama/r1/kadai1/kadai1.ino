@@ -26,26 +26,21 @@ void setup() {
 	sw = digitalRead(_USER_CON_4PIN);
 }
 
-const int color[] = { B001, B101, B100 };
 const int ptn[] = { 0x08, 0x40, 0x01 };
 int prev_ptn = 0;
 
 void loop() {
-	int dispcolor = B000;
 	int dispptn = 0x00;
 
 	if (sw == LOW) { // SW1
-		dispcolor |= color[0];
 		dispptn |= ptn[0];
 	}
 
 	if (ypos < lowEdge) { // SW2
-		dispcolor |= color[1];
 		dispptn |= ptn[1];
 	}
 
 	if (ypos > highEdge) { // SW3
-		dispcolor |= color[2];
 		dispptn |= ptn[2];
 	}
 
@@ -53,7 +48,4 @@ void loop() {
 		prev_ptn = dispptn;
 		disp(0x00, dispptn);
 	}
-
-	lm.color.GBR = dispcolor;
-	led_stepmotor(lm.b8);
 }
