@@ -918,6 +918,12 @@ constexpr uint8_t spmPhaseMask2[4] = {
 constexpr uint8_t SPM_MASK =
 _BV(PA6) | _BV(PA4) | _BV(PA2) | _BV(PA0);
 
+enum Dir : uint8_t {
+	CW,
+	CCW,
+	SHORT
+};
+
 class Spm {
 private:
 	enum Excitation : uint8_t {
@@ -1014,7 +1020,7 @@ public:
 		targetStep += degreeToStep(degree);
 	}
 
-	void abso(float degree, bool shortest = false, bool halfCcw = false) {
+	void abso(float degree, Dir dir = SHORT, Dir halfDir = CCW) {
 		degree = fmod(degree, 360.0f);
 
 		if (degree < 0.0f) {
@@ -1022,11 +1028,6 @@ public:
 		}
 
 		const int32_t destination = degreeToStep(degree);
-
-		if (!shortest) {
-			targetStep = destination;
-			return;
-		}
 
 		int32_t current = currentStep % STEPS;
 
@@ -1037,12 +1038,28 @@ public:
 		int32_t diff = destination - current;
 		const int32_t half = STEPS / 2;
 
-		if (diff > half) {
-			diff -= STEPS;
-		} else if (diff < -half) {
-			diff += STEPS;
-		} else if (diff == half || diff == -half) {
-			diff = halfCcw ? -half : half;
+		switch (dir) {
+		case CW:
+			if (diff < 0) {
+				diff += STEPS;
+			}
+			break;
+
+		case CCW:
+			if (diff > 0) {
+				diff -= STEPS;
+			}
+			break;
+
+		case SHORT:
+			if (diff > half) {
+				diff -= STEPS;
+			} else if (diff < -half) {
+				diff += STEPS;
+			} else if (diff == half || diff == -half) {
+				diff = halfDir == CW ? -half : half;
+			}
+			break;
 		}
 
 		targetStep = currentStep + diff;
