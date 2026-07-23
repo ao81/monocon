@@ -163,13 +163,14 @@ if ($needCompile) {
 		# -------------------------------------------------------
 
 		# Step0: .ino → .cpp を再生成
-		# .ino ファイルの内容が変わっているため、必ず .cpp を書き直す。
-		# arduino-cli が付加する #include <Arduino.h> をヘッダとして先頭に追加する。
-		# （関数プロトタイプの自動挿入は avr-g++ の -fpermissive で吸収できる）
 		$inoContent = [System.IO.File]::ReadAllText($inoFile, [System.Text.Encoding]::UTF8)
 		$cppContent = "#include <Arduino.h>`r`n" + $inoContent
 		if (-not (Test-Path $sketchBuild)) { New-Item -ItemType Directory -Force -Path $sketchBuild | Out-Null }
 		[System.IO.File]::WriteAllText($cppFile, $cppContent, [System.Text.Encoding]::UTF8)
+
+		# 【追加】最新のヘッダファイルをビルドディレクトリに上書きコピーする
+		# ※古いキャッシュヘッダが読み込まれるのを防ぐため
+		Copy-Item -Path "$SketchDir\*.h" -Destination $sketchBuild -Force -ErrorAction SilentlyContinue
 
 		# Step1: コンパイル
 		$compileArgs = @(
@@ -182,6 +183,7 @@ if ($needCompile) {
 			"-DF_CPU=16000000L", "-DARDUINO=10607",
 			"-DARDUINO_AVR_ADK", "-DARDUINO_ARCH_AVR",
 			"-I$coresInc", "-I$variantsInc",
+			"-I$SketchDir", # 【追加】スケッチディレクトリへのパスを明示的に指定
 			$cppFile, "-o", $objFile
 		)
 		$compileOut = & $avrGpp @compileArgs 2>&1
