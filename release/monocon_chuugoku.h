@@ -1279,9 +1279,11 @@ private:
 
 	bool initialized_ = false;
 	bool transitionPending_ = false;
+	bool transitionGrace_ = false;
 	bool restartPending_ = false;
 	bool entryPending_ = true;
 	bool exitPending_ = false;
+	bool exitConsumed_ = false;
 
 	int clampState(int state) const {
 		if (state < 0) {
@@ -1306,19 +1308,27 @@ private:
 			count_ = position_;
 		}
 
-		if (transitionPending_ || restartPending_) {
-			if (transitionPending_) {
+		if (transitionPending_) {
+			if (exitConsumed_ || !transitionGrace_) {
 				current_ = clampState(target_);
+				enteredAt_ = millis();
+				entryPending_ = true;
+				transitionPending_ = false;
+				transitionGrace_ = false;
+				exitPending_ = false;
+				exitConsumed_ = false;
+			} else {
+				transitionGrace_ = false;
+				exitPending_ = true;
+				exitConsumed_ = false;
 			}
-
+		} else if (restartPending_) {
 			enteredAt_ = millis();
 			entryPending_ = true;
-			transitionPending_ = false;
 			restartPending_ = false;
 		}
 
 		position_ = 0;
-		exitPending_ = false;
 		lastEpoch_ = epoch;
 
 		if (!initialized_) {
@@ -1340,10 +1350,22 @@ private:
 			return;
 		}
 
+		const bool currentPassed = position_ > current_;
+
+		if (!transitionPending_) {
+			transitionGrace_ = currentPassed;
+			exitConsumed_ = false;
+		} else if (currentPassed && !exitConsumed_) {
+			transitionGrace_ = true;
+		}
+
 		target_ = state;
 		transitionPending_ = true;
 		restartPending_ = false;
-		exitPending_ = true;
+
+		if (!exitConsumed_) {
+			exitPending_ = true;
+		}
 	}
 
 public:
@@ -1368,7 +1390,10 @@ public:
 
 	void next() {
 		syncLoop();
-		const int base = transitionPending_ ? target_ : current_;
+
+		const int base =
+			transitionPending_ ? target_ : current_;
+
 		int target = base + 1;
 
 		if (count_ > 0 && target >= count_) {
@@ -1380,7 +1405,10 @@ public:
 
 	void prev() {
 		syncLoop();
-		const int base = transitionPending_ ? target_ : current_;
+
+		const int base =
+			transitionPending_ ? target_ : current_;
+
 		int target = base - 1;
 
 		if (target < 0) {
@@ -1396,9 +1424,12 @@ public:
 
 	void restart() {
 		syncLoop();
+
 		transitionPending_ = false;
+		transitionGrace_ = false;
 		restartPending_ = true;
 		exitPending_ = false;
+		exitConsumed_ = false;
 	}
 
 	bool is(int state) {
@@ -1435,12 +1466,16 @@ public:
 		}
 
 		exitPending_ = false;
+		exitConsumed_ = true;
 		return true;
 	}
 
 	uint32_t elapsed() {
 		syncLoop();
-		return static_cast<uint32_t>(millis() - enteredAt_);
+
+		return static_cast<uint32_t>(
+			millis() - enteredAt_
+			);
 	}
 
 	bool after(uint32_t ms) {
