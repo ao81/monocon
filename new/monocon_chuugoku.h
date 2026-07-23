@@ -34,7 +34,9 @@
 #define SPM3_PIN 24
 #define SPM4_PIN 22
 
-// PWM出力に対応したピンに変更
+///////////////////////////////
+// PWM出力に対応したピンに変更 //
+///////////////////////////////
 #define DCM1_PIN 44
 #define DCM2_PIN 46
 
@@ -77,28 +79,29 @@ const uint8_t seg[16] = {
 	0x77, 0x7c, 0x58, 0x5e, 0x79, 0x71,
 };
 
-//================ 汎用 ================
+//================ 汎用ユーティリティ ================
 // 範囲内に収める（Arduino の constrain と同義の関数版）
 inline long clampv(long v, long lo, long hi) {
 	return v < lo ? lo : (v > hi ? hi : v);
 }
-
 // cur を target へ最大 step だけ近づける（ソフトスタート/ランプ用）
 inline long toward(long cur, long target, long step) {
 	if (cur < target) return (cur + step > target) ? target : cur + step;
 	if (cur > target) return (cur - step < target) ? target : cur - step;
 	return cur;
 }
-
 // 中央±width 内なら center を返す不感帯処理（ジョイスティック等）
 inline long deadband(long v, long center, long width) {
 	return (v > center - width && v < center + width) ? center : v;
 }
 
 //================ 入力 ================
-//   de e = in.d(d1);
-//   if (e.ltoh) { ... }   // 押した/光った瞬間（LOW→HIGH）
-//   if (e.htol) { ... }   // 離した/遮った瞬間（HIGH→LOW）
+// 全入力を In に集約した。デジタル入力は「読み出し1回」で
+// 確定レベル・立ち上がり・立ち下がりを同時に返す（旧 Edge クラスを内蔵）。
+//
+//   Sw e = in.d(d1);
+//   if (e.rise) { ... }   // 押した/光った瞬間（LOW→HIGH）
+//   if (e.fall) { ... }   // 離した/遮った瞬間（HIGH→LOW）
 //   int lv = e.level;     // トグルSW・フォトインタラプタは level だけ見ればよい
 //
 //   int v   = in.an(a1);        // 測距・フォトリフレクタなどアナログ全般
@@ -108,11 +111,11 @@ inline long deadband(long v, long center, long width) {
 // ※ in.d() / in.enc() は loop で毎回呼ぶこと（delay で止めると取りこぼす）。
 // ※ d() は同じピンを1ループにつき1回だけ呼ぶ（2回呼ぶと2回目は変化を見落とす）。
 
-struct de {
-	uint8_t level;   // レベル (HIGH/LOW)
-	bool    ltoh;    // LOW→HIGH に確定した瞬間だけ true
-	bool    htol;    // HIGH→LOW に確定した瞬間だけ true
-	operator int() const { return level; }
+// デジタル1点の読み出し結果
+struct Sw {
+	uint8_t level;   // 確定レベル (HIGH/LOW)
+	bool    rise;    // LOW→HIGH に確定した瞬間だけ true
+	bool    fall;    // HIGH→LOW に確定した瞬間だけ true
 };
 
 // ジョイスティックの読み出し結果
@@ -128,7 +131,7 @@ struct Joy {
 };
 
 class In {
-	// ---- デジタルチャンネル（ピンごとに独立した状態を持つ） ----
+	// ---- デジタル・チャンネル（ピンごとに独立した状態を持つ） ----
 	struct Dch {
 		uint8_t           pin;
 		volatile uint8_t* reg;     // 入力レジスタは初回だけ解決してキャッシュ
@@ -166,16 +169,16 @@ class In {
 public:
 	// デジタル入力＋エッジ検出（リーディングエッジ＋ロックアウト方式）。
 	// lock = チャタリングを無視する時間(ms)。バウンスが激しいSWは長めに。
-	de d(uint8_t pin, uint16_t lock = 10) {
+	Sw d(uint8_t pin, uint16_t lock = 10) {
 		Dch* c = slot(pin);
 		if (!c) return { LOW, false, false };   // プール不足時の安全値
 		uint8_t raw = (*c->reg & c->mask) ? HIGH : LOW;
-		de r = { c->stable, false, false };
+		Sw r = { c->stable, false, false };
 		if (raw == c->stable) return r;          // 変化なし: millis() も呼ばず即終了
 		unsigned long now = millis();
 		if (now - c->t < lock) return r;         // ロックアウト中は無視
-		r.ltoh = (c->stable == LOW && raw == HIGH);
-		r.htol = (c->stable == HIGH && raw == LOW);
+		r.rise = (c->stable == LOW && raw == HIGH);
+		r.fall = (c->stable == HIGH && raw == LOW);
 		r.level = raw;
 		c->stable = raw;
 		c->t = now;
@@ -219,14 +222,8 @@ public:
 		else if (dd == 0x20) ec += dir ? -1 : 1;
 		return ec;
 	}
-
 	void encReset() {
 		ec = 0;
-		est = 0;
-	}
-
-	void encSet(int n) {
-		ec = n;
 		est = 0;
 	}
 };
@@ -237,7 +234,6 @@ In in;
 //   Every t;  if (t(500)) { 0.5秒ごとの処理 }
 class Every {
 	unsigned long pre = 0;
-
 public:
 	bool operator()(unsigned long ms) {
 		unsigned long now = millis();
@@ -312,7 +308,7 @@ void dispDec(int v, int point = 1) {
 		b0 |= 0x80;
 	} else {
 		b1 |= 0x80;
-		if (v < 100) b0 = 0x00;
+		if (v < 100) b0 = 0x00;        // 先頭ゼロ消灯
 	}
 	disp(b0, b1, b2);
 }
@@ -326,11 +322,9 @@ void dispOff() {
 void bz(int f) {
 	tone(BZ_PIN, f);
 }
-
 void bz(int f, unsigned long t) {
 	tone(BZ_PIN, f, t);
 }
-
 void bzoff() {
 	noTone(BZ_PIN);
 }
@@ -362,15 +356,12 @@ class Melody {
 	int len = 0, idx = 0;
 	unsigned long next = 0;
 	bool run = false;
-
 public:
 	void play(const int* notes, const int* durs, int n) {
 		ns = notes; ds = durs; len = n; idx = 0; run = true; next = 0;
 	}
-
 	void stop() { run = false; noTone(BZ_PIN); }
 	bool playing() { return run; }
-
 	void update() {
 		if (!run) return;
 		unsigned long now = millis();
@@ -389,10 +380,9 @@ class Led {
 public:
 	void operator()(uint8_t m) {
 		digitalWrite(LED_R_PIN, (m & 1) ? HIGH : LOW);
-		digitalWrite(LED_B_PIN, (m & 2) ? HIGH : LOW);
-		digitalWrite(LED_G_PIN, (m & 4) ? HIGH : LOW);
+		digitalWrite(LED_G_PIN, (m & 2) ? HIGH : LOW);
+		digitalWrite(LED_B_PIN, (m & 4) ? HIGH : LOW);
 	}
-
 	void off() {
 		(*this)(0);
 	}
@@ -403,11 +393,9 @@ Led led;
 class Spm {
 	int8_t ix = 0;
 	long   ps = 0;
+	int    rem = 0;
 	unsigned long stepPre = 0;
-
 public:
-	int rem = 0;
-
 	void set(uint8_t s) {
 		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };  // SPM4..1
 		uint8_t b = tbl[s & 3];
@@ -417,28 +405,23 @@ public:
 		digitalWrite(SPM4_PIN, (b & 8) ? HIGH : LOW);
 		ix = s & 3;
 	}
-
 	void cw() {
 		set((ix + 1) & 3);
 		ps++;
 	}
-
 	void ccw() {
 		set((ix + 3) & 3);
 		ps--;
 	}
-
 	void off() {
 		digitalWrite(SPM1_PIN, LOW);
 		digitalWrite(SPM2_PIN, LOW);
 		digitalWrite(SPM3_PIN, LOW);
 		digitalWrite(SPM4_PIN, LOW);
 	}
-
 	void mv(int n) {
 		rem += n;
 	}
-
 	void run() {
 		if (rem > 0) {
 			cw();
@@ -448,15 +431,12 @@ public:
 			rem++;
 		}
 	}
-
 	bool moving() {
 		return rem != 0;
 	}
-
 	long pos() {
 		return ps;
 	}
-
 	void zero() {
 		ps = 0;
 		rem = 0;
@@ -466,7 +446,6 @@ public:
 	void to(long t) {
 		rem = (int)(t - ps);
 	}
-
 	// 円環軸（1周 period ステップ）で目標 target へ最短方向に回す。
 	void turn(long target, long period) {
 		long cur = ((ps % period) + period) % period;
@@ -475,7 +454,6 @@ public:
 		if (d > period / 2) d -= period;
 		mv((int)d);
 	}
-
 	// 速度制御つき非ブロッキング駆動。ms ミリ秒ごとに1ステップ進める。
 	//   spm.mv(2048);  ... loop 内で spm.step(2);   // 2ms/step
 	void step(unsigned long ms) {
@@ -485,21 +463,12 @@ public:
 		stepPre = now;
 		run();
 	}
-
-	// 円環軸で目標へ最短方向。残ステップを「設定し直す」版（毎ループ呼んでよい）。
-	void seek(long target, long period) {
-		long cur = ((ps % period) + period) % period;
-		long tgt = ((target % period) + period) % period;
-		long d = ((tgt - cur) % period + period) % period;
-		if (d > period / 2) d -= period;
-		rem = (int)d;          // mv の加算ではなく代入
-	}
 };
-Spm sm;
+Spm spm;
 
-// 円環軸での最短移動量を返す（snippets 互換, 既定 period=2048）。
+// 円環軸での最短移動量を返す（snippets 互換, 既定 period=120）。
 //   戻り値: -period/2 〜 period/2
-int getmove(int from, int to, int period = 2048) {
+int getmove(int from, int to, int period = 120) {
 	int d = ((to - from) % period + period) % period;
 	if (d > period / 2) d -= period;
 	return d;
@@ -517,22 +486,18 @@ public:
 		analogWrite(DCM1_PIN, spd);
 		digitalWrite(DCM2_PIN, LOW);
 	}
-
 	void ccw(int spd) {
 		digitalWrite(DCM1_PIN, LOW);
 		analogWrite(DCM2_PIN, spd);
 	}
-
 	void br() {
 		digitalWrite(DCM1_PIN, HIGH);
 		digitalWrite(DCM2_PIN, HIGH);
 	}
-
 	void fr() {
 		digitalWrite(DCM1_PIN, LOW);
 		digitalWrite(DCM2_PIN, LOW);
 	}
-
 	// 符号付き速度で駆動。spd>0:正転 spd<0:逆転 spd=0:ブレーキ。
 	// -255〜255 に自動クランプ。ジョイスティック値をそのまま渡せる。
 	void drive(int spd) {
@@ -545,7 +510,7 @@ public:
 		}
 	}
 };
-Dcm dm;
+Dcm dcm;
 
 //================ Timer3 割り込み ================
 void isr();
@@ -583,11 +548,8 @@ void begin(void) {
 	pinMode(PH_PIN, INPUT);
 
 	led.off();
-	sm.off();
-	dm.fr();
-	dispOff();
-
-	randomSeed(millis());
+	spm.off();
+	dcm.fr();
 
 	ADCSRA = (ADCSRA & ~0x07) | (1 << ADPS2);
 
