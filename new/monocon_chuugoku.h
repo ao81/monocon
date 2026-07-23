@@ -300,6 +300,7 @@ public:
 		return edgeUpdate(c, raw, lock);
 	}
 
+	// 測距モジュール
 	int sokRaw(uint8_t pin, uint8_t n = 5) {
 		int v[9];
 		if (n > 9) n = 9;
@@ -316,12 +317,30 @@ public:
 		return v[n / 2];
 	}
 
-	float sok(uint8_t pin, int adNear = 450, int adFar = 10, int nearMm = 40, int farMm = 500) {
+	static constexpr int SOK_N = 4;
+	static constexpr int sokAd[SOK_N] = { 450, 380, 260, 60 };
+	static constexpr int sokMm[SOK_N] = { 40, 150, 300, 500 };
+
+	float sok(uint8_t pin) {
 		long ad = sokRaw(pin);
-		long den = adNear - adFar;
-		if (den == 0) den = 1;
-		long mm = farMm + ((ad - adFar) * (long)(nearMm - farMm) + den / 2) / den;
-		mm = clamp(mm, nearMm, farMm);
+		long mm;
+
+		if (ad >= sokAd[0]) {
+			mm = sokMm[0];
+		} else if (ad <= sokAd[SOK_N - 1]) {
+			mm = sokMm[SOK_N - 1];
+		} else {
+			uint8_t i = 0;
+			while (ad < sokAd[i + 1]) i++;
+			long da = sokAd[i] - sokAd[i + 1];
+			mm = sokMm[i] + ((sokAd[i] - ad) * (long)(sokMm[i + 1] - sokMm[i]) + da / 2) / da;
+		}
+
+		static bool sat = false;
+		if (mm >= sokMm[SOK_N - 1]) sat = true;
+		else if (mm < sokMm[SOK_N - 1] - 20) sat = false;
+		if (sat) mm = sokMm[SOK_N - 1];
+
 		return mm / 10.0f;
 	}
 
