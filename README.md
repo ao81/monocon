@@ -1,6 +1,7 @@
 <!-- markdownlint-disable -->
 
 ## ジョイスティックの入力を8分割
+上が0、cw方向に+1ずつ
 ```c
 
 int getdir(int xx, int yy) {
