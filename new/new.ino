@@ -21,5 +21,5 @@ void loop() {
 		if (b == 0) dir = 1;
 	}
 	led(R, b);
-	dp.s(bye, 100, 50, 30);
+	dp.s("end");
 }
