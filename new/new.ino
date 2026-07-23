@@ -14,12 +14,29 @@ void ir() {
 }
 
 void loop() {
-	if (n >= 100) {
-		n = 0;
-		b += dir;
-		if (b == 100) dir = -1;
-		if (b == 0) dir = 1;
+	static int n = 0;
+
+	in sw = d(d3);
+	if (sw.htol) n++;
+
+	in enc = a.enc(a3, a4);
+	n += enc.delta();
+
+	in pr = a.pr(a2);
+	if (pr) led(G);
+	else led(R);
+
+	in jo = a.joy(a3, a4);
+	dp.n(jo.dir(8, 2));
+
+	if (0) {
+		if (n >= 100) {
+			n = 0;
+			b += dir;
+			if (b == 100) dir = -1;
+			if (b == 0) dir = 1;
+		}
+		led(R, b);
+		dp.s("end");
 	}
-	led(R, b);
-	dp.s("end");
 }

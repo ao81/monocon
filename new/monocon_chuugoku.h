@@ -86,6 +86,262 @@ T clamp(T v, U lo, V hi) {
 	return v < lo ? (T)lo : (v > hi ? (T)hi : v);
 }
 
+// ここから入力系 (begin() の後ろに追加)
+
+struct Dch {
+	uint8_t           pin;
+	volatile uint8_t* reg;
+	uint8_t           mask;
+	uint8_t           stable;
+	unsigned long     t;
+	bool              fired;
+	bool              init;
+};
+
+constexpr uint8_t NCH = 12;
+Dch dchPool[NCH] = {};
+
+Dch* dchSlot(uint8_t pin, bool dig, uint8_t raw0 = LOW) {
+	Dch* freeCh = nullptr;
+	for (uint8_t i = 0; i < NCH; i++) {
+		if (dchPool[i].init && dchPool[i].pin == pin) return &dchPool[i];
+		if (!dchPool[i].init && !freeCh) freeCh = &dchPool[i];
+	}
+	if (!freeCh) return nullptr;
+	Dch& c = *freeCh;
+	c.pin = pin;
+	if (dig) {
+		c.reg = portInputRegister(digitalPinToPort(pin));
+		c.mask = digitalPinToBitMask(pin);
+		c.stable = (*c.reg & c.mask) ? HIGH : LOW;
+	} else {
+		c.reg = nullptr;
+		c.mask = 0;
+		c.stable = raw0;
+	}
+	c.t = millis();
+	c.fired = false;
+	c.init = true;
+	return &c;
+}
+
+// エッジ・レベル入力の結果型 (デジタル / フォトリフレクタ)
+struct de {
+	uint8_t level;
+	bool    ltoh;
+	bool    htol;
+	Dch* c;
+
+	operator int() const {
+		return level;
+	}
+
+	bool held(uint16_t ms, uint8_t lv = LOW) {
+		if (!c) return false;
+		if (c->stable != lv) return false;
+		if (c->fired) return false;
+		if (millis() - c->t >= ms) {
+			c->fired = true;
+			return true;
+		}
+		return false;
+	}
+};
+
+de edgeUpdate(Dch* c, uint8_t raw, uint16_t lock) {
+	de r = { c->stable, false, false, c };
+	if (raw == c->stable) return r;
+
+	unsigned long now = millis();
+	if (now - c->t < lock) return r;
+
+	r.level = raw;
+	r.ltoh = (c->stable == LOW);
+	r.htol = (c->stable == HIGH);
+
+	c->stable = raw;
+	c->t = now;
+	c->fired = false;
+	return r;
+}
+
+// デジタル入力
+de d(uint8_t pin, uint16_t lock = 10) {
+	Dch* c = dchSlot(pin, true);
+	if (!c) return { LOW, false, false, nullptr };
+	uint8_t raw = (*c->reg & c->mask) ? HIGH : LOW;
+	return edgeUpdate(c, raw, lock);
+}
+
+// エンコーダ内部チャネル
+struct Ech {
+	uint8_t           pa, pb;
+	volatile uint8_t* ra;
+	uint8_t           ma;
+	volatile uint8_t* rb;
+	uint8_t           mb;
+	uint8_t           est;
+	long              c;
+	bool              init;
+};
+
+constexpr uint8_t NEC = 6;
+Ech echPool[NEC] = {};
+
+Ech* echSlot(uint8_t pa, uint8_t pb) {
+	Ech* freeCh = nullptr;
+	for (uint8_t i = 0; i < NEC; i++) {
+		if (echPool[i].init && echPool[i].pa == pa && echPool[i].pb == pb) return &echPool[i];
+		if (!echPool[i].init && !freeCh) freeCh = &echPool[i];
+	}
+	if (!freeCh) return nullptr;
+	Ech& e = *freeCh;
+	e.pa = pa;
+	e.pb = pb;
+	e.ra = portInputRegister(digitalPinToPort(pa));
+	e.ma = digitalPinToBitMask(pa);
+	e.rb = portInputRegister(digitalPinToPort(pb));
+	e.mb = digitalPinToBitMask(pb);
+	e.est = 0;
+	e.c = 0;
+	e.init = true;
+	return &e;
+}
+
+int encPoll(Ech* e, bool dir) {
+	uint8_t a = (*e->ra & e->ma) ? 1 : 0;
+	uint8_t b = (*e->rb & e->mb) ? 1 : 0;
+
+	static const uint8_t table[7][4] = {
+		{ 0x00, 0x02, 0x04, 0x00 },
+		{ 0x00, 0x00, 0x00, 0x00 },
+		{ 0x13, 0x02, 0x00, 0x00 },
+		{ 0x03, 0x03, 0x03, 0x00 },
+		{ 0x26, 0x00, 0x04, 0x00 },
+		{ 0x00, 0x00, 0x00, 0x00 },
+		{ 0x06, 0x06, 0x06, 0x00 },
+	};
+	e->est = table[e->est & 0x0f][(a << 1) | b];
+	uint8_t dd = e->est & 0x30;
+	int step = 0;
+	if (dd == 0x10)      step = dir ? 1 : -1;
+	else if (dd == 0x20) step = dir ? -1 : 1;
+	e->c += step;
+	return step;
+}
+
+// 回転入力の結果型 (エンコーダ)
+struct Enc {
+	Ech* e;
+	bool dir;
+
+	int delta() {
+		if (!e) return 0;
+		return encPoll(e, dir);
+	}
+
+	long count() {
+		if (!e) return 0;
+		encPoll(e, dir);
+		return e->c;
+	}
+
+	long clampTo(long lo, long hi) {
+		if (!e) return lo;
+		encPoll(e, dir);
+		e->c = clamp(e->c, lo, hi);
+		return e->c;
+	}
+
+	long loopTo(long lo, long hi) {
+		if (!e) return lo;
+		encPoll(e, dir);
+		long span = hi - lo + 1;
+		if (span < 1) span = 1;
+		e->c = lo + ((e->c - lo) % span + span) % span;
+		return e->c;
+	}
+
+	void set(long v = 0) {
+		if (!e) return;
+		e->c = v;
+		e->est = 0;
+	}
+};
+
+// ジョイスティック
+struct Joy {
+	int x, y;
+
+	int dir(int div, uint8_t rot = 0, bool mirror = false) const {
+		static const int C = 532;
+		long dx = x - C, dy = y - C;
+		if (dx * dx + dy * dy < 165000) return -1;
+		double th = atan2((double)dx, (double)dy);
+		if (mirror) th = -th;
+		th += (rot & 3) * (PI / 2);
+		return (int)((th + 4 * PI + PI / div) / (2 * PI / div)) % div;
+	}
+};
+
+// アナログ入力
+class An {
+public:
+	// ロータリーエンコーダ
+	Enc enc(uint8_t pa, uint8_t pb, bool dir = true) {
+		return { echSlot(pa, pb), dir };
+	}
+
+	// フォトリフレクタ
+	de pr(uint8_t pin, int th = 950, uint16_t lock = 10) {
+		uint8_t raw = (ar(pin) > th) ? HIGH : LOW;
+		Dch* c = dchSlot(pin, false, raw);
+		if (!c) return { LOW, false, false, nullptr };
+		return edgeUpdate(c, raw, lock);
+	}
+
+	int sokRaw(uint8_t pin, uint8_t n = 5) {
+		int v[9];
+		if (n > 9) n = 9;
+		for (uint8_t i = 0; i < n; i++) v[i] = ar(pin);
+		for (uint8_t i = 1; i < n; i++) {
+			int t = v[i];
+			int8_t j = i - 1;
+			while (j >= 0 && v[j] > t) {
+				v[j + 1] = v[j];
+				j--;
+			}
+			v[j + 1] = t;
+		}
+		return v[n / 2];
+	}
+
+	float sok(uint8_t pin, int adNear = 450, int adFar = 10,
+		int nearMm = 40, int farMm = 500) {
+		long ad = sokRaw(pin);
+		long den = adNear - adFar;
+		if (den == 0) den = 1;
+		long mm = farMm + ((ad - adFar) * (long)(nearMm - farMm) + den / 2) / den;
+		mm = clamp(mm, nearMm, farMm);
+		return mm / 10.0f;
+	}
+
+	int vr(uint8_t pin, int lo = 0, int hi = 1023) {
+		long v = ar(pin);
+		return (int)(lo + (v * (long)(hi - lo) + 511) / 1023);
+	}
+
+	Joy joy(uint8_t px, uint8_t py) {
+		Joy j;
+		j.x = ar(px);
+		j.y = ar(py);
+		return j;
+	}
+};
+An a;
+
+#define in auto
+
 // フルカラーLEd
 constexpr uint8_t G = 0b100;
 constexpr uint8_t B = 0b010;
