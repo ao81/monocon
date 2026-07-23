@@ -4,6 +4,8 @@
 const int lowEdge = 0 + 200;
 
 int sw, ypos;
+int presw, preypos;
+bool swps = false, yposps = false;
 
 int count = 0;
 
@@ -23,6 +25,12 @@ ISR(TIMER3_COMPA_vect) {
 
 		sw = digitalRead(_USER_CON_4PIN);
 		ypos = analogRead(A2);
+
+		if (sw == LOW && presw == HIGH) swps = true;
+		if (ypos < lowEdge && preypos >= lowEdge) yposps = true;
+
+		presw = sw;
+		preypos = ypos;
 	}
 
 	tc++;
@@ -39,6 +47,11 @@ void setup() {
 }
 
 void loop() {
+	if (swps || yposps) {
+		swps = yposps = false;
+		tc = 500;
+	}
+
 	if (sw == LOW) {
 		if (tc > 500) {
 			tc = 0;
