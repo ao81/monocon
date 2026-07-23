@@ -356,7 +356,7 @@ ProcessResult runProcess(const std::string& command,
 		return result;
 	}
 
-	constexpr DWORD kPollIntervalMs = 20;
+	constexpr DWORD kPollIntervalMs = 5;
 	while (true) {
 		drainPipe(hStdOutRead, result.output, captureOutput);
 		drainPipe(hStdErrRead, result.error, captureOutput);
