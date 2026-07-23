@@ -1488,28 +1488,43 @@ private:
 	uint32_t previous_ = 0;
 	uint32_t pausedAt_ = 0;
 	bool paused_ = false;
+	bool immediate_ = false;
 
 public:
 	bool operator()(uint32_t ms) {
 		if (paused_) return false;
+
 		const uint32_t now = millis();
-		if (static_cast<uint32_t>(now - previous_) < ms) return false;
+
+		if (immediate_) {
+			immediate_ = false;
+			previous_ = now;
+			return true;
+		}
+
+		if (static_cast<uint32_t>(now - previous_) < ms) {
+			return false;
+		}
+
 		previous_ = now;
 		return true;
 	}
 
-	void reset() {
+	void reset(bool immediate = false) {
 		previous_ = millis();
+		immediate_ = immediate;
 	}
 
 	void wait() {
 		if (paused_) return;
+
 		pausedAt_ = millis();
 		paused_ = true;
 	}
 
 	void go() {
 		if (!paused_) return;
+
 		const uint32_t now = millis();
 		previous_ += static_cast<uint32_t>(now - pausedAt_);
 		paused_ = false;
