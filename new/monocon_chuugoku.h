@@ -606,6 +606,43 @@ public:
 };
 Dcm dm;
 
+// ステッピングモータ
+class Spm {
+private:
+	uint8_t ix = 0;
+
+	void phase(uint8_t s) {
+		static const uint8_t tbl[4] = { 0b1001, 0b1100, 0b0110, 0b0011 };
+		uint8_t b = tbl[s & 3];
+		dw(SPM1_PIN, (b & 1) ? HIGH : LOW);
+		dw(SPM2_PIN, (b & 2) ? HIGH : LOW);
+		dw(SPM3_PIN, (b & 4) ? HIGH : LOW);
+		dw(SPM4_PIN, (b & 8) ? HIGH : LOW);
+		ix = s & 3;
+	}
+
+public:
+	void cw() {
+		phase((ix + 3) & 3);
+	}
+
+	void ccw() {
+		phase((ix + 1) & 3);
+	}
+
+	void fr() {
+		dw(SPM1_PIN, LOW);
+		dw(SPM2_PIN, LOW);
+		dw(SPM3_PIN, LOW);
+		dw(SPM4_PIN, LOW);
+	}
+
+	void br() {
+		phase(ix);
+	}
+};
+Spm sm;
+
 // 圧電ブザー
 void bz(int f) {
 	tone(BZ_PIN, f);
