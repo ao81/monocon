@@ -166,7 +166,7 @@ de edgeUpdate(Dch* c, uint8_t raw, uint16_t lock) {
 }
 
 // デジタル入力
-de d(uint8_t pin, uint16_t lock = 10) {
+de di(uint8_t pin, uint16_t lock = 10) {
 	Dch* c = dchSlot(pin, true);
 	if (!c) return { LOW, false, false, nullptr };
 	uint8_t raw = (*c->reg & c->mask) ? HIGH : LOW;
@@ -316,8 +316,7 @@ public:
 		return v[n / 2];
 	}
 
-	float sok(uint8_t pin, int adNear = 450, int adFar = 10,
-		int nearMm = 40, int farMm = 500) {
+	float sok(uint8_t pin, int adNear = 450, int adFar = 10, int nearMm = 40, int farMm = 500) {
 		long ad = sokRaw(pin);
 		long den = adNear - adFar;
 		if (den == 0) den = 1;
@@ -338,7 +337,7 @@ public:
 		return j;
 	}
 };
-An a;
+An an;
 
 #define in auto
 
