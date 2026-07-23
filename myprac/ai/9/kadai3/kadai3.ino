@@ -1,9 +1,11 @@
-// 三角プロファイルが未実装
-
 #define USE_TIMER3
 #include "mono_con.h"
 
 const int angles[7] = { 0, 10, 20, 30, 40, 50, 60 };
+
+const word V_MIN_DELAY = 8;
+const word V_MAX_DELAY = 28;
+const int  V_ACCEL = 15;
 
 int x, y;
 int tsw, sw, ph;
@@ -14,6 +16,10 @@ int idx = 0;
 int angle = 0;
 int move = 0;
 bool mv = false;
+
+int total = 0;
+int done = 0;
+int dir = 0;
 
 word tc;
 
@@ -79,29 +85,33 @@ void loop() {
 		swps = false;
 	} else if (swps) {
 		swps = false;
-		move = getmove(angle, angles[idx]);
-		mv = true;
+		int d = getmove(angle, angles[idx]);
+		dir = (d > 0) ? 1 : (d < 0 ? -1 : 0);
+		total = abs(d);
+		done = 0;
+		mv = (total > 0);
+		tc = 0;
 	}
 
 	if (mv) {
-		move = getmove(angle, angles[idx]);
+		int remaining = total - done;
 
-		if (tc >= 10) {
-			tc = 0;
-			if (move > 0) {
-				move--;
-				angle++;
-				lm.spm(CW);
-			} else if (move < 0) {
-				move++;
-				angle--;
-				lm.spm(CCW);
-			}
-		}
-
-		if (move == 0) {
+		if (remaining <= 0) {
 			mv = false;
 			tone(BZ_PIN, 2000, 50);
+		} else {
+			int ramp = (done < remaining) ? done : remaining;
+			if (ramp > V_ACCEL) ramp = V_ACCEL;
+
+			word stepDelay = V_MIN_DELAY
+				+ (word)((long)(V_MAX_DELAY - V_MIN_DELAY) * (V_ACCEL - ramp) / V_ACCEL);
+
+			if (tc >= stepDelay) {
+				tc = 0;
+				angle += dir;
+				done++;
+				lm.spm(dir > 0 ? CW : CCW);
+			}
 		}
 	}
 
