@@ -159,7 +159,6 @@ class In {
 
 	// ---- エンコーダ（1系統。A/B のピン読みをキャッシュ） ----
 	uint8_t           est = 0;
-	long              ec = 0;
 	volatile uint8_t* erA = nullptr; uint8_t emA = 0;
 	volatile uint8_t* erB = nullptr; uint8_t emB = 0;
 
@@ -195,9 +194,10 @@ public:
 		return j;
 	}
 
-	// ロータリーエンコーダ。判定点 AB=00 の 7状態テーブル。累積カウントを返す。
-	// dir=false で回転方向を反転。
-	long enc(uint8_t pa, uint8_t pb, bool dir = true) {
+	long c = 0;
+
+	// エンコーダ1ステップ分をデコードし、-1/0/+1 の増分を返す（ec は触らない）。
+	int encDelta(uint8_t pa, uint8_t pb, bool dir) {
 		if (!erA) {
 			erA = portInputRegister(digitalPinToPort(pa)); emA = digitalPinToBitMask(pa);
 			erB = portInputRegister(digitalPinToPort(pb)); emB = digitalPinToBitMask(pb);
@@ -215,19 +215,32 @@ public:
 		};
 		est = table[est & 0x0f][(a << 1) | b];
 		uint8_t dd = est & 0x30;
-		if (dd == 0x10)      ec += dir ? 1 : -1;
-		else if (dd == 0x20) ec += dir ? -1 : 1;
-		return ec;
+		if (dd == 0x10)      return dir ? 1 : -1;
+		else if (dd == 0x20) return dir ? -1 : 1;
+		return 0;
 	}
 
-	void encReset() {
-		ec = 0;
-		est = 0;
+	// 判定点 AB=00 の 7状態テーブル。累積カウントを返す。
+	// dir=false で回転方向を反転。
+	long enc(uint8_t pa, uint8_t pb, bool dir = true) {
+		c += encDelta(pa, pb, dir);
+		return c;
 	}
 
-	void encSet(int n) {
-		ec = n;
-		est = 0;
+	// 範囲 [lo, hi] に固定して返す。端で止まり、それ以上は増えない。
+	long encClamp(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
+		c += encDelta(pa, pb, dir);
+		c = clampv(c, lo, hi);   // カウンタ自体を丸める（戻すときの空回しを防ぐ）
+		return c;
+	}
+
+	// 範囲 [lo, hi] を循環する。hi の次は lo、lo の手前は hi に戻る。
+	long encLoop(uint8_t pa, uint8_t pb, long lo, long hi, bool dir = true) {
+		c += encDelta(pa, pb, dir);
+		long span = hi - lo + 1;
+		if (span < 1) span = 1;    // lo > hi の誤指定への保険
+		c = lo + ((c - lo) % span + span) % span;
+		return c;
 	}
 };
 In in;
@@ -238,8 +251,9 @@ int sok(int pin) {
 
 //================ ノンブロッキング・タイミング ================
 // 一定間隔 ms ごとに true を返す。delay() を使わず周期処理に使う。
-//   Every t;  if (t(500)) { 0.5秒ごとの処理 }
-class Every {
+//   iv t;  if (t(500)) { 0.5秒ごとの処理 }
+// iv(interval)
+class iv {
 	unsigned long pre = 0;
 
 public:
@@ -255,8 +269,9 @@ public:
 };
 
 // ワンショットタイマ。start(ms) 後、経過した瞬間に done() が一度だけ true。
-//   Timer t;  t.start(1000);  ... if (t.done()) { 1秒後の処理 }
-class Timer {
+//   ti t;  t.start(1000);  ... if (t.done()) { 1秒後の処理 }
+// ti(timer)
+class ti {
 	unsigned long lim = 0;
 	bool run = false;
 public:
@@ -423,12 +438,12 @@ public:
 	}
 
 	void cw() {
-		set((ix + 1) & 3);
+		set((ix + 3) & 3);
 		ps++;
 	}
 
 	void ccw() {
-		set((ix + 3) & 3);
+		set((ix + 1) & 3);
 		ps--;
 	}
 
@@ -518,13 +533,13 @@ int getmove(int from, int to, int period = 2048) {
 class Dcm {
 public:
 	void cw(int spd) {
-		analogWrite(DCM1_PIN, spd);
-		digitalWrite(DCM2_PIN, LOW);
+		digitalWrite(DCM1_PIN, LOW);
+		analogWrite(DCM2_PIN, spd);
 	}
 
 	void ccw(int spd) {
-		digitalWrite(DCM1_PIN, LOW);
-		analogWrite(DCM2_PIN, spd);
+		analogWrite(DCM1_PIN, spd);
+		digitalWrite(DCM2_PIN, LOW);
 	}
 
 	void br() {
@@ -575,10 +590,11 @@ class Seq {
 	int  cur = 0;
 	int  pos = 0;
 	unsigned long t0 = 0;
-	bool fresh = true;
 	bool moved = false;
 	bool exited = false;
 public:
+	bool fresh = true;
+
 	void top() {
 		pos = 0;
 		moved = false;
