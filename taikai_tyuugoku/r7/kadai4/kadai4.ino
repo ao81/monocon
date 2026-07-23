@@ -2,7 +2,8 @@
 #include "mono_con.h"
 
 int ph, sw;
-int preph;
+int preph, presw;
+bool swps = false;
 
 int count = 0;
 int bz_rep = 0, bz_wait = 0;
@@ -12,8 +13,8 @@ bool visible = true;
 word in, cd, bz;
 
 int pre_n;
-void onedisp(int n) {
-	if (pre_n != n) {
+void onedisp(int n, bool force = false) {
+	if (force || pre_n != n) {
 		disp(num[n / 10], num[n % 10]);
 		pre_n = n;
 	}
@@ -25,6 +26,10 @@ ISR(TIMER3_COMPA_vect) {
 
 		ph = digitalRead(_USER_CON_3PIN);
 		sw = digitalRead(_USER_CON_5PIN);
+
+		if (sw == LOW && presw == HIGH) swps = true;
+
+		presw = sw;
 	}
 
 	cd++;
@@ -52,7 +57,7 @@ void setup() {
 	serial_init();
 
 	ph = preph = digitalRead(_USER_CON_3PIN);
-	sw = digitalRead(_USER_CON_5PIN);
+	sw = presw = digitalRead(_USER_CON_5PIN);
 
 	disp(num[0], num[0]);
 }
@@ -73,16 +78,23 @@ void loop() {
 			count++;
 		}
 
-		if (sw == LOW) visible = true;
-		else if (count >= 3) visible = false;
-		else visible = true;
+		if (swps) {
+			swps = false;
+			onedisp(count, true);
+			visible = true;
+		} else if (sw == HIGH) {
+			if (ph == HIGH && count >= 3) {
+				visible = false;
+			}
+		}
 
 	} else {
 		cd = 0;
 
 		if (preph != ph) {
 			preph = ph;
-			onedisp(count);
+			// onedisp(count);
+			visible = true;
 
 			if (count == 10) {
 				lm.color.GBR = B010;
