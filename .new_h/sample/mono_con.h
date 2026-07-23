@@ -53,23 +53,20 @@ int stepm_init(int n) {
 class led_stepmotor {
 public:
 	uint8_t b8;
-	inline operator uint8_t() const { return b8; }
-
 	led_stepmotor() : b8(0) {}
 
 	// フルカラーLED: 3bit GBR
-	inline void led(uint8_t gbr) {
+	void led(uint8_t gbr) {
 		b8 = (b8 & 0x0F) | ((gbr & 0x07) << 4);
 	}
 
 	// ステッピングモータ: 励磁フェーズ
-	inline void sm(uint8_t phase) {
+	void spm(uint8_t phase) {
 		b8 = (b8 & 0xF0) | ((uint8_t)stepm_init(phase) & 0x0F);
 	}
-	inline uint8_t sm() const { return b8 & 0x0F; }
 
 	// 更新
-	inline void update() const {
+	void update() const {
 		digitalWrite(LAT2_PIN, LOW);
 		shiftOut(SDI_PIN, SCK_PIN, MSBFIRST, b8);
 		digitalWrite(LAT2_PIN, HIGH);
@@ -119,7 +116,6 @@ void config_init(void) {
 	TCCR3B = 0x0b;    // CTC, pre=64
 	OCR3A = 249;      // 1kHz
 	TIMSK3 = 0x02;    // OCIE3A
-	sei();
 #endif
 }
 
