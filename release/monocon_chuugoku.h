@@ -452,6 +452,13 @@ public:
 	}
 };
 
+#define sig(condition) \
+	([](bool condition_) -> Sig& { \
+		static Sig signal_; \
+		signal_(condition_); \
+		return signal_; \
+	}(static_cast<bool>(condition)))
+
 class Di : public InEdge {
 private:
 	volatile uint8_t* reg;
