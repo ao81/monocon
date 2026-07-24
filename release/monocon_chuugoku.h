@@ -65,7 +65,6 @@ constexpr uint8_t L = LOW;
 constexpr uint8_t H = HIGH;
 
 template <typename T, typename U, typename V>
-
 inline T clamp(T v, U lo, V hi) {
 	return v < static_cast<T>(lo) ? static_cast<T>(lo)
 		: v > static_cast<T>(hi) ? static_cast<T>(hi) : v;
@@ -101,6 +100,7 @@ inline int atomicReadInt(volatile const int* p) {
 }
 
 bool adcReg(uint8_t pin, volatile int* dst);
+bool adcUnreg(volatile int* dst);
 
 int ar(uint8_t pin);
 
@@ -122,7 +122,9 @@ inline void dw(uint8_t pin, uint8_t val) {
 }
 
 namespace board_detail {
-	extern uint8_t loopEpoch;
+	extern uint32_t loopEpoch;
+	bool adcReady(volatile const int* dst);
+	bool arReady(uint8_t pin);
 
 	inline void lockDigitalInputs() {
 		TCCR0A &= static_cast<uint8_t>(~(_BV(COM0A1) | _BV(COM0A0)));
@@ -133,7 +135,8 @@ namespace board_detail {
 		DDRB &= static_cast<uint8_t>(~D_INPUT_MASK);
 	}
 
-	inline uint8_t percentToByte(uint8_t p) {
+	inline uint8_t percentToByte(int p) {
+		p = clamp(p, 0, 100);
 		if (p >= 100) return 255;
 		return static_cast<uint8_t>((static_cast<uint16_t>(p) * 255U + 50U) / 100U);
 	}
@@ -205,12 +208,12 @@ protected:
 	bool first;
 	bool fLtoh;
 	bool fHtol;
-	uint8_t ltohEpoch;
-	uint8_t htolEpoch;
+	uint32_t ltohEpoch;
+	uint32_t htolEpoch;
 	bool fHeldRelease;
 	uint8_t heldReleaseLevel;
 	uint32_t heldReleaseDuration;
-	uint8_t heldReleaseEpoch;
+	uint32_t heldReleaseEpoch;
 
 	void pollWith(uint8_t raw, uint32_t now) {
 		raw = raw ? HIGH : LOW;
@@ -267,17 +270,17 @@ protected:
 		}
 	}
 
-	void serviceEdges(uint8_t epoch) {
-		if (fLtoh && static_cast<uint8_t>(epoch - ltohEpoch) > 1U) {
+	void serviceEdges(uint32_t epoch) {
+		if (fLtoh && static_cast<uint32_t>(epoch - ltohEpoch) > 1U) {
 			fLtoh = false;
 		}
 
-		if (fHtol && static_cast<uint8_t>(epoch - htolEpoch) > 1U) {
+		if (fHtol && static_cast<uint32_t>(epoch - htolEpoch) > 1U) {
 			fHtol = false;
 		}
 
 		if (fHeldRelease &&
-			static_cast<uint8_t>(epoch - heldReleaseEpoch) > 1U) {
+			static_cast<uint32_t>(epoch - heldReleaseEpoch) > 1U) {
 			fHeldRelease = false;
 		}
 	}
@@ -418,8 +421,12 @@ public:
 		st.fired = false;
 		fLtoh = 0;
 		fHtol = 0;
+		fHeldRelease = false;
+		heldReleaseLevel = raw;
+		heldReleaseDuration = 0;
 		ltohEpoch = board_detail::loopEpoch;
 		htolEpoch = board_detail::loopEpoch;
+		heldReleaseEpoch = board_detail::loopEpoch;
 	}
 
 	bool initialized() const {
@@ -438,7 +445,7 @@ public:
 		return static_cast<uint32_t>(atomicMillis() - st.stableSince);
 	}
 
-	static void serviceAll(uint8_t epoch) {
+	static void serviceAll(uint32_t epoch) {
 		for (Sig* p = head_; p; p = p->next_) {
 			p->serviceEdges(epoch);
 		}
@@ -449,18 +456,50 @@ class Di : public InEdge {
 private:
 	volatile uint8_t* reg;
 	uint8_t mask;
+	bool registered;
 	static Di* list[8];
 	static uint8_t nList;
+
+	bool valid() const {
+		return registered;
+	}
 
 public:
 	explicit Di(uint8_t pin, uint16_t lock = 10)
 		: InEdge(lock),
-		reg(portInputRegister(digitalPinToPort(pin))),
-		mask(digitalPinToBitMask(pin)) {
+		reg(nullptr),
+		mask(0),
+		registered(false) {
+		const uint8_t port = digitalPinToPort(pin);
+		if (port == NOT_A_PIN) return;
+		reg = portInputRegister(port);
+		mask = digitalPinToBitMask(pin);
+		if (!reg || !mask) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 8) list[nList++] = this;
+			if (nList < 8) {
+				list[nList++] = this;
+				registered = true;
+			}
 		}
 	}
+
+	~Di() {
+		if (!registered) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < nList; ++i) {
+				if (list[i] != this) continue;
+				for (uint8_t j = static_cast<uint8_t>(i + 1); j < nList; ++j) {
+					list[j - 1] = list[j];
+				}
+				list[--nList] = nullptr;
+				break;
+			}
+			registered = false;
+		}
+	}
+
+	Di(const Di&) = delete;
+	Di& operator=(const Di&) = delete;
 
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
@@ -470,7 +509,7 @@ public:
 		}
 	}
 
-	static void serviceAll(uint8_t epoch) {
+	static void serviceEvents(uint32_t epoch) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->serviceEdges(epoch);
 	}
@@ -480,17 +519,50 @@ class Pr : public InEdge {
 private:
 	int th;
 	volatile int _raw;
+	bool registered;
+	bool converted;
 	static Pr* list[8];
 	static uint8_t nList;
 
+	bool ready() const {
+		return registered && (converted || board_detail::adcReady(&_raw));
+	}
+
+	bool valid() const {
+		return registered;
+	}
+
 public:
 	explicit Pr(uint8_t pin, int threshold = 950, uint16_t lock = 10)
-		: InEdge(lock), th(threshold), _raw(0) {
-		adcReg(pin, &_raw);
+		: InEdge(lock), th(threshold), _raw(0), registered(false), converted(false) {
+		if (!adcReg(pin, &_raw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 8) list[nList++] = this;
+			if (nList < 8) {
+				list[nList++] = this;
+				registered = true;
+			}
 		}
+		if (!registered) adcUnreg(&_raw);
 	}
+
+	~Pr() {
+		if (!registered) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < nList; ++i) {
+				if (list[i] != this) continue;
+				for (uint8_t j = static_cast<uint8_t>(i + 1); j < nList; ++j) {
+					list[j - 1] = list[j];
+				}
+				list[--nList] = nullptr;
+				break;
+			}
+			registered = false;
+		}
+		adcUnreg(&_raw);
+	}
+
+	Pr(const Pr&) = delete;
+	Pr& operator=(const Pr&) = delete;
 
 	int raw() const {
 		return atomicReadInt(&_raw);
@@ -500,12 +572,16 @@ public:
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
 			Pr* const p = list[i];
+			if (!p->converted) {
+				if (!board_detail::adcReady(&p->_raw)) continue;
+				p->converted = true;
+			}
 			const int value = atomicReadInt(&p->_raw);
 			p->pollWith(value > p->th ? HIGH : LOW, now);
 		}
 	}
 
-	static void serviceAll(uint8_t epoch) {
+	static void serviceEvents(uint32_t epoch) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->serviceEdges(epoch);
 	}
@@ -525,12 +601,30 @@ private:
 	int ring[5];
 	uint8_t ri;
 	uint8_t sampleCount;
-	bool valid;
+	bool sampleReady;
+	bool registered;
+	bool adcConverted;
+	volatile int adcRaw;
+	int filteredRaw;
+	int distanceMm;
+	float distanceCm;
 	static Sok* list[2];
 	static uint8_t nList;
 
+	bool ready() const {
+		return registered && sampleReady;
+	}
+
+	bool valid() const {
+		return registered;
+	}
+
 	void serviceOne() {
-		const int sample = atomicReadInt(&_raw);
+		if (!adcConverted) {
+			if (!board_detail::adcReady(&adcRaw)) return;
+			adcConverted = true;
+		}
+		const int sample = atomicReadInt(&adcRaw);
 		ring[ri] = sample;
 		if (++ri == 5) ri = 0;
 		if (sampleCount < 5) ++sampleCount;
@@ -538,10 +632,10 @@ private:
 
 		const int med = board_detail::median5(
 			ring[0], ring[1], ring[2], ring[3], ring[4]);
-		if (valid && med == raw) return;
+		if (sampleReady && med == filteredRaw) return;
 
-		raw = med;
-		valid = true;
+		filteredRaw = med;
+		sampleReady = true;
 		int32_t m;
 		if (med >= sokAd[0]) {
 			m = sokMm[0];
@@ -555,23 +649,61 @@ private:
 		}
 		if (m < sokMm[0]) m = sokMm[0];
 		if (m > sokMm[SOK_N - 1]) m = sokMm[SOK_N - 1];
-		mm = static_cast<int>(m);
-		cm = static_cast<float>(m) * 0.1f;
+		distanceMm = static_cast<int>(m);
+		distanceCm = static_cast<float>(m) * 0.1f;
 	}
 
 public:
-	volatile int _raw;
-	int raw;
-	int mm;
-	float cm;
-
 	explicit Sok(uint8_t pin)
-		: ri(0), sampleCount(0), valid(false), _raw(0), raw(0), mm(0), cm(0.0f) {
+		: ri(0),
+		sampleCount(0),
+		sampleReady(false),
+		registered(false),
+		adcConverted(false),
+		adcRaw(0),
+		filteredRaw(0),
+		distanceMm(0),
+		distanceCm(0.0f) {
 		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
-		adcReg(pin, &_raw);
+		if (!adcReg(pin, &adcRaw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 2) list[nList++] = this;
+			if (nList < 2) {
+				list[nList++] = this;
+				registered = true;
+			}
 		}
+		if (!registered) adcUnreg(&adcRaw);
+	}
+
+	~Sok() {
+		if (!registered) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < nList; ++i) {
+				if (list[i] != this) continue;
+				for (uint8_t j = static_cast<uint8_t>(i + 1); j < nList; ++j) {
+					list[j - 1] = list[j];
+				}
+				list[--nList] = nullptr;
+				break;
+			}
+			registered = false;
+		}
+		adcUnreg(&adcRaw);
+	}
+
+	Sok(const Sok&) = delete;
+	Sok& operator=(const Sok&) = delete;
+
+	int raw() const {
+		return filteredRaw;
+	}
+
+	int mm() const {
+		return distanceMm;
+	}
+
+	float cm() const {
+		return distanceCm;
 	}
 
 	static void serviceAll() {
@@ -584,19 +716,39 @@ class Vr {
 private:
 	int inputMin;
 	int inputMax;
+	volatile int rawValue;
+	bool registered;
+
+	bool ready() const {
+		return registered && board_detail::adcReady(&rawValue);
+	}
+
+	bool valid() const {
+		return registered;
+	}
 
 public:
-	volatile int raw;
-
 	explicit Vr(uint8_t pin, int minValue = 0, int maxValue = 512)
 		: inputMin(minValue),
 		inputMax(maxValue),
-		raw(0) {
-		adcReg(pin, &raw);
+		rawValue(0),
+		registered(false) {
+		registered = adcReg(pin, &rawValue);
+	}
+
+	~Vr() {
+		if (registered) adcUnreg(&rawValue);
+	}
+
+	Vr(const Vr&) = delete;
+	Vr& operator=(const Vr&) = delete;
+
+	int raw() const {
+		return atomicReadInt(&rawValue);
 	}
 
 	int to(int lo, int hi) const {
-		int v = atomicReadInt(&raw);
+		int v = raw();
 		v = clamp(v, inputMin, inputMax);
 		const int32_t inSpan = static_cast<int32_t>(inputMax) - inputMin;
 
@@ -616,23 +768,61 @@ public:
 };
 
 class Js {
-public:
-	volatile int x;
-	volatile int y;
+private:
+	volatile int xValue;
+	volatile int yValue;
+	bool registered;
 
-	Js(uint8_t px, uint8_t py) : x(0), y(0) {
-		adcReg(px, &x);
-		adcReg(py, &y);
+	bool ready() const {
+		return registered &&
+			board_detail::adcReady(&xValue) &&
+			board_detail::adcReady(&yValue);
+	}
+
+	bool valid() const {
+		return registered;
+	}
+
+public:
+	Js(uint8_t px, uint8_t py)
+		: xValue(0), yValue(0), registered(false) {
+		if (!adcReg(px, &xValue)) return;
+		if (!adcReg(py, &yValue)) {
+			adcUnreg(&xValue);
+			return;
+		}
+		registered = true;
+	}
+
+	~Js() {
+		if (!registered) return;
+		adcUnreg(&xValue);
+		adcUnreg(&yValue);
+	}
+
+	Js(const Js&) = delete;
+	Js& operator=(const Js&) = delete;
+
+	int x() const {
+		return atomicReadInt(&xValue);
+	}
+
+	int y() const {
+		return atomicReadInt(&yValue);
+	}
+
+	void read(int& vx, int& vy) const {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			vx = xValue;
+			vy = yValue;
+		}
 	}
 
 	int dir(int div, uint8_t rot = 0, bool mirror = false) const {
 		if (div <= 0) return -1;
 
 		int vx, vy;
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			vx = x;
-			vy = y;
-		}
+		read(vx, vy);
 
 		const int32_t dx = static_cast<int32_t>(vx) - 532;
 		const int32_t dy = static_cast<int32_t>(vy) - 532;
@@ -700,6 +890,7 @@ private:
 	volatile uint8_t est;
 	volatile int32_t pending;
 	bool direction;
+	bool registered;
 
 	static Enc* list[4];
 	static uint8_t nList;
@@ -709,6 +900,8 @@ private:
 	static volatile uint8_t* pcPort[3];
 	static uint8_t pcWatched[3];
 	static uint8_t pcPrevious[3];
+	static bool pollingStarted;
+	static bool timerForced;
 
 	inline void poll() {
 		static const uint8_t table[7][4] = {
@@ -766,27 +959,82 @@ private:
 		return v;
 	}
 
+	bool valid() const {
+		return registered;
+	}
+
 public:
 	Enc(uint8_t pa, uint8_t pb, bool d = true)
 		: pinA(pa),
 		pinB(pb),
-		ra(portInputRegister(digitalPinToPort(pa))),
-		rb(portInputRegister(digitalPinToPort(pb))),
-		ma(digitalPinToBitMask(pa)),
-		mb(digitalPinToBitMask(pb)),
-		samePort(ra == rb),
+		ra(nullptr),
+		rb(nullptr),
+		ma(0),
+		mb(0),
+		samePort(false),
 		est(0),
 		pending(0),
-		direction(d) {
+		direction(d),
+		registered(false) {
+		const uint8_t portA = digitalPinToPort(pa);
+		const uint8_t portB = digitalPinToPort(pb);
+		if (portA == NOT_A_PIN || portB == NOT_A_PIN || pa == pb) return;
+		ra = portInputRegister(portA);
+		rb = portInputRegister(portB);
+		ma = digitalPinToBitMask(pa);
+		mb = digitalPinToBitMask(pb);
+		if (!ra || !rb || !ma || !mb) return;
+		samePort = ra == rb;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			if (nList < 4) {
 				list[nList++] = this;
+				registered = true;
+			}
+		}
+		if (registered && pollingStarted) {
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				beginPolling(timerForced);
 			}
 		}
 	}
 
+	~Enc() {
+		if (!registered) return;
+		bool rebuild = false;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < nList; ++i) {
+				if (list[i] != this) continue;
+				for (uint8_t j = static_cast<uint8_t>(i + 1); j < nList; ++j) {
+					list[j - 1] = list[j];
+				}
+				list[--nList] = nullptr;
+				break;
+			}
+			registered = false;
+			rebuild = pollingStarted;
+		}
+		if (rebuild) {
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				beginPolling(timerForced);
+			}
+		}
+	}
+
+	Enc(const Enc&) = delete;
+	Enc& operator=(const Enc&) = delete;
+
 private:
 	static void beginPolling(bool forceTimer = false) {
+		pollingStarted = true;
+		timerForced = forceTimer;
+		uint8_t oldGroups = 0;
+		for (uint8_t g = 0; g < 3; ++g) {
+			if (pcWatched[g]) oldGroups |= _BV(g);
+		}
+		PCICR &= static_cast<uint8_t>(~oldGroups);
+		PCMSK0 &= static_cast<uint8_t>(~pcWatched[0]);
+		PCMSK1 &= static_cast<uint8_t>(~pcWatched[1]);
+		PCMSK2 &= static_cast<uint8_t>(~pcWatched[2]);
 		nFallback = 0;
 		for (uint8_t g = 0; g < 3; ++g) {
 			pcPort[g] = nullptr;
@@ -973,10 +1221,9 @@ private:
 public:
 	Led() : color(0), opacity(255), acc(0), previousState(0xFF) {}
 
-	void operator()(uint8_t newColor, uint8_t opacityPercent = 100) {
+	void operator()(uint8_t newColor, int opacityPercent = 100) {
 		newColor &= 0x07;
-		const uint8_t newOpacity = board_detail::percentToByte(
-			clamp<uint8_t, int, int>(opacityPercent, 0, 100));
+		const uint8_t newOpacity = board_detail::percentToByte(opacityPercent);
 		if (color == newColor && opacity == newOpacity) return;
 		color = newColor;
 		opacity = newOpacity;
@@ -1099,27 +1346,27 @@ public:
 		const double a = neg ? -f : f;
 		if (neg) {
 			const bool dot = a < 9.95;
-			int v = dot ? static_cast<int>(a * 10.0 + 0.5)
-				: static_cast<int>(a + 0.5);
-			if (v > 99) v = 99;
+			const double bounded = a > 99.0 ? 99.0 : a;
+			int v = dot ? static_cast<int>(bounded * 10.0 + 0.5)
+				: static_cast<int>(bounded + 0.5);
 			uint8_t p1 = seg[(v / 10) % 10];
 			if (dot) p1 |= SEG_DOT;
 			return (*this)(SEG_MINUS, p1, seg[v % 10]);
 		}
 
+		const double bounded = a > 999.0 ? 999.0 : a;
 		int v;
 		int8_t dot;
-		if (a < 9.995) {
-			v = static_cast<int>(a * 100.0 + 0.5);
+		if (bounded < 9.995) {
+			v = static_cast<int>(bounded * 100.0 + 0.5);
 			dot = 0;
-		} else if (a < 99.95) {
-			v = static_cast<int>(a * 10.0 + 0.5);
+		} else if (bounded < 99.95) {
+			v = static_cast<int>(bounded * 10.0 + 0.5);
 			dot = 1;
 		} else {
-			v = static_cast<int>(a + 0.5);
+			v = static_cast<int>(bounded + 0.5);
 			dot = -1;
 		}
-		if (v > 999) v = 999;
 		if (!zero && dot == 0 && v % 10 == 0) {
 			v /= 10;
 			dot = 1;
@@ -1138,15 +1385,20 @@ public:
 		return (*this)(0, p0, p1);
 	}
 
-	Disp& o(uint8_t oa, uint8_t ob = 0xFF, uint8_t oc = 0xFF) {
-		if (ob == 0xFF) ob = oa;
-		if (oc == 0xFF) oc = ob;
-		const uint8_t values[3] = { oa, ob, oc };
+	Disp& o(int oa, int ob, int oc) {
+		const int values[3] = { oa, ob, oc };
 		for (uint8_t i = 0; i < 3; ++i) {
-			const uint8_t p = clamp<uint8_t, int, int>(values[i], 0, 100);
-			opacity[i] = board_detail::percentToByte(p);
+			opacity[i] = board_detail::percentToByte(values[i]);
 		}
 		return *this;
+	}
+
+	Disp& o(int oa, int ob) {
+		return o(oa, ob, ob);
+	}
+
+	Disp& o(int oa) {
+		return o(oa, oa, oa);
 	}
 
 	Disp& base(int32_t x, uint8_t radix, bool zero = false) {
@@ -1482,7 +1734,7 @@ public:
 			} else if (diff < -half) {
 				diff += STEPS;
 			} else if (diff == half || diff == -half) {
-				diff = halfDir == CW ? -half : half;
+				diff = halfDir == CW ? half : -half;
 			}
 			break;
 		}
@@ -1724,7 +1976,7 @@ private:
 	int target_ = 0;
 
 	uint32_t enteredAt_ = 0;
-	uint8_t lastEpoch_ = 0xFF;
+	uint32_t lastEpoch_ = UINT32_MAX;
 
 	bool initialized_ = false;
 	bool transitionPending_ = false;
@@ -1747,7 +1999,7 @@ private:
 	}
 
 	void syncLoop() {
-		const uint8_t epoch = board_detail::loopEpoch;
+		const uint32_t epoch = board_detail::loopEpoch;
 
 		if (lastEpoch_ == epoch) {
 			return;
@@ -2108,6 +2360,7 @@ namespace board_detail {
 		uint8_t mux5;
 		uint8_t channel;
 		volatile int* dst;
+		volatile bool ready;
 	};
 
 	AdcSlot adcSlots[16];
@@ -2117,7 +2370,7 @@ namespace board_detail {
 	bool adcHardwareReady = false;
 	volatile int adcFallback[16] = { 0 };
 	volatile bool servicePending = false;
-	uint8_t loopEpoch = 0;
+	uint32_t loopEpoch = 0;
 
 	inline uint8_t analogChannel(uint8_t pin) {
 		if (pin >= A0) pin = static_cast<uint8_t>(pin - A0);
@@ -2146,6 +2399,7 @@ namespace board_detail {
 
 		const uint8_t current = adcIndex;
 		*adcSlots[current].dst = ADC;
+		adcSlots[current].ready = true;
 
 		uint8_t next = static_cast<uint8_t>(current + 1);
 		if (next >= adcCount) next = 0;
@@ -2175,6 +2429,8 @@ Enc* Enc::pcOwner[3][8] = {};
 volatile uint8_t* Enc::pcPort[3] = {};
 uint8_t Enc::pcWatched[3] = {};
 uint8_t Enc::pcPrevious[3] = {};
+bool Enc::pollingStarted = false;
+bool Enc::timerForced = false;
 
 Led led;
 Disp dp;
@@ -2204,6 +2460,7 @@ bool adcReg(uint8_t pin, volatile int* dst) {
 				channel >= 8 ? _BV(MUX5) : 0;
 			board_detail::adcSlots[index].channel = channel;
 			board_detail::adcSlots[index].dst = dst;
+			board_detail::adcSlots[index].ready = false;
 
 			board_detail::adcCount = static_cast<uint8_t>(index + 1);
 			if (channel < 8) DIDR0 |= _BV(channel);
@@ -2213,6 +2470,54 @@ bool adcReg(uint8_t pin, volatile int* dst) {
 		}
 	}
 	return added;
+}
+
+bool adcUnreg(volatile int* dst) {
+	if (!dst) return false;
+	bool removed = false;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		uint8_t index = board_detail::adcCount;
+		for (uint8_t i = 0; i < board_detail::adcCount; ++i) {
+			if (board_detail::adcSlots[i].dst == dst) {
+				index = i;
+				break;
+			}
+		}
+		if (index < board_detail::adcCount) {
+			const bool restart = board_detail::adcHardwareReady;
+			if (restart) {
+				ADCSRA &= static_cast<uint8_t>(~(_BV(ADIE) | _BV(ADEN)));
+				board_detail::adcRunning = false;
+			}
+			for (uint8_t i = static_cast<uint8_t>(index + 1);
+				i < board_detail::adcCount; ++i) {
+				board_detail::adcSlots[i - 1] = board_detail::adcSlots[i];
+			}
+			--board_detail::adcCount;
+			board_detail::adcIndex = 0;
+			if (restart) {
+				ADCSRA = _BV(ADEN) | _BV(ADIE) |
+					_BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
+				board_detail::startAdcLocked();
+			}
+			removed = true;
+		}
+	}
+	return removed;
+}
+
+bool board_detail::adcReady(volatile const int* dst) {
+	if (!dst) return false;
+	bool ready = false;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		for (uint8_t i = 0; i < board_detail::adcCount; ++i) {
+			if (board_detail::adcSlots[i].dst == dst) {
+				ready = board_detail::adcSlots[i].ready;
+				break;
+			}
+		}
+	}
+	return ready;
 }
 
 int ar(uint8_t pin) {
@@ -2235,6 +2540,21 @@ int ar(uint8_t pin) {
 		if (!adcReg(pin, source)) return 0;
 	}
 	return atomicReadInt(source);
+}
+
+bool board_detail::arReady(uint8_t pin) {
+	const uint8_t channel = board_detail::analogChannel(pin);
+	if (channel > 15) return false;
+	bool ready = false;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		for (uint8_t i = 0; i < board_detail::adcCount; ++i) {
+			if (board_detail::adcSlots[i].channel == channel) {
+				ready = board_detail::adcSlots[i].ready;
+				if (ready) break;
+			}
+		}
+	}
+	return ready;
 }
 
 ISR(ADC_vect) {
@@ -2389,10 +2709,10 @@ void loop() {
 
 	board_detail::service();
 
-	const uint8_t epoch = ++board_detail::loopEpoch;
+	const uint32_t epoch = ++board_detail::loopEpoch;
 	Sig::serviceAll(epoch);
-	Di::serviceAll(epoch);
-	Pr::serviceAll(epoch);
+	Di::serviceEvents(epoch);
+	Pr::serviceEvents(epoch);
 }
 
 #define setup userSetup
