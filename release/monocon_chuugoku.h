@@ -2581,6 +2581,12 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 ISR(TIMER2_COMPA_vect) {
+	led.serviceTick();
+
+	static uint8_t divider = 0;
+	if (++divider < 10) return;
+	divider = 0;
+
 	++tms;
 	board_detail::servicePending = true;
 	dm.isrTick();
@@ -2602,7 +2608,6 @@ inline void board_detail::service() {
 	Pr::serviceAll(now);
 	Sok::serviceAll();
 	bz.update();
-	led.serviceTick();
 	dp.serviceTick();
 }
 
@@ -2655,9 +2660,9 @@ void begin() {
 	TCCR2A = 0;
 	TCCR2B = 0;
 	TCNT2 = 0;
-	OCR2A = static_cast<uint8_t>((F_CPU / 64UL / 1000UL) - 1UL);
+	OCR2A = static_cast<uint8_t>((F_CPU / 8UL / 10000UL) - 1UL);
 	TCCR2A = _BV(WGM21);
-	TCCR2B = _BV(CS22);
+	TCCR2B = _BV(CS21);
 	TIMSK2 = _BV(OCIE2A);
 	TIFR2 = _BV(OCF2A);
 
