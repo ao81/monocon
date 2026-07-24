@@ -1221,7 +1221,7 @@ private:
 public:
 	Led() : color(0), opacity(255), acc(0), previousState(0xFF) {}
 
-	void operator()(uint8_t newColor, int opacityPercent = 100) {
+	void operator()(uint8_t newColor = 0, int opacityPercent = 100) {
 		newColor &= 0x07;
 		const uint8_t newOpacity = board_detail::percentToByte(opacityPercent);
 		if (color == newColor && opacity == newOpacity) return;
