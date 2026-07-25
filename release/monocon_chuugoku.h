@@ -36,14 +36,8 @@ void monoconEarlyDigitalInputInit()
 __attribute__((naked, used, section(".init3")));
 
 void monoconEarlyDigitalInputInit() {
-	asm volatile(
-		"in r24, 0x05\n\t"
-		"andi r24, 0x0F\n\t"
-		"out 0x05, r24\n\t"
-		"in r24, 0x04\n\t"
-		"andi r24, 0x0F\n\t"
-		"out 0x04, r24\n\t"
-		);
+	PORTB &= 0x0F;
+	DDRB &= 0x0F;
 }
 
 constexpr uint8_t SCK_BIT = _BV(PH3);
