@@ -1284,6 +1284,20 @@ private:
 		return SEG_NONE;
 	}
 
+	static constexpr uint8_t artPattern(const char* s) {
+		uint8_t pattern = 0;
+
+		if (!s) return pattern;
+
+		for (uint8_t i = 0; i < 8 && s[i] != '\0'; ++i) {
+			if (s[i] == '.') {
+				pattern |= static_cast<uint8_t>(1U << i);
+			}
+		}
+
+		return pattern;
+	}
+
 public:
 	Disp() {
 		for (uint8_t i = 0; i < 3; ++i) {
@@ -1443,6 +1457,19 @@ public:
 		}
 
 		return (*this)(0, 0, p2);
+	}
+
+	template <size_t NA, size_t NB, size_t NC>
+	Disp& art(
+		const char(&a)[NA],
+		const char(&b)[NB],
+		const char(&c)[NC]
+	) {
+		return (*this)(
+			artPattern(a),
+			artPattern(b),
+			artPattern(c)
+			);
 	}
 
 	void serviceTick() {
