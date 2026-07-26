@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/22
+// 作成年月日: 2026/07/26
 /**********************************************/
 
 #ifndef MONOCON_CHUUGOKU_H
@@ -54,6 +54,7 @@ constexpr uint8_t Y = 0b101;
 constexpr uint8_t BR = 0b011;
 constexpr uint8_t M = 0b011;
 constexpr uint8_t GBR = 0b111;
+constexpr uint8_t W = 0b111;
 
 constexpr uint8_t L = LOW;
 constexpr uint8_t H = HIGH;
