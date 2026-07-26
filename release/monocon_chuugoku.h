@@ -1285,7 +1285,7 @@ private:
 		return SEG_NONE;
 	}
 
-	static constexpr uint8_t artPattern(const char* s) {
+	static uint8_t artPattern(const char* s) {
 		uint8_t pattern = 0;
 
 		if (!s) return pattern;
