@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/26
+// 作成年月日: 2026/07/27
 /**********************************************/
 
 #ifndef MONOCON_CHUUGOKU_H
@@ -2401,18 +2401,17 @@ private:
 	int current_ = 0;
 	int position_ = 0;
 	int count_ = 0;
-	int target_ = 0;
+	int active_ = -1;
 
 	uint32_t enteredAt_ = 0;
 	uint32_t lastEpoch_ = UINT32_MAX;
 
 	bool initialized_ = false;
-	bool transitionPending_ = false;
-	bool transitionGrace_ = false;
-	bool restartPending_ = false;
 	bool entryPending_ = true;
+
 	bool exitPending_ = false;
-	bool exitConsumed_ = false;
+	int exitState_ = -1;
+	uint32_t exitEpoch_ = 0;
 
 	int clampState(int state) const {
 		if (state < 0) {
@@ -2437,32 +2436,19 @@ private:
 			count_ = position_;
 		}
 
-		if (transitionPending_) {
-			if (exitConsumed_ || !transitionGrace_) {
-				current_ = clampState(target_);
-				enteredAt_ = millis();
-				entryPending_ = true;
-				transitionPending_ = false;
-				transitionGrace_ = false;
-				exitPending_ = false;
-				exitConsumed_ = false;
-			} else {
-				transitionGrace_ = false;
-				exitPending_ = true;
-				exitConsumed_ = false;
-			}
-		} else if (restartPending_) {
-			enteredAt_ = millis();
-			entryPending_ = true;
-			restartPending_ = false;
+		if (exitPending_ && exitEpoch_ != epoch) {
+			exitPending_ = false;
+			exitState_ = -1;
 		}
 
 		position_ = 0;
+		active_ = -1;
 		lastEpoch_ = epoch;
 
 		if (!initialized_) {
-			enteredAt_ = millis();
 			initialized_ = true;
+			enteredAt_ = millis();
+			entryPending_ = true;
 		}
 	}
 
@@ -2471,42 +2457,34 @@ private:
 
 		state = clampState(state);
 
-		if (!transitionPending_ && state == current_) {
+		if (state == current_) {
 			return;
 		}
 
-		if (transitionPending_ && state == target_) {
-			return;
-		}
+		exitState_ = current_;
+		exitPending_ = true;
+		exitEpoch_ = board_detail::loopEpoch;
 
-		const bool currentPassed = position_ > current_;
-
-		if (!transitionPending_) {
-			transitionGrace_ = currentPassed;
-			exitConsumed_ = false;
-		} else if (currentPassed && !exitConsumed_) {
-			transitionGrace_ = true;
-		}
-
-		target_ = state;
-		transitionPending_ = true;
-		restartPending_ = false;
-
-		if (!exitConsumed_) {
-			exitPending_ = true;
-		}
+		current_ = state;
+		enteredAt_ = millis();
+		entryPending_ = true;
 	}
 
 public:
 	Seq() = default;
 
 	Seq(const Seq&) = delete;
-
 	Seq& operator=(const Seq&) = delete;
 
 	bool on() {
 		syncLoop();
-		return position_++ == current_;
+
+		active_ = position_;
+
+		const bool selected = position_ == current_;
+		position_++;
+
+		return selected;
 	}
 
 	bool operator()() {
@@ -2520,10 +2498,6 @@ public:
 	void next() {
 		syncLoop();
 
-		if (transitionPending_) {
-			return;
-		}
-
 		int target = current_ + 1;
 
 		if (count_ > 0 && target >= count_) {
@@ -2535,10 +2509,6 @@ public:
 
 	void prev() {
 		syncLoop();
-
-		if (transitionPending_) {
-			return;
-		}
 
 		int target = current_ - 1;
 
@@ -2556,11 +2526,8 @@ public:
 	void restart() {
 		syncLoop();
 
-		transitionPending_ = false;
-		transitionGrace_ = false;
-		restartPending_ = true;
-		exitPending_ = false;
-		exitConsumed_ = false;
+		enteredAt_ = millis();
+		entryPending_ = true;
 	}
 
 	bool is(int state) {
@@ -2581,7 +2548,7 @@ public:
 	bool in() {
 		syncLoop();
 
-		if (!entryPending_) {
+		if (active_ != current_ || !entryPending_) {
 			return false;
 		}
 
@@ -2592,12 +2559,12 @@ public:
 	bool out() {
 		syncLoop();
 
-		if (!exitPending_) {
+		if (!exitPending_ || active_ != exitState_) {
 			return false;
 		}
 
 		exitPending_ = false;
-		exitConsumed_ = true;
+		exitState_ = -1;
 		return true;
 	}
 
