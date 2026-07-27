@@ -204,6 +204,33 @@ struct Dch {
 	bool fired;
 };
 
+class PollLock {
+private:
+	uint16_t lockMs_;
+	uint32_t previous_;
+	bool first_;
+
+public:
+	explicit PollLock(uint16_t lock = 10)
+		: lockMs_(lock), previous_(0), first_(true) {
+	}
+
+	bool due(uint32_t now) {
+		if (first_) {
+			first_ = false;
+			previous_ = now;
+			return true;
+		}
+
+		if (static_cast<uint32_t>(now - previous_) < lockMs_) {
+			return false;
+		}
+
+		previous_ = now;
+		return true;
+	}
+};
+
 class InEdge {
 protected:
 	Dch st;
@@ -360,10 +387,40 @@ public:
 	}
 };
 
-class Sig : public InEdge {
+namespace board_detail {
+	template <typename T>
+	struct RemoveReference { using type = T; };
+
+	template <typename T>
+	struct RemoveReference<T&> { using type = T; };
+
+	template <typename T>
+	struct RemoveReference<T&&> { using type = T; };
+
+	template <typename T>
+	struct RemoveCv { using type = T; };
+
+	template <typename T>
+	struct RemoveCv<const T> { using type = T; };
+
+	template <typename T>
+	struct RemoveCv<volatile T> { using type = T; };
+
+	template <typename T>
+	struct RemoveCv<const volatile T> { using type = T; };
+
+	template <typename T>
+	struct SignalValueType {
+		using type = typename RemoveCv<
+			typename RemoveReference<T>::type
+		>::type;
+	};
+}
+
+class SigBase {
 private:
-	static Sig* head_;
-	Sig* next_;
+	static SigBase* head_;
+	SigBase* next_;
 
 	void attach() {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -374,7 +431,7 @@ private:
 
 	void detach() {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			Sig** link = &head_;
+			SigBase** link = &head_;
 			while (*link && *link != this) {
 				link = &((*link)->next_);
 			}
@@ -385,82 +442,294 @@ private:
 		}
 	}
 
-public:
-	explicit Sig(uint16_t lock = 10)
-		: InEdge(lock), next_(nullptr) {
+protected:
+	bool changePending_;
+	bool releasePending_;
+	uint32_t changeEpoch_;
+	uint32_t releaseEpoch_;
+
+	SigBase()
+		: next_(nullptr),
+		changePending_(false),
+		releasePending_(false),
+		changeEpoch_(0),
+		releaseEpoch_(0) {
 		attach();
 	}
 
-	~Sig() {
+	~SigBase() {
 		detach();
 	}
 
-	Sig(const Sig&) = delete;
-	Sig& operator=(const Sig&) = delete;
-
-	bool set(bool condition) {
-		pollWith(condition ? HIGH : LOW, atomicMillis());
-		return level();
+	void publishChange() {
+		changePending_ = true;
+		changeEpoch_ = board_detail::loopEpoch;
 	}
 
-	bool update(bool condition) {
-		return set(condition);
+	void publishRelease() {
+		releasePending_ = true;
+		releaseEpoch_ = board_detail::loopEpoch;
 	}
 
-	bool operator()(bool condition) {
-		return set(condition);
+	bool takeChange(bool matches = true) {
+		if (!changePending_ || !matches) return false;
+		changePending_ = false;
+		return true;
 	}
 
-	void reset(bool level = false) {
-		const uint8_t raw = level ? HIGH : LOW;
-		const uint32_t now = atomicMillis();
-
-		first = false;
-		st.stable = raw;
-		st.candidate = raw;
-		st.stableSince = now;
-		st.candidateSince = now;
-		st.candidateActive = false;
-		st.fired = false;
-		fLtoh = 0;
-		fHtol = 0;
-		fHeldRelease = false;
-		heldReleaseLevel = raw;
-		heldReleaseDuration = 0;
-		ltohEpoch = board_detail::loopEpoch;
-		htolEpoch = board_detail::loopEpoch;
-		heldReleaseEpoch = board_detail::loopEpoch;
+	bool takeRelease(bool matches = true) {
+		if (!releasePending_ || !matches) return false;
+		releasePending_ = false;
+		return true;
 	}
 
-	bool initialized() const {
-		return !first;
+	void clearEvents() {
+		changePending_ = false;
+		releasePending_ = false;
+		changeEpoch_ = board_detail::loopEpoch;
+		releaseEpoch_ = board_detail::loopEpoch;
 	}
 
-	bool changed() {
-		const bool result = fLtoh || fHtol;
-		fLtoh = 0;
-		fHtol = 0;
-		return result;
-	}
-
-	uint32_t elapsed() const {
-		if (first) return 0;
-		return static_cast<uint32_t>(atomicMillis() - st.stableSince);
-	}
+public:
+	SigBase(const SigBase&) = delete;
+	SigBase& operator=(const SigBase&) = delete;
 
 	static void serviceAll(uint32_t epoch) {
-		for (Sig* p = head_; p; p = p->next_) {
-			p->serviceEdges(epoch);
+		for (SigBase* p = head_; p; p = p->next_) {
+			if (p->changePending_ &&
+				static_cast<uint32_t>(epoch - p->changeEpoch_) > 1U) {
+				p->changePending_ = false;
+			}
+
+			if (p->releasePending_ &&
+				static_cast<uint32_t>(epoch - p->releaseEpoch_) > 1U) {
+				p->releasePending_ = false;
+			}
 		}
 	}
 };
 
-#define sig(condition) \
-	([](bool condition_) -> Sig& { \
-		static Sig signal_; \
-		signal_(condition_); \
+template <typename T>
+class SigValue : public SigBase {
+private:
+	T stable_;
+	T candidate_;
+	T previous_;
+	T releasedValue_;
+	T tolerance_;
+	uint32_t stableSince_;
+	uint32_t candidateSince_;
+	uint32_t releasedDuration_;
+	uint16_t lockMs_;
+	bool initialized_;
+	bool candidateActive_;
+	bool heldFired_;
+
+	template <typename U>
+	static bool nearValue(U a, U b, U tolerance) {
+		int64_t difference =
+			static_cast<int64_t>(a) - static_cast<int64_t>(b);
+		if (difference < 0) difference = -difference;
+
+		int64_t range = static_cast<int64_t>(tolerance);
+		if (range < 0) range = -range;
+
+		return difference <= range;
+	}
+
+	static bool nearValue(float a, float b, float tolerance) {
+		const float range = tolerance < 0.0f ? -tolerance : tolerance;
+		return fabsf(a - b) <= range;
+	}
+
+	static bool nearValue(double a, double b, double tolerance) {
+		const double range = tolerance < 0.0 ? -tolerance : tolerance;
+		return fabs(a - b) <= range;
+	}
+
+	bool same(T a, T b) const {
+		return nearValue<T>(a, b, tolerance_);
+	}
+
+	void initialize(T value, uint32_t now) {
+		stable_ = value;
+		candidate_ = value;
+		previous_ = value;
+		releasedValue_ = value;
+		stableSince_ = now;
+		candidateSince_ = now;
+		releasedDuration_ = 0;
+		initialized_ = true;
+		candidateActive_ = false;
+		heldFired_ = false;
+		clearEvents();
+	}
+
+	void commit(T value, uint32_t now) {
+		const T old = stable_;
+
+		previous_ = old;
+		releasedValue_ = old;
+		releasedDuration_ =
+			static_cast<uint32_t>(candidateSince_ - stableSince_);
+
+		stable_ = value;
+		stableSince_ = now;
+		candidateActive_ = false;
+		heldFired_ = false;
+
+		publishChange();
+		publishRelease();
+	}
+
+public:
+	explicit SigValue(uint16_t lock = 10, T tolerance = T())
+		: stable_(T()),
+		candidate_(T()),
+		previous_(T()),
+		releasedValue_(T()),
+		tolerance_(tolerance),
+		stableSince_(0),
+		candidateSince_(0),
+		releasedDuration_(0),
+		lockMs_(lock),
+		initialized_(false),
+		candidateActive_(false),
+		heldFired_(false) {
+	}
+
+	T set(T value) {
+		const uint32_t now = atomicMillis();
+
+		if (!initialized_) {
+			initialize(value, now);
+			return stable_;
+		}
+
+		if (same(value, stable_)) {
+			candidateActive_ = false;
+			return stable_;
+		}
+
+		if (!candidateActive_ || !same(value, candidate_)) {
+			candidate_ = value;
+			candidateSince_ = now;
+			candidateActive_ = true;
+			if (lockMs_ != 0) return stable_;
+		}
+
+		if (static_cast<uint32_t>(now - candidateSince_) < lockMs_) {
+			return stable_;
+		}
+
+		commit(value, now);
+		return stable_;
+	}
+
+	T update(T value) {
+		return set(value);
+	}
+
+	T operator()(T value) {
+		return set(value);
+	}
+
+	void reset(T value = T()) {
+		initialize(value, atomicMillis());
+	}
+
+	bool initialized() const {
+		return initialized_;
+	}
+
+	T level() const {
+		return stable_;
+	}
+
+	T previous() const {
+		return previous_;
+	}
+
+	operator T() const {
+		return stable_;
+	}
+
+	bool change() {
+		return takeChange();
+	}
+
+	bool changed() {
+		return change();
+	}
+
+	bool change(T from, T to) {
+		return takeChange(same(previous_, from) && same(stable_, to));
+	}
+
+	bool from(T value) {
+		return takeChange(same(previous_, value));
+	}
+
+	bool to(T value) {
+		return takeChange(same(stable_, value));
+	}
+
+	bool up() {
+		return takeChange(stable_ > previous_);
+	}
+
+	bool down() {
+		return takeChange(stable_ < previous_);
+	}
+
+	bool ltoh() {
+		return takeChange(previous_ == T() && stable_ != T());
+	}
+
+	bool htol() {
+		return takeChange(previous_ != T() && stable_ == T());
+	}
+
+	bool held(uint16_t ms, T value, bool release = false) {
+		if (release) {
+			if (!releasePending_ || !same(releasedValue_, value)) {
+				return false;
+			}
+
+			const bool result = releasedDuration_ >= ms;
+			releasePending_ = false;
+			return result;
+		}
+
+		if (!initialized_ || !same(stable_, value) || heldFired_) {
+			return false;
+		}
+
+		if (static_cast<uint32_t>(atomicMillis() - stableSince_) < ms) {
+			return false;
+		}
+
+		heldFired_ = true;
+		return true;
+	}
+
+	uint32_t elapsed() const {
+		if (!initialized_) return 0;
+		return static_cast<uint32_t>(atomicMillis() - stableSince_);
+	}
+};
+
+using Sig = SigValue<int32_t>;
+
+#define sig(value, ...) \
+	([](typename board_detail::SignalValueType<decltype(value)>::type value_) \
+		-> SigValue<typename board_detail::SignalValueType<decltype(value)>::type>& { \
+		using SigType = SigValue< \
+			typename board_detail::SignalValueType<decltype(value)>::type>; \
+		static SigType signal_{__VA_ARGS__}; \
+		signal_.set(value_); \
 		return signal_; \
-	}(static_cast<bool>(condition)))
+	}(static_cast<typename board_detail::SignalValueType<decltype(value)>::type>(value)))
 
 class Di : public InEdge {
 private:
@@ -618,6 +887,7 @@ private:
 	int filteredRaw;
 	int distanceMm;
 	float distanceCm;
+	PollLock pollLock;
 	static Sok* list[2];
 	static uint8_t nList;
 
@@ -629,16 +899,17 @@ private:
 		return registered;
 	}
 
-	void serviceOne() {
+	void serviceOne(uint32_t now) {
 		if (!adcConverted) {
 			if (!board_detail::adcReady(&adcRaw)) return;
 			adcConverted = true;
 		}
+
 		const int sample = atomicReadInt(&adcRaw);
 		ring[ri] = sample;
 		if (++ri == 5) ri = 0;
 		if (sampleCount < 5) ++sampleCount;
-		if (sampleCount < 5) return;
+		if (sampleCount < 5 || !pollLock.due(now)) return;
 
 		const int med = board_detail::median5(
 			ring[0], ring[1], ring[2], ring[3], ring[4]);
@@ -664,7 +935,7 @@ private:
 	}
 
 public:
-	explicit Sok(uint8_t pin)
+	explicit Sok(uint8_t pin, uint16_t lock = 10)
 		: ri(0),
 		sampleCount(0),
 		sampleReady(false),
@@ -673,7 +944,8 @@ public:
 		adcRaw(0),
 		filteredRaw(0),
 		distanceMm(0),
-		distanceCm(0.0f) {
+		distanceCm(0.0f),
+		pollLock(lock) {
 		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
 		if (!adcReg(pin, &adcRaw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -716,9 +988,9 @@ public:
 		return distanceCm;
 	}
 
-	static void serviceAll() {
+	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
-		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne();
+		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne(now);
 	}
 };
 
@@ -726,35 +998,73 @@ class Vr {
 private:
 	int inputMin;
 	int inputMax;
-	volatile int rawValue;
+	volatile int adcRaw;
+	int rawValue;
 	bool registered;
+	bool sampleReady;
+	PollLock pollLock;
+	static Vr* list[8];
+	static uint8_t nList;
 
 	bool ready() const {
-		return registered && board_detail::adcReady(&rawValue);
+		return registered && sampleReady;
 	}
 
 	bool valid() const {
 		return registered;
 	}
 
+	void serviceOne(uint32_t now) {
+		if (!board_detail::adcReady(&adcRaw) || !pollLock.due(now)) return;
+		rawValue = atomicReadInt(&adcRaw);
+		sampleReady = true;
+	}
+
 public:
-	explicit Vr(uint8_t pin, int minValue = 0, int maxValue = 512)
+	explicit Vr(
+		uint8_t pin,
+		int minValue = 0,
+		int maxValue = 512,
+		uint16_t lock = 10
+	)
 		: inputMin(minValue),
 		inputMax(maxValue),
+		adcRaw(0),
 		rawValue(0),
-		registered(false) {
-		registered = adcReg(pin, &rawValue);
+		registered(false),
+		sampleReady(false),
+		pollLock(lock) {
+		if (!adcReg(pin, &adcRaw)) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (nList < 8) {
+				list[nList++] = this;
+				registered = true;
+			}
+		}
+		if (!registered) adcUnreg(&adcRaw);
 	}
 
 	~Vr() {
-		if (registered) adcUnreg(&rawValue);
+		if (!registered) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < nList; ++i) {
+				if (list[i] != this) continue;
+				for (uint8_t j = static_cast<uint8_t>(i + 1); j < nList; ++j) {
+					list[j - 1] = list[j];
+				}
+				list[--nList] = nullptr;
+				break;
+			}
+			registered = false;
+		}
+		adcUnreg(&adcRaw);
 	}
 
 	Vr(const Vr&) = delete;
 	Vr& operator=(const Vr&) = delete;
 
 	int raw() const {
-		return atomicReadInt(&rawValue);
+		return rawValue;
 	}
 
 	int to(int lo, int hi) const {
@@ -775,57 +1085,104 @@ public:
 			static_cast<int64_t>(lo) + num / inSpan
 			);
 	}
+
+	static void serviceAll(uint32_t now) {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne(now);
+	}
 };
 
 class Js {
 private:
-	volatile int xValue;
-	volatile int yValue;
+	volatile int adcX;
+	volatile int adcY;
+	int xValue;
+	int yValue;
 	bool registered;
+	bool sampleReady;
+	PollLock pollLock;
+	static Js* list[4];
+	static uint8_t nList;
 
 	bool ready() const {
-		return registered &&
-			board_detail::adcReady(&xValue) &&
-			board_detail::adcReady(&yValue);
+		return registered && sampleReady;
 	}
 
 	bool valid() const {
 		return registered;
 	}
 
-public:
-	Js(uint8_t px, uint8_t py)
-		: xValue(0), yValue(0), registered(false) {
-		if (!adcReg(px, &xValue)) return;
-		if (!adcReg(py, &yValue)) {
-			adcUnreg(&xValue);
+	void serviceOne(uint32_t now) {
+		if (!board_detail::adcReady(&adcX) ||
+			!board_detail::adcReady(&adcY) ||
+			!pollLock.due(now)) {
 			return;
 		}
-		registered = true;
+
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			xValue = adcX;
+			yValue = adcY;
+		}
+		sampleReady = true;
+	}
+
+public:
+	Js(uint8_t px, uint8_t py, uint16_t lock = 10)
+		: adcX(0),
+		adcY(0),
+		xValue(0),
+		yValue(0),
+		registered(false),
+		sampleReady(false),
+		pollLock(lock) {
+		if (!adcReg(px, &adcX)) return;
+		if (!adcReg(py, &adcY)) {
+			adcUnreg(&adcX);
+			return;
+		}
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (nList < 4) {
+				list[nList++] = this;
+				registered = true;
+			}
+		}
+		if (!registered) {
+			adcUnreg(&adcX);
+			adcUnreg(&adcY);
+		}
 	}
 
 	~Js() {
 		if (!registered) return;
-		adcUnreg(&xValue);
-		adcUnreg(&yValue);
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < nList; ++i) {
+				if (list[i] != this) continue;
+				for (uint8_t j = static_cast<uint8_t>(i + 1); j < nList; ++j) {
+					list[j - 1] = list[j];
+				}
+				list[--nList] = nullptr;
+				break;
+			}
+			registered = false;
+		}
+		adcUnreg(&adcX);
+		adcUnreg(&adcY);
 	}
 
 	Js(const Js&) = delete;
 	Js& operator=(const Js&) = delete;
 
 	int x() const {
-		return atomicReadInt(&xValue);
+		return xValue;
 	}
 
 	int y() const {
-		return atomicReadInt(&yValue);
+		return yValue;
 	}
 
 	void read(int& vx, int& vy) const {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			vx = xValue;
-			vy = yValue;
-		}
+		vx = xValue;
+		vy = yValue;
 	}
 
 	int dir(int div, uint8_t rot = 0, bool mirror = false) const {
@@ -873,6 +1230,11 @@ public:
 		if (result < 0) result += div;
 		return result;
 	}
+
+	static void serviceAll(uint32_t now) {
+		const uint8_t n = nList;
+		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne(now);
+	}
 };
 
 extern "C" {
@@ -901,6 +1263,9 @@ private:
 	volatile int32_t pending;
 	bool direction;
 	bool registered;
+	volatile uint16_t lockMs;
+	volatile uint32_t acceptedAt;
+	volatile bool accepted;
 
 	static Enc* list[4];
 	static uint8_t nList;
@@ -912,6 +1277,20 @@ private:
 	static uint8_t pcPrevious[3];
 	static bool pollingStarted;
 	static bool timerForced;
+
+	inline bool acceptEvent() {
+		const uint16_t lock = lockMs;
+		if (lock == 0) return true;
+
+		const uint32_t now = tms;
+		if (accepted && static_cast<uint32_t>(now - acceptedAt) < lock) {
+			return false;
+		}
+
+		accepted = true;
+		acceptedAt = now;
+		return true;
+	}
 
 	inline void poll() {
 		static const uint8_t table[7][4] = {
@@ -943,13 +1322,13 @@ private:
 
 		const uint8_t event = next & 0x30;
 
-		if (event == 0x10) {
+		if (event == 0x10 && acceptEvent()) {
 			if (direction) {
 				if (pending < INT32_MAX) ++pending;
 			} else {
 				if (pending > INT32_MIN) --pending;
 			}
-		} else if (event == 0x20) {
+		} else if (event == 0x20 && acceptEvent()) {
 			if (direction) {
 				if (pending > INT32_MIN) --pending;
 			} else {
@@ -974,7 +1353,7 @@ private:
 	}
 
 public:
-	Enc(uint8_t pa, uint8_t pb, bool d = true)
+	Enc(uint8_t pa, uint8_t pb, bool d = true, uint16_t lock = 10)
 		: pinA(pa),
 		pinB(pb),
 		ra(nullptr),
@@ -985,7 +1364,10 @@ public:
 		est(0),
 		pending(0),
 		direction(d),
-		registered(false) {
+		registered(false),
+		lockMs(lock),
+		acceptedAt(0),
+		accepted(false) {
 		const uint8_t portA = digitalPinToPort(pa);
 		const uint8_t portB = digitalPinToPort(pb);
 		if (portA == NOT_A_PIN || portB == NOT_A_PIN || pa == pb) return;
@@ -1509,6 +1891,7 @@ private:
 	volatile uint32_t remainingMs;
 	volatile bool timedActive;
 	volatile bool donePending;
+	volatile int8_t now;
 
 	inline void stopFromIsr() {
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
@@ -1519,10 +1902,12 @@ private:
 	}
 
 public:
-	volatile int8_t now;
-
 	Dcm()
 		: remainingMs(0), timedActive(false), donePending(false), now(0) {
+	}
+
+	int8_t dir() const {
+		return now;
 	}
 
 	void cw(int spd) {
@@ -1698,6 +2083,12 @@ public:
 		currentStep(0),
 		targetStep(0),
 		previousStepMs(0) {
+	}
+
+	int8_t dir() const {
+		if (targetStep > currentStep) return 1;
+		if (targetStep < currentStep) return -1;
+		return 0;
 	}
 
 	void cw() {
@@ -2455,13 +2846,17 @@ namespace board_detail {
 
 volatile uint32_t tms = 0;
 
-Sig* Sig::head_ = nullptr;
+SigBase* SigBase::head_ = nullptr;
 Di* Di::list[8] = {};
 uint8_t Di::nList = 0;
 Pr* Pr::list[8] = {};
 uint8_t Pr::nList = 0;
 Sok* Sok::list[2] = {};
 uint8_t Sok::nList = 0;
+Vr* Vr::list[8] = {};
+uint8_t Vr::nList = 0;
+Js* Js::list[4] = {};
+uint8_t Js::nList = 0;
 Enc* Enc::list[4] = {};
 uint8_t Enc::nList = 0;
 Enc* Enc::fallback[4] = {};
@@ -2648,7 +3043,9 @@ inline void board_detail::service() {
 
 	Di::serviceAll(now);
 	Pr::serviceAll(now);
-	Sok::serviceAll();
+	Sok::serviceAll(now);
+	Vr::serviceAll(now);
+	Js::serviceAll(now);
 	bz.update();
 }
 
