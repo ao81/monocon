@@ -2220,7 +2220,7 @@ private:
 	uint32_t previous_ = 0;
 	uint32_t pausedAt_ = 0;
 	bool paused_ = false;
-	bool immediate_ = false;
+	bool immediate_ = true;
 
 public:
 	bool operator()(uint32_t ms) {
@@ -2242,7 +2242,7 @@ public:
 		return true;
 	}
 
-	void reset(bool immediate = false) {
+	void reset(bool immediate = true) {
 		previous_ = millis();
 		immediate_ = immediate;
 	}
