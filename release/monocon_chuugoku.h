@@ -56,6 +56,14 @@ constexpr uint8_t M = 0b011;
 constexpr uint8_t GBR = 0b111;
 constexpr uint8_t W = 0b111;
 
+constexpr uint16_t DO = 262;
+constexpr uint16_t RE = 294;
+constexpr uint16_t MI = 330;
+constexpr uint16_t FA = 349;
+constexpr uint16_t SO = 392;
+constexpr uint16_t RA = 440;
+constexpr uint16_t SI = 494;
+
 constexpr uint8_t L = LOW;
 constexpr uint8_t H = HIGH;
 
