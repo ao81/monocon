@@ -2611,6 +2611,7 @@ ISR(TIMER1_COMPA_vect) {
 
 ISR(TIMER2_COMPA_vect) {
 	led.serviceTick();
+	dp.serviceTick();
 
 	static uint8_t divider = 0;
 	if (++divider < 10) return;
@@ -2637,7 +2638,6 @@ inline void board_detail::service() {
 	Pr::serviceAll(now);
 	Sok::serviceAll();
 	bz.update();
-	dp.serviceTick();
 }
 
 void yield() {
