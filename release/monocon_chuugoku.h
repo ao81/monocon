@@ -2310,8 +2310,8 @@ private:
 
 public:
 	void start() {
-		startedAt_ = millis();
-		fixed_ = 0;
+		if (running_) return;
+		startedAt_ = static_cast<uint32_t>(millis() - fixed_);
 		running_ = true;
 	}
 
@@ -2334,6 +2334,10 @@ public:
 		return running_
 			? static_cast<uint32_t>(millis() - startedAt_)
 			: fixed_;
+	}
+
+	double s() const {
+		return static_cast<double>(ms()) / 1000.0;
 	}
 
 	uint32_t operator()() const {
