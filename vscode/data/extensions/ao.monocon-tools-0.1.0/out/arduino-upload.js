@@ -1,15 +1,99 @@
 "use strict";
 
+const path = require("node:path");
+const fs = require("node:fs");
 const vscode = require("vscode");
+const {
+    NativeUnavailableError,
+    NativeOperationTimeoutError
+} = require("./native-service");
+const { createCompilerReport } = require("./compiler-report");
 
 const UPLOAD_COMMAND = "monoconTools.uploadArduino";
+const BUILD_COMMAND = "monoconTools.compileArduino";
 const LEGACY_UPLOAD_COMMAND = "monocon.upload";
 const UPLOAD_TASK_NAME = "Arduino: Upload";
 
 let activeUpload;
+let activeBuild;
 let serialMonitorApiPromise;
 let uploadTaskPromise;
 let outputChannel;
+let compilerDiagnostics;
+
+function containsIno(directory) {
+    try {
+        return fs.readdirSync(directory, { withFileTypes: true })
+            .some(entry => entry.isFile() && entry.name.toLowerCase().endsWith(".ino"));
+    }
+    catch {
+        return false;
+    }
+}
+
+function findSketchDirectory(filePath, workspacePath) {
+    let directory = path.dirname(filePath);
+    const workspaceRoot = workspacePath ? path.resolve(workspacePath) : undefined;
+    while (directory) {
+        if (containsIno(directory)) return directory;
+        if (workspaceRoot && path.resolve(directory) === workspaceRoot) break;
+        const parent = path.dirname(directory);
+        if (parent === directory) break;
+        if (workspaceRoot) {
+            const relative = path.relative(workspaceRoot, parent);
+            if (relative.startsWith("..") || path.isAbsolute(relative)) break;
+        }
+        directory = parent;
+    }
+    return undefined;
+}
+
+function resolveSketchContext() {
+    const editorUri = vscode.window.activeTextEditor?.document?.uri;
+    if (editorUri?.scheme === "file" && editorUri.fsPath) {
+        const folder = vscode.workspace.getWorkspaceFolder?.(editorUri);
+        const workspaceDir = folder?.uri?.fsPath || path.dirname(editorUri.fsPath);
+        const sketchDir = editorUri.fsPath.toLowerCase().endsWith(".ino")
+            ? path.dirname(editorUri.fsPath)
+            : findSketchDirectory(editorUri.fsPath, workspaceDir);
+        if (!sketchDir) return undefined;
+        return {
+            sketchDir,
+            workspaceDir
+        };
+    }
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    if (folder?.uri?.fsPath && containsIno(folder.uri.fsPath)) {
+        return {
+            sketchDir: folder.uri.fsPath,
+            workspaceDir: folder.uri.fsPath
+        };
+    }
+    return undefined;
+}
+
+function formatCompileLabel(compile) {
+    if (compile?.cached) return "(cached)";
+    const recompiled = compile?.recompiledFiles || 0;
+    const total = compile?.totalFiles || 0;
+    return recompiled === total && total > 0
+        ? "(full)"
+        : `(diff ${recompiled}/${total} files)`;
+}
+
+function reportNativeResult(result, totalMs) {
+    const compile = result.compile || {};
+    outputChannel?.appendLine(
+        `Compile ${formatCompileLabel(compile)} in ${compile.buildTimeMs || 0} ms`
+    );
+    outputChannel?.appendLine(
+        `Upload to ${result.port || ""} in ${result.uploadTimeMs || 0} ms`
+    );
+    outputChannel?.appendLine(`Total client time: ${totalMs.toFixed(4)} ms`);
+    if (result.avrdudeOutput) {
+        log(result.avrdudeOutput.trimEnd());
+    }
+}
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -33,6 +117,74 @@ function withTimeout(promise, timeoutMs, timeoutMessage) {
 
 function log(message) {
     outputChannel?.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
+}
+
+function diagnosticSeverity(severity) {
+    if (severity === "error") return vscode.DiagnosticSeverity?.Error ?? 0;
+    if (severity === "warning") return vscode.DiagnosticSeverity?.Warning ?? 1;
+    return vscode.DiagnosticSeverity?.Information ?? 2;
+}
+
+function publishCompilerDiagnostics(report) {
+    if (!compilerDiagnostics || !vscode.Uri?.file
+        || typeof vscode.Range !== "function"
+        || typeof vscode.Diagnostic !== "function") {
+        return;
+    }
+    compilerDiagnostics.clear();
+    const byFile = new Map();
+    for (const item of report.diagnostics) {
+        const line = Math.max(0, item.line - 1);
+        const column = Math.max(0, item.column - 1);
+        const range = new vscode.Range(line, column, line, column + 1);
+        const diagnostic = new vscode.Diagnostic(
+            range,
+            item.message,
+            diagnosticSeverity(item.severity)
+        );
+        diagnostic.source = "Monocon Tools";
+        diagnostic.code = "arduino-compile";
+        const fileDiagnostics = byFile.get(item.absolutePath) || [];
+        fileDiagnostics.push(diagnostic);
+        byFile.set(item.absolutePath, fileDiagnostics);
+    }
+    for (const [filePath, diagnostics] of byFile) {
+        compilerDiagnostics.set(vscode.Uri.file(filePath), diagnostics);
+    }
+}
+
+function createCompileFailureError(compileResult, sketch) {
+    const report = createCompilerReport(
+        compileResult?.compilerOutput || compileResult?.errorMessage || "",
+        sketch?.sketchDir
+    );
+    publishCompilerDiagnostics(report);
+    outputChannel?.appendLine(report.text);
+    outputChannel?.show?.(true);
+    const error = new Error(report.summary);
+    error.isCompilerFailure = true;
+    error.detailsAlreadyReported = true;
+    return error;
+}
+
+function showOperationFailure(operationName, error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!error?.detailsAlreadyReported) {
+        log(`${operationName}に失敗しました: ${message}`);
+    }
+    const prefix = error?.isCompilerFailure ? "コンパイルエラー" : `${operationName}失敗`;
+    const action = error?.isCompilerFailure ? "問題を表示" : undefined;
+    const notification = action
+        ? vscode.window.showErrorMessage(`${prefix}: ${message}`, action)
+        : vscode.window.showErrorMessage(`${prefix}: ${message}`);
+    if (action && notification?.then) {
+        notification.then(selection => {
+            if (selection === action) {
+                vscode.commands.executeCommand("workbench.actions.view.problems");
+            }
+        });
+    }
+    return message;
 }
 
 async function getSerialMonitorApi(context) {
@@ -241,9 +393,10 @@ async function reopenSerialMonitors(api, ports, baudRate, delayMs, operationTime
     }
 }
 
-async function runUpload(context) {
+async function runUpload(context, uploadStatus, nativeService) {
     let api;
     let stoppedPorts = [];
+    let allowMonitorReopen = true;
     const config = vscode.workspace.getConfiguration("monoconTools.upload");
     const baudRate = config.get("baudRate", 9600);
     const reopenDelayMs = config.get("reopenDelayMs", 0);
@@ -281,24 +434,72 @@ async function runUpload(context) {
             }
 
             progress.report({ message: "コンパイル・書き込みを実行しています…" });
-            const task = await findUploadTask();
-            if (!task) {
-                throw new Error(`${UPLOAD_TASK_NAME} タスクが見つかりません。`);
+            const sketch = resolveSketchContext();
+            if (!sketch) {
+                throw new Error("Arduinoスケッチを特定できません。.inoファイルを開いてから実行してください。");
             }
-            const exitCode = await executeTaskAndWait(task, taskTimeoutMs);
-            if (exitCode !== 0) {
-                const code = exitCode === undefined ? "不明" : exitCode;
-                throw new Error(`書き込みタスクが終了コード ${code} で失敗しました。`);
+            compilerDiagnostics?.clear();
+            let nativeCompleted = false;
+            if (nativeService) {
+                const started = performance.now();
+                try {
+                    uploadStatus?.start();
+                    const result = await nativeService.request(
+                        "upload",
+                        sketch,
+                        taskTimeoutMs
+                    );
+                    if (!result.success) {
+                        if (result.compile && !result.compile.success
+                            && (result.compile.compilerOutput || result.compile.errorMessage)) {
+                            throw createCompileFailureError(result.compile, sketch);
+                        }
+                        const details = result.compile?.compilerOutput
+                            || result.avrdudeOutput
+                            || "";
+                        throw new Error(
+                            `${result.errorMessage || "ネイティブ書き込みに失敗しました。"}`
+                            + (details ? `\n${details}` : "")
+                        );
+                    }
+                    reportNativeResult(result, performance.now() - started);
+                    uploadStatus?.succeed();
+                    nativeCompleted = true;
+                    log("ネイティブエンジンでArduinoへの書き込みが完了しました。");
+                }
+                catch (error) {
+                    if (!(error instanceof NativeUnavailableError)) {
+                        throw error;
+                    }
+                    log(`ネイティブエンジンを利用できないためCLIへ切り替えます: ${error.message}`);
+                }
             }
-            log("Arduinoへの書き込みが完了しました。");
+            if (!nativeCompleted) {
+                const task = await findUploadTask();
+                if (!task) {
+                    throw new Error(`${UPLOAD_TASK_NAME} タスクが見つかりません。`);
+                }
+                const exitCode = await executeTaskAndWait(task, taskTimeoutMs);
+                if (exitCode !== 0) {
+                    const code = exitCode === undefined ? "不明" : exitCode;
+                    throw new Error(`書き込みタスクが終了コード ${code} で失敗しました。`);
+                }
+                log("CLI互換エンジンでArduinoへの書き込みが完了しました。");
+            }
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            log(`Arduinoへの書き込みに失敗しました: ${message}`);
-            vscode.window.showErrorMessage(`Arduinoへの書き込みに失敗しました: ${message}`);
+            if (error instanceof NativeOperationTimeoutError) {
+                // C++同期処理はタイムアウト通知後も終了処理中の可能性がある。
+                // 同じCOMポートを開き直して書き込みを妨害しない。
+                allowMonitorReopen = false;
+                log("安全のためシリアルモニターを自動再開しません。ネイティブ処理の完了後に手動で再開してください。");
+            }
+            uploadStatus?.fail(message);
+            showOperationFailure("Arduinoへの書き込み", error);
         }
         finally {
-            if (reopenMonitor && stoppedPorts.length > 0) {
+            if (reopenMonitor && allowMonitorReopen && stoppedPorts.length > 0) {
                 progress.report({ message: "シリアルモニターを再開しています…" });
                 await reopenSerialMonitors(api, stoppedPorts, baudRate, reopenDelayMs, operationTimeoutMs);
             }
@@ -306,16 +507,22 @@ async function runUpload(context) {
     });
 }
 
-function registerArduinoUploadCommands(context) {
+function registerArduinoUploadCommands(context, uploadStatus, nativeService) {
     outputChannel = vscode.window.createOutputChannel("Monocon Tools");
     context.subscriptions.push(outputChannel);
+    if (vscode.languages?.createDiagnosticCollection) {
+        compilerDiagnostics = vscode.languages.createDiagnosticCollection("monoconTools");
+        context.subscriptions.push(compilerDiagnostics);
+    }
 
     const handler = async () => {
-        if (activeUpload) {
-            vscode.window.showInformationMessage("アップロードは既に実行中です。");
+        if (activeUpload || activeBuild) {
+            vscode.window.showInformationMessage("コンパイルまたはアップロードは既に実行中です。");
             return;
         }
-        const thisUpload = runUpload(context);
+        outputChannel?.clear();
+        compilerDiagnostics?.clear();
+        const thisUpload = runUpload(context, uploadStatus, nativeService);
         activeUpload = thisUpload;
         try {
             await thisUpload;
@@ -327,13 +534,54 @@ function registerArduinoUploadCommands(context) {
         }
     };
 
+    const buildHandler = async () => {
+        if (activeBuild || activeUpload) {
+            vscode.window.showInformationMessage("コンパイルまたはアップロードは既に実行中です。");
+            return;
+        }
+        outputChannel?.clear();
+        compilerDiagnostics?.clear();
+        const operation = (async () => {
+            try {
+                if (!await vscode.workspace.saveAll(false)) {
+                    throw new Error("ファイルを保存できませんでした。");
+                }
+                const sketch = resolveSketchContext();
+                if (!sketch) {
+                    throw new Error("コンパイルするArduinoスケッチを特定できません。");
+                }
+                compilerDiagnostics?.clear();
+                const result = await nativeService.request("compile", sketch, 180000);
+                if (!result.success) {
+                    throw createCompileFailureError(result, sketch);
+                }
+                outputChannel?.appendLine(
+                    `Compile ${formatCompileLabel(result)} in ${result.buildTimeMs || 0} ms`
+                );
+                vscode.window.showInformationMessage("Arduinoのコンパイルが完了しました。");
+            }
+            catch (error) {
+                showOperationFailure("Arduinoのコンパイル", error);
+            }
+        })();
+        activeBuild = operation;
+        try {
+            await operation;
+        }
+        finally {
+            if (activeBuild === operation) activeBuild = undefined;
+        }
+    };
+
     context.subscriptions.push(
         vscode.commands.registerCommand(UPLOAD_COMMAND, handler),
+        vscode.commands.registerCommand(BUILD_COMMAND, buildHandler),
         vscode.commands.registerCommand(LEGACY_UPLOAD_COMMAND, handler)
     );
 }
 
 module.exports = {
     registerArduinoUploadCommands,
-    UPLOAD_COMMAND
+    UPLOAD_COMMAND,
+    BUILD_COMMAND
 };

@@ -69,6 +69,7 @@ namespace {
 
 	// ポータブル版VSCodeのキャッシュディレクトリを特定
 	const std::string& getPortableCacheDir() {
+		if (!g_state.buildCacheRoot.empty()) return g_state.buildCacheRoot;
 		// 実行ファイル位置はプロセス中に変化しないため、初回だけ解決する。
 		static const std::string cacheDir = [] {
 			char buf[MAX_PATH];
@@ -253,6 +254,14 @@ namespace {
 	bool ensureCoreArchive(const BoardConfig& bc, const std::string& sketchDir,
 		const std::string& targetCoreA, std::string& errOut) {
 		if (Utils::fileExists(targetCoreA)) return true;
+		if (Utils::fileExists(g_state.toolchain.prebuiltCoreA)) {
+			std::error_code ec;
+			fs::copy_file(g_state.toolchain.prebuiltCoreA, targetCoreA,
+				fs::copy_options::overwrite_existing, ec);
+			if (!ec) return true;
+			errOut = "Failed to install bundled core.a: " + ec.message();
+			return false;
+		}
 		std::string cli = findArduinoCli();
 		if (cli.empty()) {
 			errOut = "arduino-cli not found (cannot generate core.a)";

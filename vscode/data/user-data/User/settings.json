@@ -27,6 +27,7 @@
 		"comments": "on",
 		"strings": "on"
 	},
+	"editor.lineNumbers": "relative",
 
 	// =========================================================
 	// Formatter (per language)
@@ -71,7 +72,7 @@
 	// =========================================================
 	// Terminal
 	// =========================================================
-	"terminal.integrated.fontFamily": "monospace",
+	"terminal.integrated.fontFamily": "'Source Code Pro'",
 	"terminal.integrated.gpuAcceleration": "on",
 	"terminal.integrated.unicodeVersion": "11",
 	"terminal.integrated.detectLocale": "off",
@@ -191,7 +192,9 @@
 
 		"errorLens.errorForeground": "#ff8888",      // 柔らかいサーモンピンクの文字
 		"errorLens.warningForeground": "#ffcc00",    // 柔らかい黄色の文字
-		"errorLens.infoForeground": "#88bbff"        // 柔らかい水色の文字
+		"errorLens.infoForeground": "#88bbff",        // 柔らかい水色の文字
+
+		"editorCursor.foreground": "#00ff00"
 	},
 
 	"problems.decorations.enabled": false,
@@ -289,10 +292,16 @@
 	],
 	"monoconTools.taskFolders.baseName": "mon",
 
+	// "terminal.integrated.fontSize": 16,
+	// "terminal.integrated.lineHeight": 1.1,
+	// "terminal.integrated.letterSpacing": 0,
+
 	"monoconTools.upload.baudRate": 115200,
 	"monoconTools.upload.reopenMonitor": true,
 	"monoconTools.upload.reopenDelayMs": 0,
 	"monoconTools.upload.portReleaseDelayMs": 0,
 	"monoconTools.upload.taskTimeoutMs": 180000,
-	"monoconTools.upload.serialOperationTimeoutMs": 5000
+	"monoconTools.upload.serialOperationTimeoutMs": 5000,
+	"diffEditor.ignoreTrimWhitespace": false,
+	"editor.cursorBlinking": "solid",
 }

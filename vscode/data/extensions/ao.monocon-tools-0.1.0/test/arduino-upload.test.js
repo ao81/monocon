@@ -9,7 +9,7 @@ function disposable(remove) {
     return { dispose: remove || (() => undefined) };
 }
 
-function loadExtension(vscode, net) {
+function loadExtension(vscode, net, nativeModule) {
     const extensionPath = path.resolve(__dirname, '../out/extension.js');
     const uploadPath = path.resolve(__dirname, '../out/arduino-upload.js');
     const foldersPath = path.resolve(__dirname, '../out/task-folders.js');
@@ -21,6 +21,9 @@ function loadExtension(vscode, net) {
         }
         if (request === 'node:net' && net) {
             return net;
+        }
+        if (request === './native-service' && nativeModule) {
+            return nativeModule;
         }
         return originalLoad.call(this, request, parent, isMain);
     };
@@ -43,10 +46,14 @@ function createVscodeMock(options = {}) {
     const taskListeners = new Set();
     const messages = { info: [], warning: [], error: [] };
     const statusItems = [];
+    const outputLines = [];
+    const diagnosticEntries = [];
     let executeCount = 0;
     let fetchCount = 0;
     let terminateCount = 0;
     let processEnded = false;
+    let nativeRequestCount = 0;
+    let outputClearCount = 0;
     const monitorStartSettings = [];
     const completionServers = new Set();
 
@@ -86,6 +93,28 @@ function createVscodeMock(options = {}) {
         }
     };
 
+    class NativeUnavailableError extends Error {}
+    class NativeOperationTimeoutError extends Error {}
+    const nativeService = {
+        warmup: async () => ({ success: true }),
+        async request() {
+            nativeRequestCount++;
+            if (options.nativeError) throw options.nativeError;
+            if (!options.nativeResult) {
+                throw new NativeUnavailableError("native test fallback");
+            }
+            return options.nativeResult;
+        },
+        dispose() {}
+    };
+    const nativeModule = {
+        NativeUnavailableError,
+        NativeOperationTimeoutError,
+        createNativeService() {
+            return nativeService;
+        }
+    };
+
     const task = { name: 'Arduino: Upload' };
     const api = {
         dispose() {},
@@ -110,10 +139,36 @@ function createVscodeMock(options = {}) {
                 this.id = id;
             }
         },
+        DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2 },
+        Uri: {
+            file(fsPath) {
+                return { scheme: 'file', fsPath };
+            }
+        },
+        Range: class Range {
+            constructor(startLine, startColumn, endLine, endColumn) {
+                Object.assign(this, { startLine, startColumn, endLine, endColumn });
+            }
+        },
+        Diagnostic: class Diagnostic {
+            constructor(range, message, severity) {
+                Object.assign(this, { range, message, severity });
+            }
+        },
         commands: {
             registerCommand(name, callback) {
                 commands.set(name, callback);
                 return disposable(() => commands.delete(name));
+            },
+            executeCommand() {}
+        },
+        languages: {
+            createDiagnosticCollection() {
+                return {
+                    clear() { diagnosticEntries.length = 0; },
+                    set(uri, diagnostics) { diagnosticEntries.push({ uri, diagnostics }); },
+                    dispose() { diagnosticEntries.length = 0; }
+                };
             }
         },
         extensions: {
@@ -170,8 +225,24 @@ function createVscodeMock(options = {}) {
             }
         },
         window: {
+            activeTextEditor: {
+                document: {
+                    uri: {
+                        scheme: 'file',
+                        fsPath: 'C:\\sketch\\test.ino'
+                    }
+                }
+            },
             createOutputChannel() {
-                return { appendLine() {}, dispose() {} };
+                return {
+                    appendLine(line) { outputLines.push(line); },
+                    clear() {
+                        outputClearCount += 1;
+                        outputLines.length = 0;
+                    },
+                    show() {},
+                    dispose() {}
+                };
             },
             createStatusBarItem() {
                 const item = {
@@ -201,6 +272,12 @@ function createVscodeMock(options = {}) {
             }
         },
         workspace: {
+            workspaceFolders: [{
+                uri: { fsPath: 'C:\\workspace' }
+            }],
+            getWorkspaceFolder() {
+                return { uri: { fsPath: 'C:\\workspace' } };
+            },
             async saveAll() {
                 return true;
             },
@@ -224,19 +301,25 @@ function createVscodeMock(options = {}) {
     return {
         vscode,
         net,
+        nativeModule,
+        NativeOperationTimeoutError,
         commands,
         messages,
         monitorStartSettings,
         statusItems,
+        outputLines,
+        diagnosticEntries,
         get executeCount() { return executeCount; },
         get fetchCount() { return fetchCount; },
         get terminateCount() { return terminateCount; },
-        get processEnded() { return processEnded; }
+        get processEnded() { return processEnded; },
+        get nativeRequestCount() { return nativeRequestCount; },
+        get outputClearCount() { return outputClearCount; }
     };
 }
 
 async function activateAndGetUpload(mock) {
-    const extension = loadExtension(mock.vscode, mock.net);
+    const extension = loadExtension(mock.vscode, mock.net, mock.nativeModule);
     extension.activate({ subscriptions: [] });
     const upload = mock.commands.get('monoconTools.uploadArduino');
     assert.equal(typeof upload, 'function');
@@ -248,9 +331,94 @@ test('registers descriptive command IDs and compatibility aliases', async () => 
     await activateAndGetUpload(mock);
 
     assert.equal(typeof mock.commands.get('monoconTools.uploadArduino'), 'function');
+    assert.equal(typeof mock.commands.get('monoconTools.compileArduino'), 'function');
     assert.equal(typeof mock.commands.get('monoconTools.createTaskFolders'), 'function');
     assert.equal(typeof mock.commands.get('monocon.upload'), 'function');
     assert.equal(typeof mock.commands.get('template.generate'), 'function');
+});
+
+test('uses the native worker path without starting the compatibility task', async () => {
+    const mock = createVscodeMock({
+        nativeResult: {
+            success: true,
+            port: 'COM3',
+            uploadTimeMs: 2000,
+            compile: {
+                success: true,
+                cached: true,
+                buildTimeMs: 5,
+                recompiledFiles: 0,
+                totalFiles: 1
+            }
+        }
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.nativeRequestCount, 1);
+    assert.equal(mock.executeCount, 0);
+    assert.equal(mock.statusItems[0].text, '$(check) Arduino: 書き込み完了');
+    assert.equal(mock.messages.info.includes('Arduinoへの書き込みが完了しました。'), true);
+});
+
+test('clears previous output whenever an upload starts', async () => {
+    const mock = createVscodeMock({
+        nativeResult: {
+            success: true,
+            port: 'COM3',
+            uploadTimeMs: 1,
+            compile: {
+                success: true,
+                cached: true,
+                buildTimeMs: 1,
+                recompiledFiles: 0,
+                totalFiles: 1
+            }
+        }
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+    const firstOutputLineCount = mock.outputLines.length;
+    await upload();
+
+    assert.equal(mock.outputClearCount, 2);
+    assert.equal(mock.outputLines.length, firstOutputLineCount);
+    assert.equal(mock.outputLines.filter(line => line.startsWith('Compile ')).length, 1);
+    assert.equal(mock.outputLines.filter(line => line.startsWith('Upload to ')).length, 1);
+});
+
+test('shows native compiler errors as a readable report and editor diagnostic', async () => {
+    const mock = createVscodeMock({
+        nativeResult: {
+            success: false,
+            errorMessage: 'Compile failed: test.ino.cpp',
+            compile: {
+                success: false,
+                errorMessage: 'Compile failed: test.ino.cpp',
+                compilerOutput: [
+                    "test.ino: In function 'void userLoop()':",
+                    "\x1b[1;37mtest.ino\x1b[0m:\x1b[1;96m4\x1b[0m:\x1b[1;37m2\x1b[0m: \x1b[1;31merror:\x1b[0m 'a' was not declared in this scope",
+                    "test.ino:4:2: note: suggested alternative: 'ar'"
+                ].join('\n')
+            }
+        }
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    const output = mock.outputLines.join('\n');
+    assert.match(output, /Arduino コンパイル失敗/);
+    assert.match(output, /内容     : 「a」が宣言されていません。/);
+    assert.match(output, /候補     : 「ar」/);
+    assert.doesNotMatch(output, /確認事項/);
+    assert.doesNotMatch(output, /\x1b/);
+    assert.equal(mock.diagnosticEntries.length, 1);
+    assert.equal(mock.diagnosticEntries[0].diagnostics[0].severity, 0);
+    assert.match(mock.messages.error[0], /test\.ino 4行目/);
+    assert.doesNotMatch(mock.messages.error[0], /\x1b/);
 });
 
 test('monitor restart timeout always releases the upload lock', async () => {
@@ -292,6 +460,23 @@ test('reopens the serial monitor with reset control lines disabled', async () =>
     assert.equal(mock.monitorStartSettings[0].port, 'COM3');
     assert.equal(mock.monitorStartSettings[0].dtr, false);
     assert.equal(mock.monitorStartSettings[0].rts, false);
+});
+
+test('does not reopen the serial monitor while a timed-out native upload may still run', async () => {
+    const mock = createVscodeMock({ monitorActive: true, nativeResult: { success: true } });
+    mock.nativeModule.createNativeService = () => ({
+        warmup: async () => ({ success: true }),
+        request: async () => {
+            throw new mock.NativeOperationTimeoutError('native upload timed out');
+        },
+        dispose() {}
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.monitorStartSettings.length, 0);
+    assert.equal(mock.messages.error.length, 1);
 });
 
 test('shows a completion popup and keeps the result in the status bar', async () => {
@@ -365,7 +550,7 @@ test('does not report success when VS Code omits the process exit code', async (
     assert.equal(mock.messages.info.includes('Arduinoへの書き込みが完了しました。'), false);
     assert.equal(mock.messages.error.length, 1);
     assert.match(mock.messages.error[0], /終了コード 不明/);
-    assert.equal(mock.statusItems[0].text, '$(error) Arduino: 書き込み結果不明');
+    assert.equal(mock.statusItems[0].text, '$(error) Arduino: 書き込み失敗');
     assert.equal(mock.statusItems[0].color, '#ef4444');
     assert.equal(mock.statusItems[0].backgroundColor, undefined);
 });

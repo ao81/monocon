@@ -26,6 +26,7 @@ struct ToolchainPaths {
 
 	std::string coreDir;       // ArduinoCore-avr の cores/arduino
 	std::string variantDir;    // variants/mega
+	std::string prebuiltCoreA; // 拡張機能に同梱したMega 2560用core.a
 	std::string compilerVersion; // avr-gcc --version の最初の行
 
 	bool valid = false;
@@ -62,6 +63,8 @@ struct DaemonState {
 
 	// --- core.a グローバルキャッシュのルート ---
 	std::string coreCacheRoot; // %LOCALAPPDATA%\ArduinoBuildDaemon\core-cache
+	// 空なら従来のポータブル版自動検出。拡張機能版はglobalStorageを指定する。
+	std::string buildCacheRoot;
 
 	// --- ライフサイクル ---
 	std::atomic<bool> shutdownRequested{ false };
@@ -78,7 +81,8 @@ extern DaemonState g_state;
 
 // 初期化 (起動時に 1 回だけ呼ぶ)
 //   失敗したら toolchain.valid = false で詳細は errorMessage に入る
-bool initializeDaemonState();
+bool initializeDaemonState(const std::string& extensionRoot = "",
+	const std::string& cacheRoot = "");
 
 // COM ポートを再スキャン (レジストリ → メモリへ)
 void refreshComPorts();

@@ -1,0 +1,11 @@
+.claude/**
+test/**
+.cache/**
+.integration-cache/**
+native/build/**
+native/addon.cpp
+native/*.cc
+native/CMakeLists.txt
+native/vendor/**
+**/*.pdb
+**/*.ilk

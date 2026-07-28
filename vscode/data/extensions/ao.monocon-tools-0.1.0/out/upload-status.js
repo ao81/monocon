@@ -47,6 +47,33 @@ function registerUploadStatus(context) {
         vscode.window.showInformationMessage("Arduinoへの書き込みが完了しました。");
     };
 
+    const showStarted = (listenForCli = false) => {
+        if (listenForCli) {
+            startCompletionServer();
+        }
+        else {
+            closeCompletionServer();
+            clearTimeout(taskEndFallbackTimer);
+            completionShown = false;
+            processResultReceived = false;
+        }
+        status.text = "$(sync~spin) Arduino: 書き込み中…";
+        status.tooltip = "コンパイル・書き込みを実行しています";
+        status.color = WARNING_FOREGROUND;
+        status.backgroundColor = undefined;
+        status.show();
+    };
+
+    const showFailure = message => {
+        clearTimeout(taskEndFallbackTimer);
+        closeCompletionServer();
+        status.text = "$(error) Arduino: 書き込み失敗";
+        status.tooltip = message || "Arduinoへの書き込みに失敗しました";
+        status.color = ERROR_FOREGROUND;
+        status.backgroundColor = undefined;
+        status.show();
+    };
+
     const closeCompletionServer = () => {
         const server = completionServer;
         completionServer = undefined;
@@ -92,12 +119,7 @@ function registerUploadStatus(context) {
         if (!isUploadTask(event.execution)) {
             return;
         }
-        startCompletionServer();
-        status.text = "$(sync~spin) Arduino: 書き込み中…";
-        status.tooltip = "コンパイル・書き込みを実行しています";
-        status.color = WARNING_FOREGROUND;
-        status.backgroundColor = undefined;
-        status.show();
+        showStarted(true);
     });
 
     const endDisposable = vscode.tasks.onDidEndTaskProcess(event => {
@@ -113,10 +135,7 @@ function registerUploadStatus(context) {
         }
         else {
             const code = event.exitCode === undefined ? "不明" : event.exitCode;
-            status.text = "$(error) Arduino: 書き込み失敗";
-            status.tooltip = `Arduinoへの書き込みに失敗しました（終了コード: ${code}）`;
-            status.color = ERROR_FOREGROUND;
-            status.backgroundColor = undefined;
+            showFailure(`Arduinoへの書き込みに失敗しました（終了コード: ${code}）`);
         }
         status.show();
     });
@@ -155,6 +174,12 @@ function registerUploadStatus(context) {
         taskEndDisposable,
         serverDisposable
     );
+
+    return {
+        start: () => showStarted(false),
+        succeed: showCompletion,
+        fail: showFailure
+    };
 }
 
 module.exports = { registerUploadStatus, UPLOAD_STATUS_PIPE };

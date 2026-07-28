@@ -18,7 +18,13 @@
         "高校生ものづくりコンテスト"
     ],
     "extensionKind": [
-        "workspace"
+        "ui"
+    ],
+    "os": [
+        "win32"
+    ],
+    "cpu": [
+        "x64"
     ],
     "activationEvents": [
         "onStartupFinished"
@@ -29,6 +35,11 @@
             {
                 "command": "monoconTools.uploadArduino",
                 "title": "Arduinoへ書き込み",
+                "category": "Monocon Tools"
+            },
+            {
+                "command": "monoconTools.compileArduino",
+                "title": "Arduinoをコンパイル",
                 "category": "Monocon Tools"
             },
             {
@@ -45,6 +56,18 @@
                 "command": "template.generate",
                 "title": "課題フォルダーを一括作成（旧ID）",
                 "category": "Monocon Tools"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "monoconTools.uploadArduino",
+                "key": "f2",
+                "when": "editorTextFocus && resourceExtname == .ino"
+            },
+            {
+                "command": "monoconTools.uploadArduino",
+                "key": "ctrl+space",
+                "when": "editorTextFocus && resourceExtname == .ino"
             }
         ],
         "menus": {
@@ -70,8 +93,8 @@
             "properties": {
                 "monoconTools.taskFolders.baseName": {
                     "type": "string",
-                    "default": "kadai",
-                    "description": "作成する課題フォルダーと.inoファイルの基本名（例: kadai1）"
+                    "default": "mon",
+                    "description": "ファイル名入力欄に表示する既定の基本名（例: mon1）"
                 },
                 "monoconTools.upload.baudRate": {
                     "type": "number",
@@ -118,7 +141,7 @@
     "scripts": {
         "vscode:prepublish": "npm run check",
         "compile": "npm run check",
-        "check": "node --check ./out/extension.js && node --check ./out/arduino-upload.js && node --check ./out/task-folders.js && node --check ./out/upload-status.js",
+        "check": "node --check ./out/extension.js && node --check ./out/arduino-upload.js && node --check ./out/compiler-report.js && node --check ./out/task-folders.js && node --check ./out/upload-status.js && node --check ./out/native-service.js && node --check ./out/native-worker.js",
         "test": "node --test ./test/*.test.js"
     },
     "devDependencies": {

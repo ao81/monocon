@@ -3,6 +3,9 @@
 #include "port_scanner.h"
 
 #include <windows.h>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 DaemonState g_state;
 
@@ -52,11 +55,24 @@ namespace {
 
 } // namespace
 
-bool initializeDaemonState() {
+bool initializeDaemonState(const std::string& extensionRoot,
+	const std::string& cacheRoot) {
 	auto& tc = g_state.toolchain;
+	tc = ToolchainPaths{};
+	g_state.buildCacheRoot = cacheRoot;
+
+	std::string bundledGccRoot;
+	std::string bundledHardwareRoot;
+	if (!extensionRoot.empty()) {
+		fs::path resourceRoot = fs::path(extensionRoot) / "resources" / "arduino";
+		bundledGccRoot = (resourceRoot / "avr-gcc").string();
+		bundledHardwareRoot = (resourceRoot / "hardware").string();
+		tc.prebuiltCoreA = (resourceRoot / "prebuilt" / "core.a").string();
+	}
 
 	// 1) avr-gcc のディレクトリ
-	std::string gccRoot = findLatestArduinoToolchain();
+	std::string gccRoot = Utils::directoryExists(bundledGccRoot)
+		? bundledGccRoot : findLatestArduinoToolchain();
 	if (gccRoot.empty()) {
 		tc.errorMessage = "avr-gcc not found under %LOCALAPPDATA%\\Arduino15";
 		return false;
@@ -73,33 +89,37 @@ bool initializeDaemonState() {
 		}
 	}
 
-	// 2) avrdude
+	// 2) avrdude（互換情報として任意で解決。ネイティブ書き込みには不要）
 	std::string avrdudeRoot = findLatestAvrdude();
-	if (avrdudeRoot.empty()) {
-		tc.errorMessage = "avrdude not found";
-		return false;
-	}
-	tc.avrdude = Utils::joinPath(avrdudeRoot, "bin\\avrdude.exe");
-	tc.avrdudeConf = Utils::joinPath(avrdudeRoot, "etc\\avrdude.conf");
-	if (!Utils::fileExists(tc.avrdude) || !Utils::fileExists(tc.avrdudeConf)) {
-		tc.errorMessage = "avrdude binary or config missing";
-		return false;
+	if (!avrdudeRoot.empty()) {
+		tc.avrdude = Utils::joinPath(avrdudeRoot, "bin\\avrdude.exe");
+		tc.avrdudeConf = Utils::joinPath(avrdudeRoot, "etc\\avrdude.conf");
 	}
 
 	// 3) Arduino コア
-	tc.coreDir = findArduinoCoreDir();
+	if (Utils::directoryExists(bundledHardwareRoot)) {
+		tc.coreDir = (fs::path(bundledHardwareRoot) / "cores" / "arduino").string();
+		tc.variantDir = (fs::path(bundledHardwareRoot) / "variants" / "mega").string();
+	} else {
+		tc.coreDir = findArduinoCoreDir();
+		tc.variantDir = findVariantDir("mega");
+	}
 	if (tc.coreDir.empty() || !Utils::directoryExists(tc.coreDir)) {
 		tc.errorMessage = "Arduino core directory not found";
 		return false;
 	}
-	// MEGA 用のバリアントディレクトリ (デフォルト)
-	tc.variantDir = findVariantDir("mega");
+	if (tc.variantDir.empty() || !Utils::directoryExists(tc.variantDir)) {
+		tc.errorMessage = "Arduino Mega variant directory not found";
+		return false;
+	}
 
 	// 4) コンパイラバージョン
 	tc.compilerVersion = getCompilerVersionString(tc.avrGcc);
 
 	// 5) core.a キャッシュルート
-	g_state.coreCacheRoot = Utils::joinPath(Utils::getGlobalCacheDir(), "core-cache");
+	g_state.coreCacheRoot = cacheRoot.empty()
+		? Utils::joinPath(Utils::getGlobalCacheDir(), "core-cache")
+		: Utils::joinPath(cacheRoot, "cores");
 	Utils::createDirectory(g_state.coreCacheRoot);
 
 	// 6) 起動時刻 / COM ポート初回スキャン

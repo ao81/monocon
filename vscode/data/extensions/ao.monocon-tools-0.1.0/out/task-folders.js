@@ -47,6 +47,35 @@ async function askFolderCount() {
     return input === undefined ? undefined : Number(input);
 }
 
+async function askBaseName(defaultBaseName, count) {
+    const input = await vscode.window.showInputBox({
+        title: "課題ファイル名",
+        prompt: "課題フォルダーと.inoファイルの基本名を入力してください（番号は自動で付きます）",
+        value: defaultBaseName,
+        validateInput: value => {
+            const baseName = value.trim();
+            if (!baseName) {
+                return "ファイル名を入力してください";
+            }
+            if (/[<>:"/\\|?*]/.test(baseName)) {
+                return "ファイル名に使用できない文字が含まれています";
+            }
+            if (/[. ]$/.test(baseName)) {
+                return "ファイル名の末尾にピリオドまたは空白は使用できません";
+            }
+            const reservedName = Array.from(
+                { length: count },
+                (_, index) => `${baseName}${index + 1}`
+            ).find(name => /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(name));
+            if (reservedName) {
+                return `${reservedName}はWindowsでファイル名に使用できません`;
+            }
+            return null;
+        }
+    });
+    return input === undefined ? undefined : input.trim();
+}
+
 async function resolveSelection(clickedUri, selectedUris) {
     const uris = selectedUris?.length > 0
         ? selectedUris
@@ -100,7 +129,11 @@ async function createTaskFolders(clickedUri, selectedUris) {
         }
 
         const config = vscode.workspace.getConfiguration("monoconTools.taskFolders");
-        const baseName = config.get("baseName", "kadai");
+        const defaultBaseName = config.get("baseName", "mon");
+        const baseName = await askBaseName(defaultBaseName, count);
+        if (baseName === undefined) {
+            return;
+        }
         const headerFileName = path.basename(selection.headerUri.fsPath);
         const destination = selection.destinationUri.fsPath;
         const folderNames = Array.from({ length: count }, (_, index) => `${baseName}${index + 1}`);

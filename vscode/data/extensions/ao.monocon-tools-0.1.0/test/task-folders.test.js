@@ -35,6 +35,7 @@ test("creates clearly named task folders with matching ino files", async () => {
 
         const commands = new Map();
         const messages = [];
+        const inputBoxes = [];
         const vscode = {
             commands: {
                 registerCommand(id, handler) {
@@ -45,11 +46,27 @@ test("creates clearly named task folders with matching ino files", async () => {
             workspace: {
                 getConfiguration(section) {
                     assert.equal(section, "monoconTools.taskFolders");
-                    return { get: () => "task" };
+                    return {
+                        get(key, defaultValue) {
+                            assert.equal(key, "baseName");
+                            assert.equal(defaultValue, "mon");
+                            return defaultValue;
+                        }
+                    };
                 }
             },
             window: {
-                async showInputBox() { return "2"; },
+                async showInputBox(options) {
+                    inputBoxes.push(options);
+                    if (inputBoxes.length === 1) {
+                        return "2";
+                    }
+                    assert.equal(options.value, "mon");
+                    assert.equal(options.validateInput(""), "ファイル名を入力してください");
+                    assert.equal(options.validateInput("bad/name"), "ファイル名に使用できない文字が含まれています");
+                    assert.equal(options.validateInput("task"), null);
+                    return "task";
+                },
                 showInformationMessage(message) { messages.push(message); },
                 showErrorMessage(message) { assert.fail(message); },
                 async showWarningMessage() { return "上書きして続行"; }
@@ -70,6 +87,9 @@ test("creates clearly named task folders with matching ino files", async () => {
             assert.equal(fs.readFileSync(path.join(destinationPath, name, "mono_con.h"), "utf8"), "#pragma once\n");
             assert.equal(fs.readFileSync(path.join(destinationPath, name, `${name}.ino`), "utf8"), "");
         }
+        assert.equal(inputBoxes.length, 2);
+        assert.equal(inputBoxes[0].title, "作成する課題フォルダー数");
+        assert.equal(inputBoxes[1].title, "課題ファイル名");
         assert.match(messages[0], /2個の課題フォルダー/);
     }
     finally {
