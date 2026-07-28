@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/27
+// 作成年月日: 2026/07/28
 /**********************************************/
 
 #ifndef MONOCON_CHUUGOKU_H
@@ -128,6 +128,8 @@ namespace board_detail {
 	extern uint32_t loopEpoch;
 	bool adcReady(volatile const int* dst);
 	bool arReady(uint8_t pin);
+	void service();
+	void serviceEvents(uint32_t epoch);
 
 	inline void lockDigitalInputs() {
 		TCCR0A &= static_cast<uint8_t>(~(_BV(COM0A1) | _BV(COM0A0)));
@@ -315,7 +317,6 @@ protected:
 		}
 	}
 
-public:
 	explicit InEdge(uint16_t lock = 10)
 		: lockMs(lock),
 		first(true),
@@ -335,6 +336,7 @@ public:
 		st.fired = false;
 	}
 
+public:
 	bool ltoh() {
 		const bool value = fLtoh;
 		fLtoh = false;
@@ -419,6 +421,8 @@ namespace board_detail {
 
 class SigBase {
 private:
+	friend void board_detail::serviceEvents(uint32_t);
+
 	static SigBase* head_;
 	SigBase* next_;
 
@@ -494,6 +498,7 @@ public:
 	SigBase(const SigBase&) = delete;
 	SigBase& operator=(const SigBase&) = delete;
 
+private:
 	static void serviceAll(uint32_t epoch) {
 		for (SigBase* p = head_; p; p = p->next_) {
 			if (p->changePending_ &&
@@ -733,6 +738,9 @@ using Sig = SigValue<int32_t>;
 
 class Di : public InEdge {
 private:
+	friend void board_detail::service();
+	friend void board_detail::serviceEvents(uint32_t);
+
 	volatile uint8_t* reg;
 	uint8_t mask;
 	bool registered;
@@ -780,6 +788,7 @@ public:
 	Di(const Di&) = delete;
 	Di& operator=(const Di&) = delete;
 
+private:
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
@@ -796,6 +805,9 @@ public:
 
 class Pr : public InEdge {
 private:
+	friend void board_detail::service();
+	friend void board_detail::serviceEvents(uint32_t);
+
 	int th;
 	volatile int _raw;
 	bool registered;
@@ -847,6 +859,7 @@ public:
 		return atomicReadInt(&_raw);
 	}
 
+private:
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) {
@@ -877,6 +890,8 @@ constexpr int32_t slopeQ8[3] = {
 
 class Sok {
 private:
+	friend void board_detail::service();
+
 	int ring[5];
 	uint8_t ri;
 	uint8_t sampleCount;
@@ -988,6 +1003,7 @@ public:
 		return distanceCm;
 	}
 
+private:
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne(now);
@@ -996,6 +1012,8 @@ public:
 
 class Vr {
 private:
+	friend void board_detail::service();
+
 	int inputMin;
 	int inputMax;
 	volatile int adcRaw;
@@ -1086,6 +1104,7 @@ public:
 			);
 	}
 
+private:
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne(now);
@@ -1094,6 +1113,8 @@ public:
 
 class Js {
 private:
+	friend void board_detail::service();
+
 	volatile int adcX;
 	volatile int adcY;
 	int xValue;
@@ -1231,6 +1252,7 @@ public:
 		return result;
 	}
 
+private:
 	static void serviceAll(uint32_t now) {
 		const uint8_t n = nList;
 		for (uint8_t i = 0; i < n; ++i) list[i]->serviceOne(now);
@@ -1242,6 +1264,7 @@ extern "C" {
 	void PCINT1_vect(void);
 	void PCINT2_vect(void);
 	void TIMER1_COMPA_vect(void);
+	void TIMER2_COMPA_vect(void);
 }
 
 class Enc {
@@ -1593,6 +1616,8 @@ public:
 
 class Led {
 private:
+	friend void ::TIMER2_COMPA_vect(void);
+
 	uint8_t color;
 	uint8_t opacity;
 	uint8_t acc;
@@ -1621,6 +1646,7 @@ public:
 		opacity = newOpacity;
 	}
 
+private:
 	void serviceTick() {
 		uint8_t state;
 		if (opacity == 0 || color == 0) {
@@ -1654,6 +1680,8 @@ constexpr uint8_t SEG_NONE = 0x00;
 
 class Disp {
 private:
+	friend void ::TIMER2_COMPA_vect(void);
+
 	uint8_t pattern[3];
 	uint8_t opacity[3];
 	uint8_t acc[3];
@@ -1863,6 +1891,7 @@ public:
 			);
 	}
 
+private:
 	void serviceTick() {
 		uint8_t out[3];
 		for (uint8_t i = 0; i < 3; ++i) {
@@ -1888,6 +1917,8 @@ public:
 
 class Dcm {
 private:
+	friend void ::TIMER2_COMPA_vect(void);
+
 	volatile uint32_t remainingMs;
 	volatile bool timedActive;
 	volatile bool donePending;
@@ -1991,6 +2022,7 @@ public:
 		return value;
 	}
 
+private:
 	inline void isrTick() {
 		if (!timedActive) return;
 		if (remainingMs > 0 && --remainingMs == 0) {
@@ -2219,6 +2251,9 @@ public:
 
 class Bz {
 private:
+	friend void board_detail::service();
+	friend void ::TIMER2_COMPA_vect(void);
+
 	int continuousFrequency;
 	volatile uint32_t remainingMs;
 	volatile bool timedActive;
@@ -2356,6 +2391,7 @@ public:
 
 	bool playing() const { return melodyRunning; }
 
+private:
 	void update() {
 		if (!melodyRunning) return;
 		const uint32_t now = atomicMillis();
@@ -2752,8 +2788,6 @@ public:
 };
 
 namespace board_detail {
-	void service();
-
 	struct AdcSlot {
 		uint8_t admux;
 		uint8_t mux5;
@@ -3016,6 +3050,12 @@ inline void board_detail::service() {
 	bz.update();
 }
 
+inline void board_detail::serviceEvents(uint32_t epoch) {
+	Sig::serviceAll(epoch);
+	Di::serviceEvents(epoch);
+	Pr::serviceEvents(epoch);
+}
+
 void yield() {
 	board_detail::service();
 }
@@ -3120,9 +3160,7 @@ void loop() {
 	board_detail::service();
 
 	const uint32_t epoch = ++board_detail::loopEpoch;
-	Sig::serviceAll(epoch);
-	Di::serviceEvents(epoch);
-	Pr::serviceEvents(epoch);
+	board_detail::serviceEvents(epoch);
 }
 
 #define setup userSetup
