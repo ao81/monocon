@@ -1891,6 +1891,14 @@ public:
 			);
 	}
 
+	Disp& art(const char* const p[3]) {
+		return (*this)(
+			artPattern(p[0]),
+			artPattern(p[1]),
+			artPattern(p[2])
+			);
+	}
+
 private:
 	void serviceTick() {
 		uint8_t out[3];
