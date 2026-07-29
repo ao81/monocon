@@ -1,5 +1,4 @@
 *.exe filter=lfs diff=lfs merge=lfs -text
-
 * text=auto
 *.bat text eol=crlf
 *.sh text eol=lf
@@ -7,17 +6,14 @@
 *.json text eol=lf
 *.cpp text eol=lf
 *.h text eol=lf
-
 *.exe binary
 *.dll binary
 *.bin binary
 *.png binary
 *.jpg binary
-
 # VSCode policies (Windows Group Policy format - requires CRLF)
 *.admx text eol=crlf
 *.adml text eol=crlf
-
 # Serial monitor extension and similar (LF on disk, CRLF on Windows checkout)
 *.vsixmanifest text eol=crlf
 *.md text eol=crlf
@@ -28,3 +24,4 @@
 *.gyp text eol=lf
 *.gypi text eol=lf
 *.coffee text eol=lf
+*.vsix filter=lfs diff=lfs merge=lfs -text
