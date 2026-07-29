@@ -4,8 +4,12 @@
 #include <windows.h>
 #include <tlhelp32.h>   // CreateToolhelp32Snapshot for kill command
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
+#include <cstring>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -29,8 +33,25 @@ using json = nlohmann::json;
 namespace {
 	constexpr const char* UPLOAD_STATUS_PIPE = "\\\\.\\pipe\\monocon-upload-status-v1";
 
-	void notifyUploadVerified() {
-		HANDLE pipe = CreateFileA(UPLOAD_STATUS_PIPE, GENERIC_WRITE, 0, nullptr,
+	bool isValidUploadStatusPipe(const std::string& pipeName) {
+		constexpr const char* prefix =
+			"\\\\.\\pipe\\monocon-upload-status-";
+		if (pipeName.size() <= std::strlen(prefix)
+			|| pipeName.size() > 240
+			|| pipeName.compare(0, std::strlen(prefix), prefix) != 0) {
+			return false;
+		}
+		return std::all_of(
+			pipeName.begin() + static_cast<std::ptrdiff_t>(std::strlen(prefix)),
+			pipeName.end(),
+			[](unsigned char c) {
+				return std::isalnum(c) != 0 || c == '-' || c == '_';
+			});
+	}
+
+	void notifyUploadVerified(const std::string& pipeName) {
+		if (!isValidUploadStatusPipe(pipeName)) return;
+		HANDLE pipe = CreateFileA(pipeName.c_str(), GENERIC_WRITE, 0, nullptr,
 			OPEN_EXISTING, 0, nullptr);
 		if (pipe == INVALID_HANDLE_VALUE) return;
 		constexpr char message[] = "upload-verified\n";
@@ -42,11 +63,14 @@ namespace {
 
 	// daemon exe の場所を決める。クライアントと同じフォルダに置く前提。
 	std::string findDaemonExe() {
-		char buf[MAX_PATH];
-		DWORD r = GetModuleFileNameA(nullptr, buf, MAX_PATH);
-		if (r == 0 || r == MAX_PATH) return "";
-		std::filesystem::path p(buf);
-		return (p.parent_path() / "arduino-build-daemon.exe").string();
+		std::wstring buffer(32768, L'\0');
+		DWORD length = GetModuleFileNameW(
+			nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+		if (length == 0 || length >= buffer.size()) return "";
+		buffer.resize(length);
+		std::filesystem::path executable(buffer);
+		return Utils::pathToUtf8(
+			executable.parent_path() / L"arduino-build-daemon.exe");
 	}
 
 	// daemon を DETACHED で起動 (親終了に巻き込まれない)
@@ -55,12 +79,13 @@ namespace {
 			std::cerr << ">>> daemon executable not found: " << daemonExe << "\n";
 			return false;
 		}
-		STARTUPINFOA si{};
+		STARTUPINFOW si{};
 		si.cb = sizeof(si);
 		PROCESS_INFORMATION pi{};
-		std::string cmd = "\"" + daemonExe + "\" --daemonize";
+		std::wstring cmd = L"\"" + Utils::utf8ToWide(daemonExe)
+			+ L"\" --daemonize";
 
-		BOOL ok = CreateProcessA(
+		BOOL ok = CreateProcessW(
 			nullptr, cmd.data(), nullptr, nullptr, FALSE,
 			DETACHED_PROCESS | CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB,
 			nullptr, nullptr, &si, &pi);
@@ -208,19 +233,21 @@ namespace {
 			"  arduino-build-cli.exe shutdown    (graceful: RPC で終了通知)\n"
 			"  arduino-build-cli.exe kill        (force: 全 daemon プロセスを強制終了)\n"
 			"\n"
-			"  --workspace <Dir>: ビルド出力先のワークスペースルートを指定\n"
-			"     省略時は SketchDir から .vscode/ を持つフォルダを上に探索\n"
-			"     ビルド出力先: <Workspace>/.vscode/build/<相対パス>/\n";
+			"  --workspace <Dir>: VS Code互換用のワークスペース情報を指定\n"
+			"  --status-pipe <Name>: 検証完了通知先の名前付きパイプを指定\n"
+			"     ビルドキャッシュ: ポータブル版の data/cache/build/\n";
 	}
 
-	// --workspace <path> を抽出して、それ以外の位置引数だけ vector で返す
+	// オプションを抽出して、それ以外の位置引数だけ vector で返す
 	std::vector<std::string> parsePositional(int argc, char* argv[],
-		std::string& workspaceOut) {
+		std::string& workspaceOut, std::string& statusPipeOut) {
 		std::vector<std::string> positional;
 		for (int i = 1; i < argc; ++i) {
 			std::string a = argv[i];
 			if (a == "--workspace" && i + 1 < argc) {
 				workspaceOut = argv[++i];
+			} else if (a == "--status-pipe" && i + 1 < argc) {
+				statusPipeOut = argv[++i];
 			} else {
 				positional.push_back(a);
 			}
@@ -230,7 +257,9 @@ namespace {
 
 	int handleSubcommand(int argc, char* argv[]) {
 		std::string workspaceDir;
-		auto pos = parsePositional(argc, argv, workspaceDir);
+		std::string statusPipe = UPLOAD_STATUS_PIPE;
+		auto pos = parsePositional(
+			argc, argv, workspaceDir, statusPipe);
 		if (pos.empty()) { printUsage(); return 1; }
 		std::string cmd = pos[0];
 
@@ -292,6 +321,9 @@ namespace {
 					<< " (uptime " << r.value("uptimeSec", 0) << "s, "
 					<< r.value("requestCount", 0) << " requests)\n";
 				std::cout << "Toolchain: " << r.value("compilerVersion", "?") << "\n";
+				std::cout << "Resources: "
+					<< (r.value("usingBundledResources", false)
+						? "bundled" : "system") << "\n";
 				if (!r.value("toolchainValid", false)) {
 					std::cerr << ">>> Toolchain error: "
 						<< r.value("toolchainError", "?") << "\n";
@@ -345,7 +377,7 @@ namespace {
 					<< r.value("uploadTimeMs", 0.0) << " ms\n";
 				std::cout << "Total client time: " << sw.elapsedMilliseconds() << " ms\n";
 				std::cout.flush();
-				notifyUploadVerified();
+				notifyUploadVerified(statusPipe);
 
 				// std::cout << r.value("avrdudeOutput", "");
 			} else if (cmd == "shutdown") {
@@ -362,11 +394,24 @@ namespace {
 
 } // namespace
 
-int main(int argc, char* argv[]) {
+int wmain(int argc, wchar_t* wideArgv[]) {
 	SetConsoleOutputCP(CP_UTF8);
 	SetConsoleCP(CP_UTF8);
 	try {
-		return handleSubcommand(argc, argv);
+		// Windowsのmain(char**)は現在のANSIコードページへ変換されるため、
+		// 日本語・絵文字・補助平面文字を含むパスがJSON化前に壊れる。
+		// wmainで受け、内部表現のUTF-8へ明示変換する。
+		std::vector<std::string> utf8Arguments;
+		utf8Arguments.reserve(static_cast<size_t>(argc));
+		for (int i = 0; i < argc; ++i) {
+			utf8Arguments.push_back(Utils::wideToUtf8(wideArgv[i]));
+		}
+		std::vector<char*> argv;
+		argv.reserve(utf8Arguments.size());
+		for (auto& argument : utf8Arguments) {
+			argv.push_back(argument.data());
+		}
+		return handleSubcommand(argc, argv.data());
 	} catch (std::exception& e) {
 		std::cerr << ">>> Exception: " << e.what() << "\n";
 		return 1;

@@ -3,9 +3,14 @@ test/**
 .cache/**
 .integration-cache/**
 native/build/**
+native/build-output/**
 native/addon.cpp
 native/*.cc
 native/CMakeLists.txt
 native/vendor/**
+native/win32-x64/monocon_native.node
+native/win32-x64/monocon_native_v140.node
+native/win32-x64/monocon_native_v150.node
+native/win32-x64/monocon_native_v160.node
 **/*.pdb
 **/*.ilk

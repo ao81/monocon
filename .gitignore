@@ -36,6 +36,12 @@ vscode/data/shared-data/
 # ============================================
 data/daemon/build/*
 !data/daemon/build/bin/
+vscode/data/daemon/build-*/
+vscode/data/extensions/ao.monocon-tools-*/native/build/
+vscode/data/extensions/ao.monocon-tools-*/native/build-output/
+vscode/data/extensions/ao.monocon-tools-*/native/win32-x64/monocon_native_v140.node
+vscode/data/extensions/ao.monocon-tools-*/native/win32-x64/monocon_native_v150.node
+vscode/data/extensions/ao.monocon-tools-*/native/win32-x64/monocon_native_v160.node
 
 # ============================================
 # OS の一時ファイル

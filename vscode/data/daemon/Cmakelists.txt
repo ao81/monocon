@@ -16,8 +16,13 @@ endif()
 # 最適化フラグ
 # =============================================================================
 if(MSVC)
-    add_compile_options(/O2 /Oi /GL /EHsc /utf-8)
-    add_link_options(/LTCG /OPT:REF /OPT:ICF /INCREMENTAL:NO)
+    # 互換CLI/daemonはネイティブアドオンが使えないPCでの最終退避経路。
+    # Visual C++ Runtime未導入のクリーンなWindowsでも単体起動できるよう、
+    # CRT/C++ Runtimeを各exeへ静的リンクする。
+    set(CMAKE_MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    add_compile_options(/O2 /Oi /GL /EHsc /utf-8 /W4 /guard:cf)
+    add_link_options(/LTCG /OPT:REF /OPT:ICF /INCREMENTAL:NO /guard:cf)
 else()
     add_compile_options(-O2 -ffunction-sections -fdata-sections)
     add_link_options(-Wl,--gc-sections -s)
@@ -100,24 +105,10 @@ set_target_properties(arduino-build-daemon arduino-build-cli PROPERTIES
 )
 
 # =============================================================================
-# 環境非依存化: 必要なDLLをbin/に同梱
+# MinGW環境の実行時DLLをbin/に同梱
 # =============================================================================
-if(WIN32)
-    set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
-    set(CMAKE_INSTALL_DEBUG_LIBRARIES FALSE)
-    include(InstallRequiredSystemLibraries)
-
+if(WIN32 AND NOT MSVC)
     foreach(target arduino-build-daemon arduino-build-cli)
-        if(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
-            add_custom_command(TARGET ${target} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
-                    $<TARGET_FILE_DIR:${target}>
-                COMMAND_EXPAND_LISTS
-                VERBATIM
-            )
-        endif()
-
         add_custom_command(TARGET ${target} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy -t
                 $<TARGET_FILE_DIR:${target}>

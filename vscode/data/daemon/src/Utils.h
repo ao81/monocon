@@ -16,6 +16,16 @@ namespace fs = std::filesystem;
 // =============================================================================
 namespace Utils {
 
+	// --- UTF-8 / Windows パス変換 ---
+	// JavaScript/JSON 境界から受け取る文字列は UTF-8 に統一する。
+	std::wstring utf8ToWide(const std::string& value);
+	std::string wideToUtf8(const std::wstring& value);
+	std::string normalizeToUtf8(const std::string& value);
+	fs::path pathFromUtf8(const std::string& path);
+	std::string pathToUtf8(const fs::path& path);
+	// 古いMinGW製AVRツールへ渡すため、存在するパスを8.3短縮形式にする。
+	std::string getShortPath(const std::string& path);
+
 	// --- パス取得 ---
 	std::string getLocalAppDataPath();
 	std::string getGlobalCacheDir();      // %LOCALAPPDATA%\ArduinoBuildDaemon
@@ -26,7 +36,9 @@ namespace Utils {
 
 	// --- ファイル I/O ---
 	std::string readFile(const std::string& path);
-	std::vector<std::string> readLines(const std::string& path);
+	std::string readFileLimited(const std::string& path, size_t maxBytes);
+	std::vector<std::string> readLines(
+		const std::string& path, size_t maxBytes = 8 * 1024 * 1024);
 	void writeFile(const std::string& path, const std::string& content);
 	void writeLines(const std::string& path, const std::vector<std::string>& lines);
 	bool writeFileIfChanged(const std::string& path, const std::string& content);
@@ -61,6 +73,9 @@ namespace Utils {
 	// --- ハッシュ ---
 	// 短い文字列なら sha1 を hex 16 文字くらいに切り詰めるだけで十分
 	std::string sha1Hex(const std::string& data);
+	// ファイル全体をメモリへ載せず、固定サイズのブロックでSHA-1を計算する。
+	// 読取り・ハッシュAPIのどちらかが失敗した場合は空文字列を返す。
+	std::string sha1FileHex(const std::string& path);
 
 } // namespace Utils
 
@@ -88,9 +103,12 @@ struct ProcessResult {
 	int exitCode = -1;
 	std::string output;   // stdout
 	std::string error;    // stderr
+	bool timedOut = false;
+	bool outputTruncated = false;
 };
 
 ProcessResult runProcess(const std::string& command,
 	const std::string& args,
 	const std::string& workingDir = "",
-	bool captureOutput = true);
+	bool captureOutput = true,
+	unsigned long timeoutMs = 120000);

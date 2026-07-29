@@ -46,12 +46,15 @@ if(MSVC)
     set_property(TARGET monocon_native PROPERTY
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     )
-    target_compile_options(monocon_native PRIVATE /O2 /Oi /GL /EHsc /utf-8)
+    target_compile_options(monocon_native PRIVATE
+        /O2 /Oi /GL /EHsc /utf-8 /W4 /guard:cf
+    )
     target_link_options(monocon_native PRIVATE
         /LTCG
         /OPT:REF
         /OPT:ICF
         /INCREMENTAL:NO
+        /guard:cf
         /DELAYLOAD:node.exe
     )
 endif()
@@ -61,6 +64,7 @@ if(NOT MONOCON_NATIVE_OUTPUT_DIR)
 endif()
 
 set_target_properties(monocon_native PROPERTIES
+    OUTPUT_NAME "monocon_native_v170"
     PREFIX ""
     SUFFIX ".node"
     RUNTIME_OUTPUT_DIRECTORY "${MONOCON_NATIVE_OUTPUT_DIR}"

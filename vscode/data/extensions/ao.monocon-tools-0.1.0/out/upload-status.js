@@ -1,10 +1,12 @@
 "use strict";
 
+const crypto = require("node:crypto");
 const net = require("node:net");
 const vscode = require("vscode");
 
 const UPLOAD_TASK_NAME = "Arduino: Upload";
 const UPLOAD_STATUS_PIPE = "\\\\.\\pipe\\monocon-upload-status-v1";
+const UPLOAD_STATUS_PIPE_PREFIX = "\\\\.\\pipe\\monocon-upload-status-v2-";
 const SUCCESS_FOREGROUND = "#22c55e";
 const WARNING_FOREGROUND = "#eab308";
 const ERROR_FOREGROUND = "#ef4444";
@@ -33,6 +35,7 @@ function registerUploadStatus(context) {
     let completionShown = false;
     let processResultReceived = false;
     let taskEndFallbackTimer;
+    let preparedCliPipe;
 
     const showCompletion = () => {
         if (completionShown) {
@@ -47,11 +50,12 @@ function registerUploadStatus(context) {
         vscode.window.showInformationMessage("Arduinoへの書き込みが完了しました。");
     };
 
-    const showStarted = (listenForCli = false) => {
+    const showStarted = (listenForCli = false, pipeName = UPLOAD_STATUS_PIPE) => {
         if (listenForCli) {
-            startCompletionServer();
+            startCompletionServer(pipeName);
         }
         else {
+            preparedCliPipe = undefined;
             closeCompletionServer();
             clearTimeout(taskEndFallbackTimer);
             completionShown = false;
@@ -66,6 +70,7 @@ function registerUploadStatus(context) {
 
     const showFailure = message => {
         clearTimeout(taskEndFallbackTimer);
+        preparedCliPipe = undefined;
         closeCompletionServer();
         status.text = "$(error) Arduino: 書き込み失敗";
         status.tooltip = message || "Arduinoへの書き込みに失敗しました";
@@ -88,7 +93,7 @@ function registerUploadStatus(context) {
         }
     };
 
-    const startCompletionServer = () => {
+    const startCompletionServer = pipeName => {
         closeCompletionServer();
         clearTimeout(taskEndFallbackTimer);
         completionShown = false;
@@ -112,11 +117,16 @@ function registerUploadStatus(context) {
                 completionServer = undefined;
             }
         });
-        server.listen(UPLOAD_STATUS_PIPE);
+        server.listen(pipeName);
     };
 
     const startDisposable = vscode.tasks.onDidStartTask(event => {
         if (!isUploadTask(event.execution)) {
+            return;
+        }
+        // 拡張機能から起動した動的タスクは、実行前に推測不能な専用パイプを
+        // 準備済み。既定パイプへ差し替えると別ウィンドウへ通知が混線する。
+        if (preparedCliPipe) {
             return;
         }
         showStarted(true);
@@ -128,6 +138,7 @@ function registerUploadStatus(context) {
         }
         processResultReceived = true;
         clearTimeout(taskEndFallbackTimer);
+        preparedCliPipe = undefined;
         closeCompletionServer();
         if (event.exitCode === 0) {
             // CLIからの即時通知が届かなかった場合のフォールバック。
@@ -152,6 +163,7 @@ function registerUploadStatus(context) {
         taskEndFallbackTimer = setTimeout(() => {
             closeCompletionServer();
             if (!completionShown && !processResultReceived) {
+                preparedCliPipe = undefined;
                 status.text = "$(error) Arduino: 書き込み結果不明";
                 status.tooltip = "書き込みタスクの終了コードを取得できませんでした";
                 status.color = ERROR_FOREGROUND;
@@ -164,6 +176,7 @@ function registerUploadStatus(context) {
     const serverDisposable = {
         dispose() {
             clearTimeout(taskEndFallbackTimer);
+            preparedCliPipe = undefined;
             closeCompletionServer();
         }
     };
@@ -177,6 +190,13 @@ function registerUploadStatus(context) {
 
     return {
         start: () => showStarted(false),
+        prepareCli() {
+            const pipeName = UPLOAD_STATUS_PIPE_PREFIX
+                + `${process.pid}-${crypto.randomBytes(16).toString("hex")}`;
+            preparedCliPipe = pipeName;
+            showStarted(true, pipeName);
+            return pipeName;
+        },
         succeed: showCompletion,
         fail: showFailure
     };

@@ -8,10 +8,14 @@
 
 #include <sddl.h>
 
+#include <algorithm>
 #include <atomic>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <thread>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -23,15 +27,116 @@ using json = nlohmann::json;
 // 簡易ロガー
 // =============================================================================
 namespace {
+	namespace fs = std::filesystem;
+
 	std::mutex g_logMtx;
 	std::ofstream g_logFile;
 	bool g_foreground = false;
+
+	std::vector<unsigned long long> parseVersionNumbers(
+		const std::wstring& version) {
+		std::vector<unsigned long long> result;
+		unsigned long long value = 0;
+		bool hasDigits = false;
+		for (const wchar_t ch : version) {
+			if (ch >= L'0' && ch <= L'9') {
+				const unsigned long long digit =
+					static_cast<unsigned long long>(ch - L'0');
+				constexpr unsigned long long limit =
+					(std::numeric_limits<unsigned long long>::max)();
+				value = value > (limit - digit) / 10
+					? limit
+					: value * 10 + digit;
+				hasDigits = true;
+			}
+			else if (ch == L'.' && hasDigits) {
+				result.push_back(value);
+				value = 0;
+				hasDigits = false;
+			}
+			else {
+				break;
+			}
+		}
+		if (hasDigits) result.push_back(value);
+		return result;
+	}
+
+	bool versionIsNewer(const std::vector<unsigned long long>& candidate,
+		const std::vector<unsigned long long>& current) {
+		const size_t count = (std::max)(candidate.size(), current.size());
+		for (size_t index = 0; index < count; ++index) {
+			const auto left = index < candidate.size() ? candidate[index] : 0;
+			const auto right = index < current.size() ? current[index] : 0;
+			if (left != right) return left > right;
+		}
+		return false;
+	}
+
+	bool hasBundledArduinoResources(const fs::path& extensionRoot) {
+		const fs::path resources =
+			extensionRoot / L"resources" / L"arduino";
+		std::error_code ec;
+		return fs::is_regular_file(
+			resources / L"avr-gcc" / L"bin" / L"avr-g++.exe", ec)
+			&& fs::is_directory(
+				resources / L"hardware" / L"cores" / L"arduino", ec)
+			&& fs::is_directory(
+				resources / L"hardware" / L"variants" / L"mega", ec)
+			&& fs::is_directory(resources / L"libraries", ec)
+			&& fs::is_regular_file(
+				resources / L"prebuilt" / L"core.a", ec);
+	}
+
+	// ポータブル版の data/daemon/build/bin から data/extensions を上向きに探す。
+	// 拡張機能が複数世代残っていても、数値バージョンが最も新しい完全な
+	// リソース一式だけを選び、PC側のArduinoインストールに依存させない。
+	std::string findBundledExtensionRoot() {
+		std::wstring executable(32768, L'\0');
+		const DWORD length = GetModuleFileNameW(
+			nullptr, executable.data(), static_cast<DWORD>(executable.size()));
+		if (length == 0 || length >= executable.size()) return "";
+		executable.resize(length);
+
+		constexpr wchar_t extensionPrefix[] = L"ao.monocon-tools-";
+		fs::path base = fs::path(executable).parent_path();
+		for (int depth = 0; depth < 8 && !base.empty(); ++depth) {
+			const fs::path extensionsDir = base / L"extensions";
+			std::error_code ec;
+			if (fs::is_directory(extensionsDir, ec)) {
+				fs::path best;
+				std::vector<unsigned long long> bestVersion;
+				for (fs::directory_iterator it(extensionsDir, ec), end;
+					!ec && it != end; it.increment(ec)) {
+					if (!it->is_directory(ec)) continue;
+					const std::wstring name = it->path().filename().wstring();
+					constexpr size_t prefixLength =
+						(sizeof(extensionPrefix) / sizeof(extensionPrefix[0])) - 1;
+					if (name.compare(0, prefixLength, extensionPrefix) != 0
+						|| !hasBundledArduinoResources(it->path())) {
+						continue;
+					}
+					const auto version =
+						parseVersionNumbers(name.substr(prefixLength));
+					if (best.empty() || versionIsNewer(version, bestVersion)) {
+						best = it->path();
+						bestVersion = version;
+					}
+				}
+				if (!best.empty()) return Utils::pathToUtf8(best);
+			}
+			const fs::path parent = base.parent_path();
+			if (parent == base) break;
+			base = parent;
+		}
+		return "";
+	}
 
 	void initLogger() {
 		std::string logDir = Utils::getGlobalCacheDir();
 		Utils::createDirectory(logDir);
 		std::string logPath = Utils::joinPath(logDir, "daemon.log");
-		g_logFile.open(logPath, std::ios::app);
+		g_logFile.open(Utils::pathFromUtf8(logPath), std::ios::app);
 	}
 
 	void logLine(const std::string& level, const std::string& msg) {
@@ -112,6 +217,7 @@ static json handlePing() {
 		{"uptimeSec", uptime},
 		{"requestCount", g_state.requestCount.load()},
 		{"toolchainValid", g_state.toolchain.valid},
+		{"usingBundledResources", g_state.toolchain.usingBundledResources},
 		{"toolchainError", g_state.toolchain.errorMessage},
 		{"compilerVersion", g_state.toolchain.compilerVersion}
 	};
@@ -189,12 +295,34 @@ static void processOneConnection(HANDLE hPipe) {
 		return;
 	}
 
-	reqId = req.value("id", json(nullptr));
-	std::string method = req.value("method", "");
-	json params = req.value("params", json::object());
+	std::string method;
+	json params;
+	try {
+		if (!req.is_object()) {
+			throw std::runtime_error("request must be a JSON object");
+		}
+		if (req.contains("id")) reqId = req["id"];
+		if (!req.contains("method") || !req["method"].is_string()) {
+			throw std::runtime_error("method must be a string");
+		}
+		method = req["method"].get<std::string>();
+		params = req.contains("params") ? req["params"] : json::object();
+		if (!params.is_object()) {
+			throw std::runtime_error("params must be a JSON object");
+		}
+	}
+	catch (const std::exception& e) {
+		auto resp = buildErrorResponse(reqId, -32600,
+			std::string("Invalid request: ") + e.what());
+		PipeIO::writeMessage(hPipe, resp.dump());
+		return;
+	}
 
 	g_state.requestCount.fetch_add(1);
-	g_state.lastRequestAt = std::chrono::steady_clock::now();
+	{
+		std::lock_guard<std::mutex> lock(g_state.activityMtx);
+		g_state.lastRequestAt = std::chrono::steady_clock::now();
+	}
 
 	logInfo("RPC: " + method);
 
@@ -229,6 +357,12 @@ static void runPipeServer() {
 	PSECURITY_DESCRIPTOR pSD = nullptr;
 	SECURITY_ATTRIBUTES sa{};
 	auto* psa = makePipeSecurity(sa, pSD);
+	if (!psa) {
+		logErr("Cannot create owner-only named-pipe security descriptor: "
+			+ std::to_string(GetLastError()));
+		triggerShutdown();
+		return;
+	}
 
 	while (!g_state.shutdownRequested) {
 		HANDLE hPipe = CreateNamedPipeA(
@@ -294,7 +428,12 @@ static void idleWatchdog(int idleMinutes) {
 		DWORD wr = WaitForSingleObject(g_hShutdownEvent, kCheckIntervalMs);
 		if (wr == WAIT_OBJECT_0) break;  // shutdown 通知を受けた
 
-		auto idle = steady_clock::now() - g_state.lastRequestAt;
+		steady_clock::time_point lastRequestAt;
+		{
+			std::lock_guard<std::mutex> lock(g_state.activityMtx);
+			lastRequestAt = g_state.lastRequestAt;
+		}
+		auto idle = steady_clock::now() - lastRequestAt;
 		if (idle > timeout) {
 			logInfo("Idle timeout (" + std::to_string(idleMinutes)
 				+ " min) reached - shutting down.");
@@ -317,6 +456,11 @@ static void portChangeWatcher() {
 		return;
 	}
 	HANDLE hRegEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+	if (!hRegEvent) {
+		logWarn("Cannot create COM port change event");
+		RegCloseKey(hKey);
+		return;
+	}
 
 	// 監視対象を shutdown イベントとレジストリ変化イベントの 2 つにする
 	HANDLE waitHandles[2] = { g_hShutdownEvent, hRegEvent };
@@ -412,7 +556,11 @@ int main(int argc, char* argv[]) {
 	}
 
 	// --- ツールチェーン解決 ---
-	if (!initializeDaemonState()) {
+	const std::string extensionRoot = findBundledExtensionRoot();
+	if (!extensionRoot.empty()) {
+		logInfo("Bundled Arduino resources: " + extensionRoot);
+	}
+	if (!initializeDaemonState(extensionRoot)) {
 		logErr("Toolchain init failed: " + g_state.toolchain.errorMessage);
 	} else {
 		logInfo("Toolchain OK: " + g_state.toolchain.compilerVersion);

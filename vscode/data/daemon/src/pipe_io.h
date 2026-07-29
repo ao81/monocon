@@ -9,13 +9,14 @@
 // =============================================================================
 namespace PipeIO {
 
-	// SID 付きのパイプ名 (\\.\pipe\arduino-build-<SID>) を生成
+	// 世代・SID付きのパイプ名
+	// (\\.\pipe\arduino-build-v170-<SID>[-<test-instance>]) を生成
 	std::string makePipeName();
 
 	// Local\ プレフィックス付きの Mutex 名
 	std::string makeMutexName();
 
-	// LSP 風メッセージを 1 つ読む。EOF / エラー時は空文字を返す。
+	// LSP 風メッセージを 1 つ読む。EOF / エラー / 1 MiB超過時は空文字。
 	std::string readMessage(HANDLE hPipe);
 
 	// LSP 風メッセージを 1 つ書く。

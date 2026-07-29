@@ -26,9 +26,15 @@ struct ToolchainPaths {
 
 	std::string coreDir;       // ArduinoCore-avr の cores/arduino
 	std::string variantDir;    // variants/mega
+	std::string librariesDir;  // 同梱Arduino AVR標準ライブラリ
 	std::string prebuiltCoreA; // 拡張機能に同梱したMega 2560用core.a
+	std::string prebuiltCoreHash; // core.a の内容署名（キャッシュキー用）
 	std::string compilerVersion; // avr-gcc --version の最初の行
+	// avr-g++ -dM が返すMega 2560向け定義。ino条件コンパイルの判定に使う。
+	std::unordered_map<std::string, std::string> predefinedMacros;
+	std::unordered_map<std::string, std::string> predefinedFunctionMacros;
 
+	bool usingBundledResources = false;
 	bool valid = false;
 	std::string errorMessage;
 };
@@ -45,6 +51,7 @@ struct SketchBuildState {
 	std::shared_ptr<const std::vector<uint8_t>> flashImage;
 	long long flashHexMtime = 0;
 	uint64_t flashHexSize = 0;
+	std::string flashHexHash;
 };
 
 struct DaemonState {
@@ -69,11 +76,12 @@ struct DaemonState {
 	// --- ライフサイクル ---
 	std::atomic<bool> shutdownRequested{ false };
 	std::chrono::steady_clock::time_point startedAt{};
+	std::mutex activityMtx;
 	std::chrono::steady_clock::time_point lastRequestAt{};
 	std::atomic<long long> requestCount{ 0 };
 
 	// --- バージョン ---
-	std::string version = "1.3.0";
+	std::string version = "1.7.0";
 };
 
 // グローバルインスタンス

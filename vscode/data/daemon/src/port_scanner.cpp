@@ -1,4 +1,5 @@
 #include "port_scanner.h"
+#include "utils.h"
 
 #include <windows.h>
 #include <setupapi.h>
@@ -64,6 +65,60 @@ namespace {
 		unsigned short pid = 0;
 	};
 
+	std::wstring readDeviceProperty(HDEVINFO devices,
+		SP_DEVINFO_DATA& device, DWORD property) {
+		DWORD type = 0;
+		DWORD requiredBytes = 0;
+		SetupDiGetDeviceRegistryPropertyW(
+			devices, &device, property, &type,
+			nullptr, 0, &requiredBytes);
+		if (requiredBytes == 0) return {};
+		std::vector<wchar_t> value(
+			requiredBytes / sizeof(wchar_t) + 1, L'\0');
+		DWORD actualBytes = requiredBytes;
+		if (!SetupDiGetDeviceRegistryPropertyW(
+			devices, &device, property, &type,
+			reinterpret_cast<BYTE*>(value.data()),
+			static_cast<DWORD>(value.size() * sizeof(wchar_t)),
+			&actualBytes)) {
+			return {};
+		}
+		if (type != REG_SZ && type != REG_MULTI_SZ) return {};
+		const size_t available = (std::min)(
+			value.size(), static_cast<size_t>(
+				actualBytes / sizeof(wchar_t)));
+		size_t length = 0;
+		while (length < available && value[length] != L'\0') ++length;
+		return std::wstring(value.data(), length);
+	}
+
+	std::wstring readDeviceRegistryString(HKEY key, const wchar_t* name) {
+		DWORD type = 0;
+		DWORD requiredBytes = 0;
+		if (RegQueryValueExW(
+			key, name, nullptr, &type, nullptr, &requiredBytes)
+			!= ERROR_SUCCESS
+			|| (type != REG_SZ && type != REG_EXPAND_SZ)
+			|| requiredBytes == 0) {
+			return {};
+		}
+		std::vector<wchar_t> value(
+			requiredBytes / sizeof(wchar_t) + 1, L'\0');
+		DWORD actualBytes = requiredBytes;
+		if (RegQueryValueExW(
+			key, name, nullptr, &type,
+			reinterpret_cast<BYTE*>(value.data()), &actualBytes)
+			!= ERROR_SUCCESS) {
+			return {};
+		}
+		const size_t available = (std::min)(
+			value.size(), static_cast<size_t>(
+				actualBytes / sizeof(wchar_t)));
+		size_t length = available;
+		while (length > 0 && value[length - 1] == L'\0') --length;
+		return std::wstring(value.data(), length);
+	}
+
 	// HardwareID 文字列から "USB\VID_xxxx&PID_yyyy" を解析
 	bool parseVidPid(const std::string& hwid, unsigned short& vid, unsigned short& pid) {
 		size_t v = hwid.find("VID_");
@@ -94,37 +149,24 @@ namespace {
 			HKEY hKey = SetupDiOpenDevRegKey(hDevInfo, &devData,
 				DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
 			if (hKey != INVALID_HANDLE_VALUE) {
-				char buf[64] = { 0 };
-				DWORD len = sizeof(buf);
-				DWORD type = 0;
-				if (RegQueryValueExA(hKey, "PortName", nullptr, &type,
-					reinterpret_cast<BYTE*>(buf), &len) == ERROR_SUCCESS) {
-					m.portName = buf;
-				}
+				m.portName = Utils::wideToUtf8(
+					readDeviceRegistryString(hKey, L"PortName"));
 				RegCloseKey(hKey);
 			}
 			if (m.portName.empty()) continue;
 
 			// FriendlyName / DeviceDesc
-			char desc[512] = { 0 };
-			DWORD descSize = sizeof(desc);
-			if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devData,
-				SPDRP_FRIENDLYNAME, nullptr, reinterpret_cast<BYTE*>(desc),
-				descSize, nullptr)) {
-				m.description = desc;
-			} else if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devData,
-				SPDRP_DEVICEDESC, nullptr, reinterpret_cast<BYTE*>(desc),
-				descSize, nullptr)) {
-				m.description = desc;
+			std::wstring description = readDeviceProperty(
+				hDevInfo, devData, SPDRP_FRIENDLYNAME);
+			if (description.empty()) {
+				description = readDeviceProperty(
+					hDevInfo, devData, SPDRP_DEVICEDESC);
 			}
+			m.description = Utils::wideToUtf8(description);
 
 			// HardwareID から VID/PID
-			char hwid[1024] = { 0 };
-			if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devData,
-				SPDRP_HARDWAREID, nullptr, reinterpret_cast<BYTE*>(hwid),
-				sizeof(hwid), nullptr)) {
-				parseVidPid(hwid, m.vid, m.pid);
-			}
+			parseVidPid(Utils::wideToUtf8(readDeviceProperty(
+				hDevInfo, devData, SPDRP_HARDWAREID)), m.vid, m.pid);
 
 			result.push_back(std::move(m));
 		}
@@ -138,15 +180,19 @@ namespace {
 namespace PortScanner {
 
 	bool isArduinoVidPid(unsigned short vid, unsigned short pid) {
-		// Arduino LLC / SRL の VID
+		// Arduino LLC / SRLはMega/ADK固有PIDだけを受け入れる。
+		// Uno/Leonardo等を自動選択すると、署名照合で安全に停止できても
+		// 利用者には「検出したのに書けない」という紛らわしい結果になる。
 		// MEGA 2560 R3:        2341:0042
 		// MEGA ADK R3:         2341:0044
 		// MEGA 2560 (CDC):     2341:0010
+		// MEGA ADK (旧版):      2341:003F
 		// クローン互換:        1A86:7523 (CH340), 0403:6001 (FTDI), 10C4:EA60 (CP210x)
-		(void)pid;
 		switch (vid) {
 		case 0x2341: // Arduino LLC
 		case 0x2A03: // Arduino SRL
+			return pid == 0x0010 || pid == 0x003F
+				|| pid == 0x0042 || pid == 0x0044;
 		case 0x1A86: // QinHeng (CH340 クローン)
 		case 0x0403: // FTDI
 		case 0x10C4: // Silicon Labs (CP210x)
@@ -183,20 +229,50 @@ namespace PortScanner {
 
 	std::string findArduinoPort() {
 		auto devs = enumerateSerialDevices();
-		// VID マッチを優先
+		// VID マッチを優先。ただし複数候補がある場合は勝手に先頭へ
+		// 書き込まない。別のUSBシリアル機器をリセットする事故を防ぐ。
+		std::vector<std::string> vidMatches;
 		for (const auto& d : devs) {
-			if (isArduinoVidPid(d.vid, d.pid)) return d.portName;
+			if (isArduinoVidPid(d.vid, d.pid)) vidMatches.push_back(d.portName);
 		}
-		// フォールバック: description に "Arduino" を含むもの
+		std::sort(vidMatches.begin(), vidMatches.end());
+		vidMatches.erase(std::unique(vidMatches.begin(), vidMatches.end()),
+			vidMatches.end());
+		if (vidMatches.size() == 1) return vidMatches.front();
+		if (vidMatches.size() > 1) return "";
+
+		// フォールバック: ボード名が明示的にMega/ADKを示すもの。
+		std::vector<std::string> descriptionMatches;
 		for (const auto& d : devs) {
 			std::string lower = d.description;
 			std::transform(lower.begin(), lower.end(), lower.begin(),
-				[](unsigned char c) { return std::tolower(c); });
-			if (lower.find("arduino") != std::string::npos) return d.portName;
+				[](unsigned char c) {
+					return static_cast<char>(std::tolower(c));
+				});
+			if (lower.find("mega") != std::string::npos
+				|| lower.find("adk") != std::string::npos) {
+				descriptionMatches.push_back(d.portName);
+			}
 		}
-		// それでも無ければ「最初に見つかった COM ポート」
+		std::sort(descriptionMatches.begin(), descriptionMatches.end());
+		descriptionMatches.erase(
+			std::unique(descriptionMatches.begin(), descriptionMatches.end()),
+			descriptionMatches.end());
+		if (descriptionMatches.size() == 1) return descriptionMatches.front();
+		if (descriptionMatches.size() > 1) return "";
+
+		// VIDを取得できない機器でも、接続中COMポートが1つだけなら選べる。
+		// ただし公式VIDの非Mega機は既知の非対応ボードなので自動選択しない。
+		const bool knownUnsupportedOfficialBoard = std::any_of(
+			devs.begin(), devs.end(), [](const DeviceMatch& device) {
+				return (device.vid == 0x2341 || device.vid == 0x2A03)
+					&& !PortScanner::isArduinoVidPid(
+						device.vid, device.pid);
+			});
 		auto names = readSerialCommRegistry();
-		if (!names.empty()) return names.front();
+		if (names.size() == 1 && !knownUnsupportedOfficialBoard) {
+			return names.front();
+		}
 		return "";
 	}
 

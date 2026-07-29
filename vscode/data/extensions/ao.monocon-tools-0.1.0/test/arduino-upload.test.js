@@ -9,6 +9,15 @@ function disposable(remove) {
     return { dispose: remove || (() => undefined) };
 }
 
+async function waitUntil(predicate, advance = () => undefined) {
+    for (let attempt = 0; attempt < 100; attempt++) {
+        advance();
+        if (predicate()) return;
+        await new Promise(resolve => setImmediate(resolve));
+    }
+    throw new Error("Condition was not reached");
+}
+
 function loadExtension(vscode, net, nativeModule) {
     const extensionPath = path.resolve(__dirname, '../out/extension.js');
     const uploadPath = path.resolve(__dirname, '../out/arduino-upload.js');
@@ -48,20 +57,25 @@ function createVscodeMock(options = {}) {
     const statusItems = [];
     const outputLines = [];
     const diagnosticEntries = [];
+    const monitorStopPorts = [];
     let executeCount = 0;
     let fetchCount = 0;
     let terminateCount = 0;
     let processEnded = false;
     let nativeRequestCount = 0;
+    const nativeRequests = [];
     let outputClearCount = 0;
     const monitorStartSettings = [];
     const completionServers = new Set();
+    const listenedPipeNames = [];
+    const executedTasks = [];
 
     const net = {
         createServer(connectionListener) {
             const server = {
                 on() { return server; },
-                listen() {
+                listen(pipeName) {
+                    listenedPipeNames.push(pipeName);
                     completionServers.add(server);
                     return server;
                 },
@@ -97,9 +111,17 @@ function createVscodeMock(options = {}) {
     class NativeOperationTimeoutError extends Error {}
     const nativeService = {
         warmup: async () => ({ success: true }),
-        async request() {
+        async request(method, params, timeoutMs) {
             nativeRequestCount++;
+            nativeRequests.push({ method, params, timeoutMs });
             if (options.nativeError) throw options.nativeError;
+            if (method === 'ports') {
+                return options.nativePortsResult || {
+                    success: true,
+                    ports: ['COM3'],
+                    arduinoPort: 'COM3'
+                };
+            }
             if (!options.nativeResult) {
                 throw new NativeUnavailableError("native test fallback");
             }
@@ -116,12 +138,33 @@ function createVscodeMock(options = {}) {
     };
 
     const task = { name: 'Arduino: Upload' };
+    class ProcessExecution {
+        constructor(process, args = [], options) {
+            Object.assign(this, { process, args, options });
+        }
+    }
+    class Task {
+        constructor(definition, scope, name, source, execution, problemMatchers) {
+            Object.assign(this, {
+                definition,
+                scope,
+                name,
+                source,
+                execution,
+                problemMatchers
+            });
+        }
+    }
     const api = {
         dispose() {},
         async listAvailablePorts() {
+            if (options.monitorPorts) {
+                return options.monitorPorts.map(portName => ({ portName }));
+            }
             return options.monitorActive ? [{ portName: 'COM3' }] : [];
         },
-        async stopMonitoringPort() {
+        async stopMonitoringPort(portName) {
+            monitorStopPorts.push(portName);
             return true;
         },
         startMonitoringPort(settings) {
@@ -140,6 +183,11 @@ function createVscodeMock(options = {}) {
             }
         },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2 },
+        Task,
+        ProcessExecution,
+        TaskScope: { Global: 1, Workspace: 2 },
+        TaskRevealKind: { Silent: 3 },
+        TaskPanelKind: { Shared: 4 },
         Uri: {
             file(fsPath) {
                 return { scheme: 'file', fsPath };
@@ -196,6 +244,7 @@ function createVscodeMock(options = {}) {
             },
             async executeTask(startedTask) {
                 executeCount++;
+                executedTasks.push(startedTask);
                 const execution = {
                     task: startedTask,
                     terminate() {
@@ -269,6 +318,9 @@ function createVscodeMock(options = {}) {
             },
             showErrorMessage(message) {
                 messages.error.push(message);
+            },
+            showQuickPick(items) {
+                return Promise.resolve(options.quickPickSelection ?? items[0]);
             }
         },
         workspace: {
@@ -287,11 +339,13 @@ function createVscodeMock(options = {}) {
                 }
                 const values = {
                     baudRate: 115200,
+                    port: options.configuredPort || '',
                     reopenMonitor: true,
                     reopenDelayMs: 0,
                     portReleaseDelayMs: 0,
                     taskTimeoutMs: options.timeoutMs || 30,
-                    serialOperationTimeoutMs: options.timeoutMs || 30
+                    serialOperationTimeoutMs: options.timeoutMs || 30,
+                    ...options.configValues
                 };
                 return { get: (name, fallback) => values[name] ?? fallback };
             }
@@ -305,10 +359,20 @@ function createVscodeMock(options = {}) {
         NativeOperationTimeoutError,
         commands,
         messages,
+        monitorStopPorts,
         monitorStartSettings,
         statusItems,
         outputLines,
         diagnosticEntries,
+        nativeRequests,
+        listenedPipeNames,
+        executedTasks,
+        activationContext: {
+            subscriptions: [],
+            ...(options.extensionPath
+                ? { extensionPath: options.extensionPath }
+                : {})
+        },
         get executeCount() { return executeCount; },
         get fetchCount() { return fetchCount; },
         get terminateCount() { return terminateCount; },
@@ -320,7 +384,7 @@ function createVscodeMock(options = {}) {
 
 async function activateAndGetUpload(mock) {
     const extension = loadExtension(mock.vscode, mock.net, mock.nativeModule);
-    extension.activate({ subscriptions: [] });
+    extension.activate(mock.activationContext);
     const upload = mock.commands.get('monoconTools.uploadArduino');
     assert.equal(typeof upload, 'function');
     return upload;
@@ -356,10 +420,94 @@ test('uses the native worker path without starting the compatibility task', asyn
 
     await upload();
 
-    assert.equal(mock.nativeRequestCount, 1);
+    assert.equal(mock.nativeRequestCount, 2);
     assert.equal(mock.executeCount, 0);
     assert.equal(mock.statusItems[0].text, '$(check) Arduino: 書き込み完了');
     assert.equal(mock.messages.info.includes('Arduinoへの書き込みが完了しました。'), true);
+});
+
+test('uses a private completion pipe and forwards the selected port to portable CLI', async () => {
+    const extensionPath = path.resolve(__dirname, '..');
+    const mock = createVscodeMock({
+        extensionPath,
+        completionSignalDelayMs: 0
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.fetchCount, 0);
+    assert.equal(mock.executedTasks.length, 1);
+    const execution = mock.executedTasks[0].execution;
+    assert.match(
+        execution.process,
+        /[\\/]daemon[\\/]build[\\/]bin[\\/]arduino-build-cli\.exe$/i
+    );
+    assert.deepEqual(execution.args.slice(0, 3), [
+        'upload',
+        'C:\\sketch',
+        'COM3'
+    ]);
+    const pipeIndex = execution.args.indexOf('--status-pipe');
+    assert.notEqual(pipeIndex, -1);
+    const pipeName = execution.args[pipeIndex + 1];
+    assert.match(
+        pipeName,
+        /^\\\\\.\\pipe\\monocon-upload-status-v2-\d+-[0-9a-f]{32}$/
+    );
+    assert.equal(mock.listenedPipeNames.includes(pipeName), true);
+    assert.equal(mock.messages.info.filter(
+        message => message === 'Arduinoへの書き込みが完了しました。'
+    ).length, 1);
+});
+
+test('falls back to the portable CLI for compile-only requests', async () => {
+    const extensionPath = path.resolve(__dirname, '..');
+    const mock = createVscodeMock({ extensionPath });
+    await activateAndGetUpload(mock);
+    const compile = mock.commands.get('monoconTools.compileArduino');
+
+    await compile();
+
+    assert.equal(mock.nativeRequestCount, 1);
+    assert.equal(mock.nativeRequests[0].method, 'compile');
+    assert.equal(mock.fetchCount, 0);
+    assert.equal(mock.executedTasks.length, 1);
+    assert.equal(mock.executedTasks[0].name, 'Arduino: Compile');
+    assert.deepEqual(mock.executedTasks[0].execution.args, [
+        'build',
+        'C:\\sketch',
+        '--workspace',
+        'C:\\workspace'
+    ]);
+    assert.equal(
+        mock.messages.info.includes('Arduinoのコンパイルが完了しました。'),
+        true
+    );
+});
+
+test('asks for the target port when multiple serial devices are connected', async () => {
+    const mock = createVscodeMock({
+        nativePortsResult: {
+            success: true,
+            ports: ['COM3', 'COM8'],
+            arduinoPort: ''
+        },
+        quickPickSelection: 'COM8',
+        monitorPorts: ['COM3', 'COM8'],
+        nativeResult: {
+            success: true,
+            port: 'COM8',
+            compile: { success: true }
+        }
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.nativeRequests[1].method, 'upload');
+    assert.equal(mock.nativeRequests[1].params.port, 'COM8');
+    assert.deepEqual(mock.monitorStopPorts, ['COM8']);
 });
 
 test('clears previous output whenever an upload starts', async () => {
@@ -421,33 +569,89 @@ test('shows native compiler errors as a readable report and editor diagnostic', 
     assert.doesNotMatch(mock.messages.error[0], /\x1b/);
 });
 
-test('monitor restart timeout always releases the upload lock', async () => {
+test('monitor restart timeout always releases the upload lock', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
     const mock = createVscodeMock({
         monitorActive: true,
-        hangingMonitorRestart: true
+        hangingMonitorRestart: true,
+        nativeResult: {
+            success: true,
+            port: 'COM3',
+            compile: { success: true }
+        }
     });
     const upload = await activateAndGetUpload(mock);
 
-    await upload();
-    await upload();
+    const first = upload();
+    await waitUntil(
+        () => mock.monitorStartSettings.length === 1,
+        () => t.mock.timers.tick(0)
+    );
+    t.mock.timers.tick(1000);
+    await first;
 
-    assert.equal(mock.executeCount, 2);
-    assert.equal(mock.fetchCount, 1);
+    const second = upload();
+    await waitUntil(
+        () => mock.monitorStartSettings.length === 2,
+        () => t.mock.timers.tick(0)
+    );
+    t.mock.timers.tick(1000);
+    await second;
+
+    assert.equal(mock.nativeRequestCount, 4);
+    assert.equal(mock.executeCount, 0);
     assert.equal(mock.messages.info.includes('アップロードは既に実行中です。'), false);
     assert.equal(mock.messages.warning.length, 2);
 });
 
-test('task timeout terminates the task and releases the upload lock', async () => {
+test('task timeout terminates the task and releases the upload lock', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
     const mock = createVscodeMock({ hangingTask: true });
     const upload = await activateAndGetUpload(mock);
 
-    await upload();
-    await upload();
+    const first = upload();
+    await waitUntil(() => mock.executeCount === 1);
+    await new Promise(resolve => setImmediate(resolve));
+    t.mock.timers.tick(10000);
+    await first;
+
+    const second = upload();
+    await waitUntil(() => mock.executeCount === 2);
+    await new Promise(resolve => setImmediate(resolve));
+    t.mock.timers.tick(10000);
+    await second;
 
     assert.equal(mock.executeCount, 2);
     assert.equal(mock.terminateCount, 2);
     assert.equal(mock.messages.info.includes('アップロードは既に実行中です。'), false);
     assert.equal(mock.messages.error.length, 2);
+});
+
+test('normalizes invalid numeric and boolean upload settings', async () => {
+    const mock = createVscodeMock({
+        monitorActive: true,
+        configValues: {
+            baudRate: Number.POSITIVE_INFINITY,
+            reopenMonitor: 'false',
+            reopenDelayMs: -100,
+            portReleaseDelayMs: -100,
+            taskTimeoutMs: Number.NaN,
+            serialOperationTimeoutMs: -100
+        },
+        nativeResult: {
+            success: true,
+            port: 'COM3',
+            compile: { success: true }
+        }
+    });
+    const upload = await activateAndGetUpload(mock);
+
+    await upload();
+
+    assert.equal(mock.nativeRequests[0].timeoutMs, 1000);
+    assert.equal(mock.nativeRequests[1].timeoutMs, 180000);
+    assert.equal(mock.monitorStartSettings[0].baudRate, 9600);
+    assert.equal(mock.monitorStartSettings.length, 1);
 });
 
 test('reopens the serial monitor with reset control lines disabled', async () => {

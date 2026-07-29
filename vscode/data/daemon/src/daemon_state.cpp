@@ -3,6 +3,7 @@
 #include "port_scanner.h"
 
 #include <windows.h>
+#include <cctype>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -53,6 +54,45 @@ namespace {
 		return Utils::trim(line);
 	}
 
+	void loadPredefinedMacros(ToolchainPaths& tc) {
+		const std::string args =
+			"-dM -E -x c++ -std=gnu++11 -mmcu=atmega2560"
+			" -DF_CPU=16000000L -DARDUINO=10819"
+			" -DARDUINO_AVR_MEGA2560 -DARDUINO_ARCH_AVR NUL";
+		ProcessResult result = runProcess(tc.avrGpp, args, "", true);
+		if (result.exitCode == 0) {
+			for (const auto& line : Utils::split(result.output, '\n')) {
+				static const std::string prefix = "#define ";
+				if (line.compare(0, prefix.size(), prefix) != 0) continue;
+				const size_t nameStart = prefix.size();
+				size_t nameEnd = nameStart;
+				while (nameEnd < line.size()
+					&& !std::isspace(static_cast<unsigned char>(line[nameEnd]))
+					&& line[nameEnd] != '(') {
+					++nameEnd;
+				}
+				if (nameEnd == nameStart) continue;
+				const std::string name =
+					line.substr(nameStart, nameEnd - nameStart);
+				if (nameEnd < line.size() && line[nameEnd] == '(') {
+					tc.predefinedFunctionMacros[name] =
+						Utils::trim(line.substr(nameEnd));
+				}
+				else {
+					const std::string value =
+						Utils::trim(line.substr(nameEnd));
+					tc.predefinedMacros[name] =
+						value.empty() ? "1" : value;
+				}
+			}
+		}
+		// コンパイラ照会に失敗しても、拡張機能が必ず渡す定義は保証する。
+		tc.predefinedMacros["F_CPU"] = "16000000L";
+		tc.predefinedMacros["ARDUINO"] = "10819";
+		tc.predefinedMacros["ARDUINO_AVR_MEGA2560"] = "1";
+		tc.predefinedMacros["ARDUINO_ARCH_AVR"] = "1";
+	}
+
 } // namespace
 
 bool initializeDaemonState(const std::string& extensionRoot,
@@ -64,14 +104,17 @@ bool initializeDaemonState(const std::string& extensionRoot,
 	std::string bundledGccRoot;
 	std::string bundledHardwareRoot;
 	if (!extensionRoot.empty()) {
-		fs::path resourceRoot = fs::path(extensionRoot) / "resources" / "arduino";
-		bundledGccRoot = (resourceRoot / "avr-gcc").string();
-		bundledHardwareRoot = (resourceRoot / "hardware").string();
-		tc.prebuiltCoreA = (resourceRoot / "prebuilt" / "core.a").string();
+		fs::path resourceRoot = Utils::pathFromUtf8(extensionRoot)
+			/ L"resources" / L"arduino";
+		bundledGccRoot = Utils::pathToUtf8(resourceRoot / L"avr-gcc");
+		bundledHardwareRoot = Utils::pathToUtf8(resourceRoot / L"hardware");
+		tc.librariesDir = Utils::pathToUtf8(resourceRoot / L"libraries");
+		tc.prebuiltCoreA = Utils::pathToUtf8(resourceRoot / L"prebuilt" / L"core.a");
 	}
 
 	// 1) avr-gcc のディレクトリ
-	std::string gccRoot = Utils::directoryExists(bundledGccRoot)
+	const bool hasBundledGcc = Utils::directoryExists(bundledGccRoot);
+	std::string gccRoot = hasBundledGcc
 		? bundledGccRoot : findLatestArduinoToolchain();
 	if (gccRoot.empty()) {
 		tc.errorMessage = "avr-gcc not found under %LOCALAPPDATA%\\Arduino15";
@@ -97,12 +140,21 @@ bool initializeDaemonState(const std::string& extensionRoot,
 	}
 
 	// 3) Arduino コア
-	if (Utils::directoryExists(bundledHardwareRoot)) {
-		tc.coreDir = (fs::path(bundledHardwareRoot) / "cores" / "arduino").string();
-		tc.variantDir = (fs::path(bundledHardwareRoot) / "variants" / "mega").string();
+	const bool hasBundledHardware =
+		Utils::directoryExists(bundledHardwareRoot);
+	if (hasBundledHardware) {
+		const fs::path hardwareRoot = Utils::pathFromUtf8(bundledHardwareRoot);
+		tc.coreDir = Utils::pathToUtf8(hardwareRoot / L"cores" / L"arduino");
+		tc.variantDir = Utils::pathToUtf8(hardwareRoot / L"variants" / L"mega");
 	} else {
 		tc.coreDir = findArduinoCoreDir();
 		tc.variantDir = findVariantDir("mega");
+		if (!tc.coreDir.empty()) {
+			const fs::path hardwareVersion =
+				Utils::pathFromUtf8(tc.coreDir).parent_path().parent_path();
+			tc.librariesDir =
+				Utils::pathToUtf8(hardwareVersion / L"libraries");
+		}
 	}
 	if (tc.coreDir.empty() || !Utils::directoryExists(tc.coreDir)) {
 		tc.errorMessage = "Arduino core directory not found";
@@ -112,9 +164,23 @@ bool initializeDaemonState(const std::string& extensionRoot,
 		tc.errorMessage = "Arduino Mega variant directory not found";
 		return false;
 	}
+	if (Utils::fileExists(tc.prebuiltCoreA)) {
+		try {
+			tc.prebuiltCoreHash = Utils::sha1FileHex(tc.prebuiltCoreA);
+			if (tc.prebuiltCoreHash.empty()) {
+				throw std::runtime_error("core.a hashing failed");
+			}
+		}
+		catch (const std::exception& e) {
+			tc.errorMessage = "Cannot read bundled core.a: " + std::string(e.what());
+			return false;
+		}
+	}
 
 	// 4) コンパイラバージョン
 	tc.compilerVersion = getCompilerVersionString(tc.avrGcc);
+	loadPredefinedMacros(tc);
+	tc.usingBundledResources = hasBundledGcc && hasBundledHardware;
 
 	// 5) core.a キャッシュルート
 	g_state.coreCacheRoot = cacheRoot.empty()
@@ -124,7 +190,10 @@ bool initializeDaemonState(const std::string& extensionRoot,
 
 	// 6) 起動時刻 / COM ポート初回スキャン
 	g_state.startedAt = std::chrono::steady_clock::now();
-	g_state.lastRequestAt = g_state.startedAt;
+	{
+		std::lock_guard<std::mutex> lock(g_state.activityMtx);
+		g_state.lastRequestAt = g_state.startedAt;
+	}
 	refreshComPorts();
 
 	tc.valid = true;

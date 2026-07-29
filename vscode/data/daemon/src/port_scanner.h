@@ -24,13 +24,11 @@ namespace PortScanner {
 	// 名前だけのリスト ("COM3", "COM5", ...)
 	std::vector<std::string> listNames();
 
-	// Arduino っぽい VID:PID で絞り込んだ最初のポートを返す
-	// 見つからなければ空文字
+	// Arduino互換VIDまたは説明で一意に絞れたポートを返す。
+	// 見つからない場合と複数候補で曖昧な場合は空文字。
 	std::string findArduinoPort();
 
-	// Arduino MEGA / ADK の典型 VID:PID
-	// 0x2341 (Arduino LLC)
-	// 0x2A03 (Arduino SRL)
+	// Arduino MEGA / ADK固有PID、または一般的なUSBシリアル変換ICを判定。
 	bool isArduinoVidPid(unsigned short vid, unsigned short pid);
 
 } // namespace PortScanner

@@ -64,7 +64,10 @@ namespace {
 
 		json notReady = requireReady();
 		if (!notReady.is_null()) return notReady;
-		g_state.lastRequestAt = std::chrono::steady_clock::now();
+		{
+			std::lock_guard<std::mutex> lock(g_state.activityMtx);
+			g_state.lastRequestAt = std::chrono::steady_clock::now();
+		}
 		g_state.requestCount++;
 
 		if (method == "upload") {

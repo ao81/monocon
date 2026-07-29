@@ -28,6 +28,9 @@ class NativeService {
         this.timedOutOperation = undefined;
         this.nextId = 1;
         this.disposed = false;
+        this.startupTimeoutMs = options.startupTimeoutMs || 15000;
+        this.startupTimer = undefined;
+        this.startupReject = undefined;
     }
 
     get extensionRoot() {
@@ -44,7 +47,7 @@ class NativeService {
             this.extensionRoot,
             "native",
             `${process.platform}-${process.arch}`,
-            "monocon_native.node"
+            "monocon_native_v170.node"
         );
     }
 
@@ -56,7 +59,7 @@ class NativeService {
         if (this.readyPromise) {
             return this.readyPromise;
         }
-        this.readyPromise = new Promise((resolve, reject) => {
+        const startupPromise = new Promise((resolve, reject) => {
             if (this.disposed) {
                 reject(new NativeUnavailableError("Native service is disposed"));
                 return;
@@ -93,9 +96,28 @@ class NativeService {
             }
             this.worker = worker;
             let readySettled = false;
+            this.startupReject = reject;
+            this.startupTimer = setTimeout(() => {
+                if (readySettled || this.worker !== worker) {
+                    return;
+                }
+                readySettled = true;
+                this.clearStartup();
+                reject(new NativeUnavailableError(
+                    `Native worker did not start within ${Math.round(this.startupTimeoutMs / 1000)} seconds`
+                ));
+                this.resetWorker(worker);
+                worker.terminate();
+            }, this.startupTimeoutMs);
             worker.on("message", message => {
+                // terminate() 後の旧ワーカーイベントが、再起動済みワーカーの
+                // pending要求や起動状態を破壊しないよう世代を照合する。
+                if (this.worker !== worker) {
+                    return;
+                }
                 if (message?.type === "ready" && !readySettled) {
                     readySettled = true;
+                    this.clearStartup();
                     if (message.error) {
                         reject(new NativeUnavailableError(message.error));
                         this.resetWorker(worker);
@@ -111,16 +133,24 @@ class NativeService {
                 }
             });
             worker.on("error", error => {
+                if (this.worker !== worker) {
+                    return;
+                }
                 if (!readySettled) {
                     readySettled = true;
+                    this.clearStartup();
                     reject(new NativeUnavailableError(error.message));
                 }
                 this.failPending(error);
                 this.resetWorker(worker);
             });
             worker.on("exit", code => {
+                if (this.worker !== worker) {
+                    return;
+                }
                 if (!readySettled) {
                     readySettled = true;
+                    this.clearStartup();
                     reject(new NativeUnavailableError(
                         `Native worker exited during startup (${code})`
                     ));
@@ -131,7 +161,16 @@ class NativeService {
                 this.resetWorker(worker);
             });
         });
-        return this.readyPromise;
+        this.readyPromise = startupPromise;
+        // mkdir/Worker生成など起動前の一時的な失敗でも、VS Codeを再読み込み
+        // しなくて済むよう次の要求で再試行可能にする。起動済みワーカーの
+        // 異常系は各イベントハンドラー側で世代を照合してresetする。
+        startupPromise.catch(() => {
+            if (this.readyPromise === startupPromise && !this.worker) {
+                this.readyPromise = undefined;
+            }
+        });
+        return startupPromise;
     }
 
     async request(method, params = {}, timeoutMs = 180000) {
@@ -194,6 +233,14 @@ class NativeService {
         this.pending.clear();
     }
 
+    clearStartup() {
+        if (this.startupTimer) {
+            clearTimeout(this.startupTimer);
+            this.startupTimer = undefined;
+        }
+        this.startupReject = undefined;
+    }
+
     resetWorker(worker) {
         if (this.worker !== worker) return;
         this.worker = undefined;
@@ -203,6 +250,9 @@ class NativeService {
 
     dispose() {
         this.disposed = true;
+        const rejectStartup = this.startupReject;
+        this.clearStartup();
+        rejectStartup?.(new Error("Native service disposed"));
         this.failPending(new Error("Native service disposed"));
         const worker = this.worker;
         this.worker = undefined;

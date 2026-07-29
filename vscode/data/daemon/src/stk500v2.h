@@ -16,6 +16,7 @@ namespace Stk500v2 {
 
 	struct UploadStats {
 		bool success = false;
+		bool retryable = true;
 		std::string errorMessage;
 		// 内訳 (デバッグ用)
 		double openMs = 0;

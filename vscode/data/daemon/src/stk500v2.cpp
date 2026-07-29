@@ -1,6 +1,8 @@
 #include "stk500v2.h"
+#include "utils.h"
 
 #include <windows.h>
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstring>
@@ -20,12 +22,21 @@ namespace {
 	constexpr uint8_t CMD_LEAVE_PROGMODE_ISP = 0x11;
 	constexpr uint8_t CMD_PROGRAM_FLASH_ISP = 0x13;
 	constexpr uint8_t CMD_READ_FLASH_ISP = 0x14;
+	constexpr uint8_t CMD_READ_SIGNATURE_ISP = 0x1B;
 
 	constexpr uint8_t STATUS_CMD_OK = 0x00;
 
 	// === ATmega2560 ===
 	constexpr size_t MEGA2560_PAGE_SIZE = 256;       // bytes
 	constexpr size_t MEGA2560_FLASH_SIZE = 256 * 1024; // 256KB
+	// Arduino AVR Boards 1.8.7 boards.txt:
+	// mega/megaADK upload.maximum_size=253952。残り8 KiBはブートローダー。
+	constexpr size_t MEGA2560_APPLICATION_SIZE = 253952;
+	static_assert(
+		MEGA2560_APPLICATION_SIZE + 8 * 1024 == MEGA2560_FLASH_SIZE);
+	constexpr uint64_t MAX_INTEL_HEX_FILE_SIZE = 4ull * 1024 * 1024;
+	constexpr uint16_t MAX_STK500_RESPONSE_SIZE =
+		MEGA2560_PAGE_SIZE + 16;
 
 	double elapsedMs(std::chrono::steady_clock::time_point t0) {
 		return std::chrono::duration<double, std::milli>(
@@ -38,6 +49,7 @@ namespace {
 	class SerialPort {
 	public:
 		HANDLE h = INVALID_HANDLE_VALUE;
+		DWORD ioTimeoutMs = 200;
 
 		~SerialPort() { close(); }
 
@@ -48,7 +60,8 @@ namespace {
 			const auto deadline = std::chrono::steady_clock::now() +
 				std::chrono::milliseconds(300);
 			do {
-				h = CreateFileA(dev.c_str(),
+				const std::wstring wideDev = Utils::utf8ToWide(dev);
+				h = CreateFileW(wideDev.c_str(),
 					GENERIC_READ | GENERIC_WRITE, 0, nullptr,
 					OPEN_EXISTING, 0, nullptr);
 				if (h != INVALID_HANDLE_VALUE) break;
@@ -92,19 +105,20 @@ namespace {
 			// ReadIntervalTimeout=MAXDWORD と ReadTotalTimeoutMultiplier=0 にすると、
 			// ReadFile は「指定バイト数を全部受信」or「ReadTotalTimeoutConstant 経過」
 			// のどちらかで戻る。USB-Serial のバイト間ギャップで取りこぼさない。
-			setReadTimeout(200);
-			return true;
+			return setReadTimeout(200);
 		}
 
 		// 動的にタイムアウトを切り替える。sync 中は短く、ページ書込中は長め。
-		void setReadTimeout(DWORD ms) {
+		bool setReadTimeout(DWORD ms) {
 			COMMTIMEOUTS to{};
 			to.ReadIntervalTimeout = MAXDWORD;
 			to.ReadTotalTimeoutConstant = ms;
 			to.ReadTotalTimeoutMultiplier = 0;
 			to.WriteTotalTimeoutConstant = ms;
 			to.WriteTotalTimeoutMultiplier = 0;
-			SetCommTimeouts(h, &to);
+			if (!SetCommTimeouts(h, &to)) return false;
+			ioTimeoutMs = ms;
+			return true;
 		}
 
 		void close() {
@@ -120,36 +134,51 @@ namespace {
 		// ずっと LOW でも HIGH でもリセットしない。
 		// RC 時定数 = 10kΩ × 100nF = 1ms。実際のリセットパルス幅は約 1ms。
 		// よって長時間 LOW を維持しても効果は無く、純粋なドライバ反映待ちで十分。
-		void toggleReset() {
+		bool toggleReset() {
 			// HIGH を確実に立てるための最低限の settle (旧: 50ms → 2ms)
-			EscapeCommFunction(h, SETDTR);
+			if (!EscapeCommFunction(h, SETDTR)) return false;
 			Sleep(2);
 
 			// HIGH → LOW: コンデンサ経由で RESET ピンに負パルス → MCU リセット
 			// 旧 100ms はドライバ反映と一部 USB-Serial の遅延を吸収するための余裕。
 			// 20ms あれば CH340/FTDI/16U2 すべて反映済み。RC 1ms に対して十分過大。
-			EscapeCommFunction(h, CLRDTR);
+			if (!EscapeCommFunction(h, CLRDTR)) return false;
 			Sleep(20);
 
 			// LOW → HIGH: リセット解除 → ブートローダ起動
-			EscapeCommFunction(h, SETDTR);
+			if (!EscapeCommFunction(h, SETDTR)) return false;
 
 			// リセット直後のゴミデータを捨てる
-			PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR);
+			return PurgeComm(h, PURGE_RXABORT | PURGE_RXCLEAR
+				| PURGE_TXABORT | PURGE_TXCLEAR) != FALSE;
 		}
 
 		bool write(const uint8_t* data, size_t n) {
-			DWORD written = 0;
-			return WriteFile(h, data, (DWORD)n, &written, nullptr) && written == n;
+			size_t total = 0;
+			const auto deadline = std::chrono::steady_clock::now()
+				+ std::chrono::milliseconds(
+					std::max<DWORD>(ioTimeoutMs * 4, 120));
+			while (total < n && std::chrono::steady_clock::now() < deadline) {
+				DWORD written = 0;
+				if (!WriteFile(h, data + total,
+					static_cast<DWORD>(n - total), &written, nullptr)) {
+					return false;
+				}
+				if (written == 0) continue;
+				total += written;
+			}
+			return total == n;
 		}
 
 		bool read(uint8_t* buf, size_t n) {
 			// ReadIntervalTimeout=MAXDWORD のため、ReadFile は
-			// 「指定バイト数全部受信」or「ReadTotalTimeoutConstant 経過」で戻る。
-			// 1 回の ReadFile が 500ms タイムアウト。最大 4 回 = 2 秒まで待つ。
-			constexpr int kMaxLoops = 4;
+			// USBパケット境界で部分受信しても、全体期限まで読み足す。
 			DWORD total = 0;
-			for (int loop = 0; loop < kMaxLoops && total < n; ++loop) {
+			const auto deadline = std::chrono::steady_clock::now()
+				+ std::chrono::milliseconds(
+					std::max<DWORD>(ioTimeoutMs * 4, 120));
+			while (total < n
+				&& std::chrono::steady_clock::now() < deadline) {
 				DWORD r = 0;
 				if (!ReadFile(h, buf + total, (DWORD)(n - total), &r, nullptr)) return false;
 				total += r;
@@ -168,7 +197,7 @@ namespace {
 
 		// 送信用ワーク。loadAddress / signOn 等の小さいメッセージで再利用し、
 		// 1 ページ書込ごとの heap allocation を排除する。
-		uint8_t sendBuf[64];
+		uint8_t sendBuf[64]{};
 		// 受信用 body バッファ。capacity を確保したまま resize で使い回す。
 		std::vector<uint8_t> respBuf;
 
@@ -208,7 +237,7 @@ namespace {
 				// (1 KB 以内に必ず正しい応答が来るとみなす)
 				int searched = 0;
 				while (hdr5[0] != MESSAGE_START) {
-					if (++searched > 1024) return false;
+					if (++searched > 32) return false;
 					uint8_t b;
 					if (!port.read(&b, 1)) return false;
 					hdr5[0] = b;
@@ -218,8 +247,10 @@ namespace {
 			}
 
 			if (hdr5[4] != TOKEN) return false;
+			if (hdr5[1] != seq) return false;
 
 			uint16_t sz = ((uint16_t)hdr5[2] << 8) | hdr5[3];
+			if (sz > MAX_STK500_RESPONSE_SIZE) return false;
 			body.resize(sz);
 			if (sz > 0 && !port.read(body.data(), sz)) return false;
 
@@ -264,6 +295,29 @@ namespace {
 			std::vector<uint8_t> resp;
 			if (!exchange(req, resp)) return false;
 			return resp.size() >= 2 && resp[0] == CMD_LEAVE_PROGMODE_ISP && resp[1] == STATUS_CMD_OK;
+		}
+
+		bool readSignatureByte(uint8_t index, uint8_t& value) {
+			// AVR068 5.2.12: READ_SIGNATURE_ISP はREAD_FUSE_ISPと同形式。
+			// 低レベルISP命令 0x30 0x00 <index> 0x00 の4バイト目で
+			// 返る値を取得するため、RetAddrは4。
+			const uint8_t req[] = {
+				CMD_READ_SIGNATURE_ISP,
+				4,
+				0x30, 0x00, index, 0x00
+			};
+			if (!sendShort(req, sizeof(req))
+				|| !recvMessage(respBuf)) {
+				return false;
+			}
+			if (respBuf.size() != 4
+				|| respBuf[0] != CMD_READ_SIGNATURE_ISP
+				|| respBuf[1] != STATUS_CMD_OK
+				|| respBuf[3] != STATUS_CMD_OK) {
+				return false;
+			}
+			value = respBuf[2];
+			return true;
 		}
 
 		// Mega 2560 (>64KB) は bit31=1 で拡張アドレス指定。アドレスは「ワード」単位。
@@ -357,14 +411,26 @@ namespace Stk500v2 {
 	// =========================================================================
 	bool readIntelHex(const std::string& path, std::vector<uint8_t>& flash,
 		std::string& err) {
-		std::ifstream f(path);
+		long long hexMtime = 0;
+		uint64_t hexSize = 0;
+		if (!Utils::getFileMetadata(path, hexMtime, hexSize)) {
+			err = "Cannot inspect hex: " + path;
+			return false;
+		}
+		if (hexSize > MAX_INTEL_HEX_FILE_SIZE) {
+			err = "HEX file exceeds 4 MiB safety limit";
+			return false;
+		}
+		std::ifstream f(Utils::pathFromUtf8(path));
 		if (!f) { err = "Cannot open hex: " + path; return false; }
 
-		flash.assign(MEGA2560_FLASH_SIZE, 0xFF);
+		flash.assign(MEGA2560_APPLICATION_SIZE, 0xFF);
+		std::vector<bool> written(MEGA2560_APPLICATION_SIZE, false);
 		uint32_t baseAddr = 0;
 		size_t maxAddr = 0;
 		bool sawEof = false;
 		std::string line;
+		size_t lineNumber = 0;
 
 		auto hex2 = [](char a, char b) -> int {
 			auto v = [](char c) -> int {
@@ -379,9 +445,29 @@ namespace Stk500v2 {
 			};
 
 		while (std::getline(f, line)) {
+			++lineNumber;
 			if (!line.empty() && line.back() == '\r') line.pop_back();
-			if (line.empty() || line[0] != ':') continue;
-			if (line.size() < 11) { err = "Bad hex line"; return false; }
+			if (lineNumber == 1 && line.size() >= 3
+				&& static_cast<unsigned char>(line[0]) == 0xEF
+				&& static_cast<unsigned char>(line[1]) == 0xBB
+				&& static_cast<unsigned char>(line[2]) == 0xBF) {
+				line.erase(0, 3);
+			}
+			if (line.empty()) continue;
+			if (sawEof) {
+				err = "Data found after HEX EOF at line "
+					+ std::to_string(lineNumber);
+				return false;
+			}
+			if (line[0] != ':') {
+				err = "Bad HEX record start at line "
+					+ std::to_string(lineNumber);
+				return false;
+			}
+			if (line.size() < 11) {
+				err = "Bad HEX line " + std::to_string(lineNumber);
+				return false;
+			}
 
 			int cnt = hex2(line[1], line[2]);
 			int aH = hex2(line[3], line[4]);
@@ -392,7 +478,9 @@ namespace Stk500v2 {
 			}
 			const size_t expectedChars = 11 + (size_t)cnt * 2;
 			if (line.size() != expectedChars) {
-				err = "Bad hex record length"; return false;
+				err = "Bad HEX record length at line "
+					+ std::to_string(lineNumber);
+				return false;
 			}
 			unsigned checksum = 0;
 			for (size_t i = 0; i < (size_t)cnt + 5; ++i) {
@@ -400,34 +488,83 @@ namespace Stk500v2 {
 				if (b < 0) { err = "Bad hex byte"; return false; }
 				checksum = (checksum + (unsigned)b) & 0xFF;
 			}
-			if (checksum != 0) { err = "Hex checksum mismatch"; return false; }
+			if (checksum != 0) {
+				err = "HEX checksum mismatch at line "
+					+ std::to_string(lineNumber);
+				return false;
+			}
 			uint32_t addr = ((uint32_t)aH << 8) | (uint32_t)aL;
 
 			if (type == 0x00) {
-				uint32_t a = baseAddr + addr;
-				if (a + cnt > flash.size()) {
-					err = "Hex address out of flash"; return false;
+				const uint64_t a = static_cast<uint64_t>(baseAddr) + addr;
+				if (a + static_cast<uint64_t>(cnt) > flash.size()) {
+					err = "HEX address exceeds the Mega 2560 application "
+						"region (bootloader is protected)";
+					return false;
 				}
 				for (int i = 0; i < cnt; ++i) {
 					int b = hex2(line[9 + i * 2], line[10 + i * 2]);
 					if (b < 0) { err = "Bad data byte"; return false; }
-					flash[a + i] = (uint8_t)b;
+					const size_t target =
+						static_cast<size_t>(a) + static_cast<size_t>(i);
+					if (written[target]) {
+						std::ostringstream overlap;
+						overlap << "Overlapping HEX data at flash address 0x"
+							<< std::hex << std::uppercase << target
+							<< " on line " << std::dec << lineNumber;
+						err = overlap.str();
+						return false;
+					}
+					written[target] = true;
+					flash[target] = static_cast<uint8_t>(b);
 				}
-				if (a + cnt > maxAddr) maxAddr = a + cnt;
+				if (a + static_cast<uint64_t>(cnt) > maxAddr) {
+					maxAddr = static_cast<size_t>(
+						a + static_cast<uint64_t>(cnt));
+				}
 			} else if (type == 0x01) {
+				if (cnt != 0 || addr != 0) {
+					err = "Invalid HEX EOF record at line "
+						+ std::to_string(lineNumber);
+					return false;
+				}
 				sawEof = true;
-				break;
 			} else if (type == 0x02) {
+				if (cnt != 2 || addr != 0) {
+					err = "Invalid HEX segment record at line "
+						+ std::to_string(lineNumber);
+					return false;
+				}
 				int hH = hex2(line[9], line[10]);
 				int hL = hex2(line[11], line[12]);
 				if (hH < 0 || hL < 0) { err = "Bad seg"; return false; }
 				baseAddr = (((uint32_t)hH << 8) | (uint32_t)hL) << 4;
 			} else if (type == 0x04) {
+				if (cnt != 2 || addr != 0) {
+					err = "Invalid HEX linear record at line "
+						+ std::to_string(lineNumber);
+					return false;
+				}
 				int hH = hex2(line[9], line[10]);
 				int hL = hex2(line[11], line[12]);
 				if (hH < 0 || hL < 0) { err = "Bad lin"; return false; }
 				baseAddr = (((uint32_t)hH << 8) | (uint32_t)hL) << 16;
+			} else if (type == 0x03 || type == 0x05) {
+				if (cnt != 4 || addr != 0) {
+					err = "Invalid HEX start-address record at line "
+						+ std::to_string(lineNumber);
+					return false;
+				}
+				// 実行開始アドレスはブートローダ書き込みには使用しない。
+			} else {
+				err = "Unsupported HEX record type at line "
+					+ std::to_string(lineNumber);
+				return false;
 			}
+		}
+		if (f.bad()) {
+			err = "I/O error while reading hex: " + path;
+			return false;
 		}
 		if (!sawEof) { err = "Hex EOF record missing"; return false; }
 		if (maxAddr == 0) { err = "Hex contains no flash data"; return false; }
@@ -456,7 +593,11 @@ namespace Stk500v2 {
 		auto t1 = std::chrono::steady_clock::now();
 
 		// 2) MCU リセット (DTR トグルでブートローダ起動)
-		sp.toggleReset();
+		if (!sp.toggleReset()) {
+			stats.errorMessage = "Failed to reset target through DTR";
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
 		stats.resetMs = elapsedMs(t1);
 		auto t2 = std::chrono::steady_clock::now();
 
@@ -472,7 +613,11 @@ namespace Stk500v2 {
 		// 全体予算を 1.2 秒で打ち切る (旧: 6 retries × 500ms = 最悪 3 秒)
 		// タイムアウトを 30ms に短縮: 万一最初のリクエストが init 直後に重なって
 		// 取りこぼされても、~60ms 後に再送できるようにする (旧 100ms 後)。
-		sp.setReadTimeout(30);
+		if (!sp.setReadTimeout(30)) {
+			stats.errorMessage = "Failed to configure serial sync timeout";
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
 
 		Stk500v2Client cli(sp);
 		bool synced = false;
@@ -508,7 +653,11 @@ namespace Stk500v2 {
 
 		// プログラミング中は通常タイムアウトに戻す。
 		// (ページ書込中はフラッシュ erase+write で ~9ms 停止するため、最低でも数十 ms 必要)
-		sp.setReadTimeout(200);
+		if (!sp.setReadTimeout(200)) {
+			stats.errorMessage = "Failed to configure serial programming timeout";
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
 
 		if (!synced) {
 			std::ostringstream diag;
@@ -522,6 +671,41 @@ namespace Stk500v2 {
 			stats.errorMessage = "Failed to enter programming mode";
 			return stats;
 		}
+		// 同期できる別STK500v2機器や別AVRへ誤ってMega 2560用HEXを
+		// 書き込まない。消去・PROGRAM_FLASHより前に3バイト署名を照合する。
+		constexpr std::array<uint8_t, 3> EXPECTED_SIGNATURE = {
+			0x1E, 0x98, 0x01
+		};
+		std::array<uint8_t, 3> signature{};
+		bool signatureRead = true;
+		for (size_t i = 0; i < signature.size(); ++i) {
+			if (!cli.readSignatureByte(
+				static_cast<uint8_t>(i), signature[i])) {
+				signatureRead = false;
+				break;
+			}
+		}
+		if (!signatureRead) {
+			cli.leaveProgMode();
+			stats.errorMessage =
+				"Failed to read target MCU signature; nothing was written";
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
+		if (signature != EXPECTED_SIGNATURE) {
+			std::ostringstream detected;
+			detected << "Unexpected MCU signature 0x"
+				<< std::hex << std::uppercase << std::setfill('0');
+			for (const uint8_t byte : signature) {
+				detected << std::setw(2) << static_cast<unsigned>(byte);
+			}
+			detected << " (expected ATmega2560 0x1E9801); nothing was written";
+			cli.leaveProgMode();
+			stats.retryable = false;
+			stats.errorMessage = detected.str();
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
 		stats.syncMs = elapsedMs(t2);
 		auto t3 = std::chrono::steady_clock::now();
 
@@ -530,6 +714,7 @@ namespace Stk500v2 {
 		// eraseAddress を先頭から1ページずつ進める。ページを飛ばすと「消去するページ」と
 		// 「書き込むページ」がずれて、後続の要求が書き込み済みページを消してしまう。
 		if (flash.empty() || flash.size() % MEGA2560_PAGE_SIZE != 0) {
+			stats.retryable = false;
 			stats.errorMessage = "Flash image is empty or not page-aligned";
 			cli.leaveProgMode();
 			stats.totalMs = elapsedMs(t0);
@@ -557,7 +742,12 @@ namespace Stk500v2 {
 		auto t4 = std::chrono::steady_clock::now();
 
 		// 5) 全ページを読み戻し、HEXイメージと1バイト単位で照合する。
-		sp.setReadTimeout(500);
+		if (!sp.setReadTimeout(500)) {
+			stats.errorMessage = "Failed to configure serial verification timeout";
+			cli.leaveProgMode();
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
 		if (!cli.loadAddress(0)) {
 			stats.errorMessage = "loadAddress failed before verification";
 			cli.leaveProgMode();
@@ -576,6 +766,13 @@ namespace Stk500v2 {
 			if (std::memcmp(actual.data(), &flash[addr], actual.size()) != 0) {
 				size_t offset = 0;
 				while (offset < actual.size() && actual[offset] == flash[addr + offset]) ++offset;
+				if (offset >= actual.size()) {
+					stats.errorMessage =
+						"Verification comparison produced an inconsistent result";
+					cli.leaveProgMode();
+					stats.totalMs = elapsedMs(t0);
+					return stats;
+				}
 				std::ostringstream mismatch;
 				mismatch << "Verification failed at flash address 0x"
 					<< std::hex << std::uppercase << (addr + offset)
@@ -594,7 +791,11 @@ namespace Stk500v2 {
 		auto t5 = std::chrono::steady_clock::now();
 
 		// 6) 検証成功後にプログラミングモード退出
-		cli.leaveProgMode();
+		if (!cli.leaveProgMode()) {
+			stats.errorMessage = "Failed to leave programming mode";
+			stats.totalMs = elapsedMs(t0);
+			return stats;
+		}
 		stats.leaveMs = elapsedMs(t5);
 
 		stats.totalMs = elapsedMs(t0);

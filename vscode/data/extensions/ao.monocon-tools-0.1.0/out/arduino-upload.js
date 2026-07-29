@@ -13,6 +13,7 @@ const UPLOAD_COMMAND = "monoconTools.uploadArduino";
 const BUILD_COMMAND = "monoconTools.compileArduino";
 const LEGACY_UPLOAD_COMMAND = "monocon.upload";
 const UPLOAD_TASK_NAME = "Arduino: Upload";
+const BUILD_TASK_NAME = "Arduino: Compile";
 
 let activeUpload;
 let activeBuild;
@@ -97,6 +98,46 @@ function reportNativeResult(result, totalMs) {
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function boundedInteger(value, fallback, minimum, maximum) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        return fallback;
+    }
+    return Math.min(maximum, Math.max(minimum, Math.round(value)));
+}
+
+function readUploadSettings() {
+    const config = vscode.workspace.getConfiguration("monoconTools.upload");
+    const reopenMonitor = config.get("reopenMonitor", true);
+    const configuredPort = config.get("port", "");
+    return {
+        baudRate: boundedInteger(
+            config.get("baudRate", 9600), 9600, 1, 4_000_000
+        ),
+        reopenDelayMs: boundedInteger(
+            config.get("reopenDelayMs", 0), 0, 0, 10_000
+        ),
+        portReleaseDelayMs: boundedInteger(
+            config.get("portReleaseDelayMs", 0), 0, 0, 5_000
+        ),
+        taskTimeoutMs: boundedInteger(
+            config.get("taskTimeoutMs", 180_000),
+            180_000,
+            10_000,
+            600_000
+        ),
+        operationTimeoutMs: boundedInteger(
+            config.get("serialOperationTimeoutMs", 5_000),
+            5_000,
+            1_000,
+            30_000
+        ),
+        reopenMonitor: typeof reopenMonitor === "boolean"
+            ? reopenMonitor : true,
+        configuredPort: typeof configuredPort === "string"
+            ? configuredPort : ""
+    };
 }
 
 function withTimeout(promise, timeoutMs, timeoutMessage) {
@@ -221,7 +262,7 @@ function getPortName(port) {
     return port.portName || port.port || port.path;
 }
 
-async function stopActiveSerialMonitors(api, operationTimeoutMs) {
+async function stopActiveSerialMonitors(api, operationTimeoutMs, targetPort) {
     if (!api) {
         return [];
     }
@@ -246,6 +287,10 @@ async function stopActiveSerialMonitors(api, operationTimeoutMs) {
         if (!portName) {
             continue;
         }
+        if (targetPort
+            && portName.toLowerCase() !== targetPort.toLowerCase()) {
+            continue;
+        }
         try {
             if (await withTimeout(
                 api.stopMonitoringPort(portName),
@@ -261,6 +306,45 @@ async function stopActiveSerialMonitors(api, operationTimeoutMs) {
         }
     }
     return stopped;
+}
+
+async function selectNativeUploadPort(nativeService, configuredPort, timeoutMs) {
+    const requested = typeof configuredPort === "string"
+        ? configuredPort.trim()
+        : "";
+    if (requested) {
+        if (!/^COM[1-9][0-9]*$/i.test(requested)) {
+            throw new Error(`COMポート名が不正です: ${requested}`);
+        }
+        return requested.toUpperCase();
+    }
+
+    const result = await nativeService.request("ports", {}, timeoutMs);
+    if (!result?.success) {
+        throw new Error(result?.errorMessage || "シリアルポートを検出できませんでした。");
+    }
+    const ports = [...new Set(
+        (Array.isArray(result.ports) ? result.ports : [])
+            .map(getPortName)
+            .filter(Boolean)
+    )];
+    if (result.arduinoPort) return result.arduinoPort;
+    if (ports.length === 0) {
+        throw new Error("ArduinoのCOMポートが見つかりません。USB接続を確認してください。");
+    }
+    if (ports.length === 1) return ports[0];
+    if (typeof vscode.window.showQuickPick !== "function") {
+        throw new Error("ArduinoのCOMポートを一意に特定できませんでした。");
+    }
+    const selection = await vscode.window.showQuickPick(ports, {
+        title: "Arduinoのポートを選択",
+        placeHolder: "書き込み先のArduino Mega 2560を選んでください。",
+        ignoreFocusOut: true
+    });
+    if (!selection) {
+        throw new Error("Arduinoへの書き込みをキャンセルしました。");
+    }
+    return getPortName(selection);
 }
 
 async function findUploadTask() {
@@ -279,7 +363,102 @@ async function findUploadTask() {
     return uploadTaskPromise;
 }
 
-async function executeTaskAndWait(task, timeoutMs) {
+function createPortableUploadTask(context, sketch, port, uploadStatus) {
+    if (!context?.extensionPath
+        || typeof uploadStatus?.prepareCli !== "function"
+        || typeof vscode.Task !== "function"
+        || typeof vscode.ProcessExecution !== "function") {
+        return undefined;
+    }
+    const cliPath = path.resolve(
+        context.extensionPath,
+        "..",
+        "..",
+        "daemon",
+        "build",
+        "bin",
+        "arduino-build-cli.exe"
+    );
+    if (!fs.existsSync(cliPath)) {
+        return undefined;
+    }
+    const statusPipe = uploadStatus.prepareCli();
+    const args = ["upload", sketch.sketchDir];
+    if (port) args.push(port);
+    args.push(
+        "--workspace",
+        sketch.workspaceDir,
+        "--status-pipe",
+        statusPipe
+    );
+    const execution = new vscode.ProcessExecution(cliPath, args);
+    const scope = vscode.workspace.workspaceFolders?.length
+        ? vscode.TaskScope?.Workspace
+        : vscode.TaskScope?.Global;
+    const task = new vscode.Task(
+        { type: "monocon-upload", version: "1.7.0" },
+        scope,
+        UPLOAD_TASK_NAME,
+        "Monocon Tools",
+        execution,
+        []
+    );
+    task.presentationOptions = {
+        reveal: vscode.TaskRevealKind?.Silent,
+        panel: vscode.TaskPanelKind?.Shared,
+        clear: false,
+        showReuseMessage: false
+    };
+    return task;
+}
+
+function createPortableBuildTask(context, sketch) {
+    if (!context?.extensionPath
+        || typeof vscode.Task !== "function"
+        || typeof vscode.ProcessExecution !== "function") {
+        return undefined;
+    }
+    const cliPath = path.resolve(
+        context.extensionPath,
+        "..",
+        "..",
+        "daemon",
+        "build",
+        "bin",
+        "arduino-build-cli.exe"
+    );
+    if (!fs.existsSync(cliPath)) return undefined;
+    const execution = new vscode.ProcessExecution(cliPath, [
+        "build",
+        sketch.sketchDir,
+        "--workspace",
+        sketch.workspaceDir
+    ]);
+    const scope = vscode.workspace.workspaceFolders?.length
+        ? vscode.TaskScope?.Workspace
+        : vscode.TaskScope?.Global;
+    const task = new vscode.Task(
+        { type: "monocon-compile", version: "1.7.0" },
+        scope,
+        BUILD_TASK_NAME,
+        "Monocon Tools",
+        execution,
+        []
+    );
+    task.presentationOptions = {
+        reveal: vscode.TaskRevealKind?.Silent,
+        panel: vscode.TaskPanelKind?.Shared,
+        clear: false,
+        showReuseMessage: false
+    };
+    return task;
+}
+
+async function executeTaskAndWait(
+    task,
+    timeoutMs,
+    operationLabel = "書き込み"
+) {
     const alreadyRunning = vscode.tasks.taskExecutions.some(execution => execution.task.name === task.name);
     if (alreadyRunning) {
         throw new Error("Arduinoの書き込みタスクが実際に実行中です。完了後にもう一度お試しください。");
@@ -355,7 +534,10 @@ async function executeTaskAndWait(task, timeoutMs) {
         if (!settled) {
             timeout = setTimeout(() => {
                 execution.terminate();
-                finish(new Error(`書き込みが ${Math.round(timeoutMs / 1000)} 秒以内に完了しなかったため中止しました。`));
+                finish(new Error(
+                    `${operationLabel}が ${Math.round(timeoutMs / 1000)} `
+                    + "秒以内に完了しなかったため中止しました。"
+                ));
             }, timeoutMs);
         }
     }
@@ -397,13 +579,15 @@ async function runUpload(context, uploadStatus, nativeService) {
     let api;
     let stoppedPorts = [];
     let allowMonitorReopen = true;
-    const config = vscode.workspace.getConfiguration("monoconTools.upload");
-    const baudRate = config.get("baudRate", 9600);
-    const reopenDelayMs = config.get("reopenDelayMs", 0);
-    const portReleaseDelayMs = config.get("portReleaseDelayMs", 0);
-    const taskTimeoutMs = config.get("taskTimeoutMs", 180000);
-    const operationTimeoutMs = config.get("serialOperationTimeoutMs", 5000);
-    const reopenMonitor = config.get("reopenMonitor", true);
+    const {
+        baudRate,
+        reopenDelayMs,
+        portReleaseDelayMs,
+        taskTimeoutMs,
+        operationTimeoutMs,
+        reopenMonitor,
+        configuredPort
+    } = readUploadSettings();
 
     return vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
@@ -417,13 +601,39 @@ async function runUpload(context, uploadStatus, nativeService) {
             }
 
             progress.report({ message: "シリアルモニターを停止しています…" });
+            const sketch = resolveSketchContext();
+            if (!sketch) {
+                throw new Error("Arduinoスケッチを特定できません。.inoファイルを開いてから実行してください。");
+            }
+            let selectedPort;
+            let nativePortReady = false;
+            if (nativeService) {
+                try {
+                    selectedPort = await selectNativeUploadPort(
+                        nativeService,
+                        configuredPort,
+                        operationTimeoutMs
+                    );
+                    nativePortReady = true;
+                }
+                catch (error) {
+                    if (!(error instanceof NativeUnavailableError)) {
+                        throw error;
+                    }
+                    log(`ネイティブエンジンを利用できないためCLIへ切り替えます: ${error.message}`);
+                }
+            }
             try {
                 api = await withTimeout(
                     getSerialMonitorApi(context),
                     operationTimeoutMs,
                     "シリアルモニター拡張の起動がタイムアウトしました。"
                 );
-                stoppedPorts = await stopActiveSerialMonitors(api, operationTimeoutMs);
+                stoppedPorts = await stopActiveSerialMonitors(
+                    api,
+                    operationTimeoutMs,
+                    nativePortReady ? selectedPort : undefined
+                );
             }
             catch (error) {
                 log(`シリアルモニター連携を開始できませんでした: ${error instanceof Error ? error.message : String(error)}`);
@@ -434,19 +644,15 @@ async function runUpload(context, uploadStatus, nativeService) {
             }
 
             progress.report({ message: "コンパイル・書き込みを実行しています…" });
-            const sketch = resolveSketchContext();
-            if (!sketch) {
-                throw new Error("Arduinoスケッチを特定できません。.inoファイルを開いてから実行してください。");
-            }
             compilerDiagnostics?.clear();
             let nativeCompleted = false;
-            if (nativeService) {
+            if (nativeService && nativePortReady) {
                 const started = performance.now();
                 try {
                     uploadStatus?.start();
                     const result = await nativeService.request(
                         "upload",
-                        sketch,
+                        { ...sketch, port: selectedPort },
                         taskTimeoutMs
                     );
                     if (!result.success) {
@@ -468,14 +674,17 @@ async function runUpload(context, uploadStatus, nativeService) {
                     log("ネイティブエンジンでArduinoへの書き込みが完了しました。");
                 }
                 catch (error) {
-                    if (!(error instanceof NativeUnavailableError)) {
-                        throw error;
-                    }
-                    log(`ネイティブエンジンを利用できないためCLIへ切り替えます: ${error.message}`);
+                    if (!(error instanceof NativeUnavailableError)) throw error;
+                    log(`ネイティブエンジンが停止したためCLIへ切り替えます: ${error.message}`);
                 }
             }
             if (!nativeCompleted) {
-                const task = await findUploadTask();
+                const task = createPortableUploadTask(
+                    context,
+                    sketch,
+                    selectedPort,
+                    uploadStatus
+                ) || await findUploadTask();
                 if (!task) {
                     throw new Error(`${UPLOAD_TASK_NAME} タスクが見つかりません。`);
                 }
@@ -551,13 +760,33 @@ function registerArduinoUploadCommands(context, uploadStatus, nativeService) {
                     throw new Error("コンパイルするArduinoスケッチを特定できません。");
                 }
                 compilerDiagnostics?.clear();
-                const result = await nativeService.request("compile", sketch, 180000);
-                if (!result.success) {
-                    throw createCompileFailureError(result, sketch);
+                const { taskTimeoutMs } = readUploadSettings();
+                try {
+                    const result = await nativeService.request(
+                        "compile", sketch, taskTimeoutMs
+                    );
+                    if (!result.success) {
+                        throw createCompileFailureError(result, sketch);
+                    }
+                    outputChannel?.appendLine(
+                        `Compile ${formatCompileLabel(result)} in ${result.buildTimeMs || 0} ms`
+                    );
                 }
-                outputChannel?.appendLine(
-                    `Compile ${formatCompileLabel(result)} in ${result.buildTimeMs || 0} ms`
-                );
+                catch (error) {
+                    if (!(error instanceof NativeUnavailableError)) throw error;
+                    const task = createPortableBuildTask(context, sketch);
+                    if (!task) throw error;
+                    log(`ネイティブエンジンを利用できないためCLIでコンパイルします: ${error.message}`);
+                    const exitCode = await executeTaskAndWait(
+                        task, taskTimeoutMs, "コンパイル"
+                    );
+                    if (exitCode !== 0) {
+                        const code = exitCode === undefined ? "不明" : exitCode;
+                        throw new Error(
+                            `コンパイルタスクが終了コード ${code} で失敗しました。`
+                        );
+                    }
+                }
                 vscode.window.showInformationMessage("Arduinoのコンパイルが完了しました。");
             }
             catch (error) {

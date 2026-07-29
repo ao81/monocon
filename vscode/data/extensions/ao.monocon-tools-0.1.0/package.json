@@ -97,10 +97,18 @@
                     "description": "ファイル名入力欄に表示する既定の基本名（例: mon1）"
                 },
                 "monoconTools.upload.baudRate": {
-                    "type": "number",
+                    "type": "integer",
                     "default": 9600,
                     "minimum": 1,
+                    "maximum": 4000000,
                     "description": "書き込み後に再開するシリアルモニターのボーレート"
+                },
+                "monoconTools.upload.port": {
+                    "type": "string",
+                    "default": "",
+                    "pattern": "^$|^COM[1-9][0-9]*$",
+                    "patternErrorMessage": "COM3 のようなWindowsのCOMポート名を指定してください。",
+                    "description": "書き込み先のCOMポート。空欄では自動検出し、候補が複数ある場合だけ選択画面を表示します"
                 },
                 "monoconTools.upload.reopenMonitor": {
                     "type": "boolean",
@@ -108,28 +116,28 @@
                     "description": "書き込み前に監視していたシリアルポートを、書き込み後に再度開く"
                 },
                 "monoconTools.upload.reopenDelayMs": {
-                    "type": "number",
+                    "type": "integer",
                     "default": 0,
                     "minimum": 0,
                     "maximum": 10000,
                     "description": "書き込み完了からシリアルモニターを再開するまでの待機時間"
                 },
                 "monoconTools.upload.portReleaseDelayMs": {
-                    "type": "number",
+                    "type": "integer",
                     "default": 0,
                     "minimum": 0,
                     "maximum": 5000,
                     "description": "シリアルモニター停止後、書き込み開始までポート解放を待つ時間"
                 },
                 "monoconTools.upload.taskTimeoutMs": {
-                    "type": "number",
+                    "type": "integer",
                     "default": 180000,
                     "minimum": 10000,
                     "maximum": 600000,
                     "description": "Arduino書き込みタスクが応答しない場合に中止するまでの時間"
                 },
                 "monoconTools.upload.serialOperationTimeoutMs": {
-                    "type": "number",
+                    "type": "integer",
                     "default": 5000,
                     "minimum": 1000,
                     "maximum": 30000,

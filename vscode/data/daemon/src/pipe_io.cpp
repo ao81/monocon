@@ -1,11 +1,16 @@
 #include "pipe_io.h"
 
 #include <sddl.h>
+#include <algorithm>
+#include <cctype>
+#include <charconv>
+#include <iterator>
 #include <vector>
 
 #pragma comment(lib, "advapi32.lib")
 
 namespace {
+	constexpr size_t MAX_MESSAGE_BYTES = 1024 * 1024;
 
 	// 現在ユーザーの SID 文字列を取得
 	std::string currentUserSidString() {
@@ -28,17 +33,37 @@ namespace {
 		return out;
 	}
 
+	std::string instanceSuffix() {
+		char value[65]{};
+		const DWORD length = GetEnvironmentVariableA(
+			"MONOCON_DAEMON_INSTANCE", value,
+			static_cast<DWORD>(std::size(value)));
+		if (length == 0 || length >= std::size(value)) return "";
+		std::string suffix(value, length);
+		if (!std::all_of(suffix.begin(), suffix.end(),
+			[](unsigned char c) {
+				return std::isalnum(c) != 0 || c == '-' || c == '_';
+			})) {
+			return "";
+		}
+		return "-" + suffix;
+	}
+
 } // namespace
 
 namespace PipeIO {
 
 	std::string makePipeName() {
-		return std::string("\\\\.\\pipe\\arduino-build-") + currentUserSidString();
+		// プロトコル/エンジン世代を名前へ含め、更新後のCLIが起動中の旧
+		// daemonへ誤接続しない。任意suffixは隔離統合テスト用。
+		return std::string("\\\\.\\pipe\\arduino-build-v170-")
+			+ currentUserSidString() + instanceSuffix();
 	}
 
 	std::string makeMutexName() {
 		// Local\ = ターミナルセッションローカル。同じ Windows ログオン内で唯一。
-		return std::string("Local\\arduino-build-daemon-") + currentUserSidString();
+		return std::string("Local\\arduino-build-daemon-v170-")
+			+ currentUserSidString() + instanceSuffix();
 	}
 
 	// ---------------------------------------------------------------------
@@ -68,8 +93,13 @@ namespace PipeIO {
 		while (!lenStr.empty() && (lenStr.front() == ' ' || lenStr.front() == '\t')) lenStr.erase(0, 1);
 		while (!lenStr.empty() && (lenStr.back() == ' ' || lenStr.back() == '\t')) lenStr.pop_back();
 		size_t len = 0;
-		try { len = std::stoul(lenStr); } catch (...) { return ""; }
-		if (len == 0 || len > 64 * 1024 * 1024) return ""; // 上限 64MB
+		const auto parsed = std::from_chars(
+			lenStr.data(), lenStr.data() + lenStr.size(), len);
+		if (parsed.ec != std::errc{}
+			|| parsed.ptr != lenStr.data() + lenStr.size()
+			|| len == 0 || len > MAX_MESSAGE_BYTES) {
+			return "";
+		}
 
 		// 3) ボディを len バイト読む
 		std::string body(len, '\0');
@@ -88,6 +118,7 @@ namespace PipeIO {
 	// 書き込み
 	// ---------------------------------------------------------------------
 	bool writeMessage(HANDLE hPipe, const std::string& body) {
+		if (body.empty() || body.size() > MAX_MESSAGE_BYTES) return false;
 		std::string header = "Content-Length: " + std::to_string(body.size()) + "\r\n\r\n";
 
 		auto writeAll = [&](const char* p, size_t n) {
