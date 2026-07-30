@@ -1618,46 +1618,83 @@ class Led {
 private:
 	friend void ::TIMER2_COMPA_vect(void);
 
-	uint8_t color;
-	uint8_t opacity;
+	volatile uint8_t color;
+	volatile uint8_t opacity;
 	uint8_t acc;
 	uint8_t previousState;
 
 	void writeState(uint8_t state) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			uint8_t pe = PORTE & static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
+			uint8_t pe =
+				PORTE &
+				static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
+
 			if (state & B) pe |= _BV(PE5);
 			if (state & G) pe |= _BV(PE4);
+
 			PORTE = pe;
 
-			if (state & R) PORTG |= _BV(PG5);
-			else           PORTG &= static_cast<uint8_t>(~_BV(PG5));
+			if (state & R) {
+				PORTG |= _BV(PG5);
+			} else {
+				PORTG &= static_cast<uint8_t>(~_BV(PG5));
+			}
 		}
 	}
 
-public:
-	Led() : color(0), opacity(255), acc(0), previousState(0xFF) {}
-
-	void operator()(uint8_t newColor = 0, int opacityPercent = 100) {
+	Led& set(uint8_t newColor, uint8_t newOpacity) {
 		newColor &= 0x07;
-		const uint8_t newOpacity = board_detail::percentToByte(opacityPercent);
-		if (color == newColor && opacity == newOpacity) return;
-		color = newColor;
-		opacity = newOpacity;
+
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (color != newColor || opacity != newOpacity) {
+				color = newColor;
+				opacity = newOpacity;
+				acc = 0;
+			}
+		}
+
+		return *this;
 	}
 
-	void operator()(bool g, bool b, bool r) {
+public:
+	Led()
+		: color(0),
+		opacity(255),
+		acc(0),
+		previousState(0xFF) {
+	}
+
+	Led& operator()(uint8_t newColor = 0) {
+		return set(newColor, 255);
+	}
+
+	Led& operator()(bool g, bool b, bool r) {
 		const uint8_t newColor =
 			(g ? G : 0) |
 			(b ? B : 0) |
 			(r ? R : 0);
 
-		operator()(newColor, 100);
+		return set(newColor, 255);
+	}
+
+	Led& per(int opacityPercent) {
+		const uint8_t newOpacity =
+			board_detail::percentToByte(opacityPercent);
+
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			if (opacity != newOpacity) {
+				opacity = newOpacity;
+				acc = 0;
+			}
+		}
+
+		return *this;
 	}
 
 private:
 	void serviceTick() {
 		uint8_t state;
+
 		if (opacity == 0 || color == 0) {
 			state = 0;
 		} else if (opacity == 255) {
@@ -1665,8 +1702,9 @@ private:
 		} else {
 			const uint8_t old = acc;
 			acc = static_cast<uint8_t>(acc + opacity);
-			state = (acc < old) ? color : 0;
+			state = acc < old ? color : 0;
 		}
+
 		if (state != previousState) {
 			writeState(state);
 			previousState = state;
@@ -1828,7 +1866,7 @@ public:
 		return (*this)(0, p0, p1);
 	}
 
-	Disp& o(int oa, int ob, int oc) {
+	Disp& per(int oa, int ob, int oc) {
 		const int values[3] = { oa, ob, oc };
 		for (uint8_t i = 0; i < 3; ++i) {
 			opacity[i] = board_detail::percentToByte(values[i]);
@@ -1836,12 +1874,12 @@ public:
 		return *this;
 	}
 
-	Disp& o(int oa, int ob) {
-		return o(oa, ob, ob);
+	Disp& per(int oa, int ob) {
+		return per(oa, ob, ob);
 	}
 
-	Disp& o(int oa) {
-		return o(oa, oa, oa);
+	Disp& per(int oa) {
+		return per(oa, oa, oa);
 	}
 
 	Disp& base(int32_t x, uint8_t radix, bool zero = false) {
