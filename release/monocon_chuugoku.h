@@ -2563,8 +2563,23 @@ public:
 		moveTo(target);
 	}
 
-	void to(int state) {
+	void toa(int state) {
 		moveTo(state);
+	}
+
+	void tor(int offset) {
+		syncLoop();
+
+		int target = current_ + offset;
+
+		if (count_ > 0) {
+			target %= count_;
+			if (target < 0) {
+				target += count_;
+			}
+		}
+
+		moveTo(target);
 	}
 
 	void restart() {
@@ -2794,6 +2809,12 @@ public:
 		value_ = initial;
 	}
 };
+
+#define tog(...) \
+	(([]() -> Tog& { \
+		static Tog toggle_; \
+		return toggle_; \
+	}())(__VA_ARGS__))
 
 namespace board_detail {
 	struct AdcSlot {
