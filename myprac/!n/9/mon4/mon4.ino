@@ -1,12 +1,11 @@
-// 途中まで
-
 #include "monocon_chuugoku.h"
 
 Di sw1(d3), sw2(d2);
 Js js(a3, a4);
-Sig g;
+Sig g(30);
 Seq q;
 Iv v;
+Ti t;
 
 const char* ptn[][3] = {
 	{"", ".", ""}, // 上
@@ -19,54 +18,88 @@ const char* ptn[][3] = {
 	{".    .", "", ""},
 };
 
-int n = 2, i = 0;
-int que[9] = {};
+const int oknote[] = { DO, MI, SO };
+const int ngnote[] = { SO, MI, DO };
+const int notems[] = { 90, 90, 160 };
+
+int que[8];
+int n = 2, i = 0, cleared = 0;
+bool mirror = false, armed = false;
+
+void startGame() {
+	mirror = sw2;
+	n = 2;
+	cleared = 0;
+	for (int& d : que) d = random(0, 8);
+	led();
+	q.toa(1);
+}
 
 void loop() {
-	if (q) { // 問題の初期化
-		if (q.in()) {
-			for (int i = 0; i < 9; i++) {
-				que[i] = random(0, 8);
-			}
-			q.next();
-		}
+	if (q) {
+		if (q.in()) dp.s("go_");
+		if (sw1.htol()) startGame();
 	}
-	if (q) { // 出題
-		if (q.in()) {
-			v.reset();
-			i = 0;
-		}
+	if (q) {
+		if (q.in()) { i = 0; v.reset(); }
 		if (v(500)) {
 			if (i < n) {
-				dp.art(ptn[que[i]]);
+				const int d = mirror ? ((8 - que[i]) & 7) : que[i];
+				dp.art(ptn[d]);
 				i++;
 			} else {
 				q.next();
 			}
 		}
-		if (q.out()) i = 0;
+		if (q.out()) dp.off();
 	}
-	if (q) { // 回答
-		g(js.dir(8, 2));
-		if (g.change() && g != -1) {
-			if (g == que[i++]) {
-				q.restart();
+	if (q) {
+		if (q.in()) {
+			i = 0;
+			const int d = js.dir(8, 2, mirror);
+			g.reset(d);
+			armed = d == -1;
+			t.start(3000);
+		}
+		const int d = g(js.dir(8, 2, mirror));
+		if (d == -1) armed = true;
+		dp.n((t.remain() + 999) / 1000);
+		if (t.done()) {
+			q.toa(4);
+		} else if (armed && d != -1 && g.from(-1)) {
+			armed = false;
+			if (d != que[i]) {
+				t.stop();
+				q.toa(4);
+			} else if (++i >= n) {
+				t.stop();
+				cleared++;
+				if (n == 8) {
+					q.next();
+				} else {
+					n++;
+					q.prev();
+				}
 			} else {
-				q.tor(2);
+				t.start(3000);
 			}
 		}
-		if (q.after(3000 * n)) {
-
-		}
-		if (i >= n) {
-			q.prev();
-			if (++n > 8) q.next();
-		}
 	}
-	if (q) { // 成功
-
+	if (q) {
+		if (q.in()) {
+			dp.s("clr");
+			led(G);
+			bz.play(oknote, notems, 3);
+		}
+		if (!bz.playing() && sw1.htol()) startGame();
 	}
-	if (q) { // 失敗
-
+	if (q) {
+		if (q.in()) {
+			t.stop();
+			dp.n(cleared);
+			led(R);
+			bz.play(ngnote, notems, 3);
+		}
+		if (!bz.playing() && sw1.htol()) startGame();
 	}
 }
