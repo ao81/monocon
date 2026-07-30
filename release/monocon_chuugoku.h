@@ -1646,6 +1646,15 @@ public:
 		opacity = newOpacity;
 	}
 
+	void operator()(bool g, bool b, bool r) {
+		const uint8_t newColor =
+			(g ? G : 0) |
+			(b ? B : 0) |
+			(r ? R : 0);
+
+		operator()(newColor, 100);
+	}
+
 private:
 	void serviceTick() {
 		uint8_t state;
