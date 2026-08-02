@@ -1622,6 +1622,13 @@ private:
 	volatile uint8_t opacity;
 	uint8_t acc;
 	uint8_t previousState;
+	uint32_t perEpoch;
+	bool perActive;
+
+	bool perHolds() const {
+		return perActive &&
+			static_cast<uint32_t>(board_detail::loopEpoch - perEpoch) <= 1U;
+	}
 
 	void writeState(uint8_t state) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -1645,12 +1652,11 @@ private:
 	Led& set(uint8_t newColor, uint8_t newOpacity) {
 		newColor &= 0x07;
 
+		const bool hold = newOpacity == 255 && perHolds();
+
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (color != newColor || opacity != newOpacity) {
-				color = newColor;
-				opacity = newOpacity;
-				acc = 0;
-			}
+			color = newColor;
+			if (!hold) opacity = newOpacity;
 		}
 
 		return *this;
@@ -1661,7 +1667,9 @@ public:
 		: color(0),
 		opacity(255),
 		acc(0),
-		previousState(0xFF) {
+		previousState(0xFF),
+		perEpoch(0),
+		perActive(false) {
 	}
 
 	Led& operator()(uint8_t newColor = 0) {
@@ -1681,11 +1689,11 @@ public:
 		const uint8_t newOpacity =
 			board_detail::percentToByte(opacityPercent);
 
+		perEpoch = board_detail::loopEpoch;
+		perActive = true;
+
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (opacity != newOpacity) {
-				opacity = newOpacity;
-				acc = 0;
-			}
+			opacity = newOpacity;
 		}
 
 		return *this;
