@@ -171,13 +171,17 @@ extern volatile uint32_t tms;
 namespace board_detail {
 	inline uint32_t atomicMillis() {
 		uint32_t v;
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = tms; }
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			v = tms;
+		}
 		return v;
 	}
 
 	inline int atomicReadInt(volatile const int* p) {
 		int v;
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = *p; }
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			v = *p;
+		}
 		return v;
 	}
 
@@ -479,25 +483,39 @@ public:
 
 namespace board_detail {
 	template <typename T>
-	struct RemoveReference { using type = T; };
+	struct RemoveReference {
+		using type = T;
+	};
 
 	template <typename T>
-	struct RemoveReference<T&> { using type = T; };
+	struct RemoveReference<T&> {
+		using type = T;
+	};
 
 	template <typename T>
-	struct RemoveReference<T&&> { using type = T; };
+	struct RemoveReference<T&&> {
+		using type = T;
+	};
 
 	template <typename T>
-	struct RemoveCv { using type = T; };
+	struct RemoveCv {
+		using type = T;
+	};
 
 	template <typename T>
-	struct RemoveCv<const T> { using type = T; };
+	struct RemoveCv<const T> {
+		using type = T;
+	};
 
 	template <typename T>
-	struct RemoveCv<volatile T> { using type = T; };
+	struct RemoveCv<volatile T> {
+		using type = T;
+	};
 
 	template <typename T>
-	struct RemoveCv<const volatile T> { using type = T; };
+	struct RemoveCv<const volatile T> {
+		using type = T;
+	};
 
 	template <typename T>
 	struct SignalValueType {
@@ -1850,9 +1868,9 @@ private:
 
 	__attribute__((always_inline))
 		static inline uint8_t pdmState(
-			uint8_t value,
-			uint8_t level,
-			uint8_t& accumulator
+		uint8_t value,
+		uint8_t level,
+		uint8_t& accumulator
 		) {
 		if (level == 0 || value == 0) return 0;
 		if (level == 255) return value;
@@ -1886,7 +1904,9 @@ public:
 		return *this;
 	}
 
-	Disp& off() { return (*this)(0, 0, 0); }
+	Disp& off() {
+		return (*this)(0, 0, 0);
+	}
 
 	Disp& s(const char* text) {
 		if (!text || !text[0]) return off();
@@ -2137,7 +2157,10 @@ public:
 			donePending = false;
 		}
 		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
-		if (pwm == 0) { fr(); return; }
+		if (pwm == 0) {
+			fr();
+			return;
+		}
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
 		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
 		OCR5A = pwm;
@@ -2167,7 +2190,9 @@ public:
 			donePending = false;
 		}
 		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
-		if (pwm == 0) { fr(); return; }
+		if (pwm == 0) {
+			fr(); return;
+		}
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
 		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
 		OCR5C = pwm;
@@ -2596,9 +2621,13 @@ public:
 		}
 	}
 
-	void off() { stop(); }
+	void off() {
+		stop();
+	}
 
-	bool playing() const { return melodyRunning; }
+	bool playing() const {
+		return melodyRunning;
+	}
 
 private:
 	void update() {
