@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/07/28
+// 作成年月日: 2026/08/04
 /**********************************************/
 
 #ifndef MONOCON_CHUUGOKU_H
@@ -31,11 +31,13 @@ constexpr uint8_t d2 = 11;
 constexpr uint8_t d3 = 12;
 constexpr uint8_t d4 = 13;
 constexpr uint8_t D_INPUT_MASK = _BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7);
-constexpr uint32_t MONOCON_TIMER2_HZ = 20000UL;
-constexpr uint8_t MONOCON_TIMER2_TICKS_PER_MS = 20;
 
 #if defined(__AVR__)
 namespace board_detail {
+	constexpr uint32_t timer2Hz = 20000UL;
+	constexpr uint8_t timer2TicksPerMs = 20;
+	constexpr uint8_t displayTickDivider = 4;
+
 	static void earlyDigitalInputInit()
 	__attribute__((naked, used, section(".init3")));
 
@@ -161,32 +163,37 @@ namespace board_detail {
 		return static_cast<uint8_t>((static_cast<uint16_t>(p) * 255U + 50U) / 100U);
 	}
 
-	inline void shiftBit(uint8_t high) __attribute__((always_inline));
-	inline void shiftBit(uint8_t high) {
-		if (high) PORTH |= SDI_BIT;
-		else      PORTH &= static_cast<uint8_t>(~SDI_BIT);
-		PORTH |= SCK_BIT;
-		PORTH &= static_cast<uint8_t>(~SCK_BIT);
+	inline uint8_t shiftBit(uint8_t port, uint8_t high)
+		__attribute__((always_inline));
+	inline uint8_t shiftBit(uint8_t port, uint8_t high) {
+		if (high) port |= SDI_BIT;
+		PORTH = port;
+		PORTH = static_cast<uint8_t>(port | SCK_BIT);
+		return port;
 	}
 
-	inline void shiftByte(uint8_t v) __attribute__((always_inline));
-	inline void shiftByte(uint8_t v) {
-		shiftBit(v & 0x80);
-		shiftBit(v & 0x40);
-		shiftBit(v & 0x20);
-		shiftBit(v & 0x10);
-		shiftBit(v & 0x08);
-		shiftBit(v & 0x04);
-		shiftBit(v & 0x02);
-		shiftBit(v & 0x01);
+	inline uint8_t shiftByte(uint8_t v, uint8_t port)
+		__attribute__((always_inline));
+	inline uint8_t shiftByte(uint8_t v, uint8_t port) {
+		shiftBit(port, v & 0x80);
+		shiftBit(port, v & 0x40);
+		shiftBit(port, v & 0x20);
+		shiftBit(port, v & 0x10);
+		shiftBit(port, v & 0x08);
+		shiftBit(port, v & 0x04);
+		shiftBit(port, v & 0x02);
+		return shiftBit(port, v & 0x01);
 	}
 
+	__attribute__((always_inline))
 	inline void writeDisplay3(uint8_t a, uint8_t b, uint8_t c) {
-		PORTH &= static_cast<uint8_t>(~LAT_BIT);
-		shiftByte(a);
-		shiftByte(b);
-		shiftByte(c);
-		PORTH |= LAT_BIT;
+		const uint8_t port = static_cast<uint8_t>(
+			PORTH & static_cast<uint8_t>(~(SCK_BIT | SDI_BIT | LAT_BIT)));
+		shiftByte(a, port);
+		shiftByte(b, port);
+		const uint8_t state = shiftByte(c, port);
+		PORTH = state;
+		PORTH = static_cast<uint8_t>(state | LAT_BIT);
 	}
 
 	inline void compareSwap(int& a, int& b) {
@@ -1640,22 +1647,21 @@ private:
 		}
 	}
 
-	void writeState(uint8_t state) {
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			uint8_t pe =
-				PORTE &
-				static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
+	__attribute__((always_inline))
+	inline void writeState(uint8_t state) {
+		uint8_t pe =
+			PORTE &
+			static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
 
-			if (state & B) pe |= _BV(PE5);
-			if (state & G) pe |= _BV(PE4);
+		if (state & B) pe |= _BV(PE5);
+		if (state & G) pe |= _BV(PE4);
 
-			PORTE = pe;
+		PORTE = pe;
 
-			if (state & R) {
-				PORTG |= _BV(PG5);
-			} else {
-				PORTG &= static_cast<uint8_t>(~_BV(PG5));
-			}
+		if (state & R) {
+			PORTG |= _BV(PG5);
+		} else {
+			PORTG &= static_cast<uint8_t>(~_BV(PG5));
 		}
 	}
 
@@ -1710,17 +1716,20 @@ public:
 	}
 
 private:
-	void serviceTick() {
+	__attribute__((always_inline))
+	inline void serviceTick() {
+		const uint8_t currentColor = color;
+		const uint8_t currentOpacity = opacity;
 		uint8_t state;
 
-		if (opacity == 0 || color == 0) {
+		if (currentOpacity == 0 || currentColor == 0) {
 			state = 0;
-		} else if (opacity == 255) {
-			state = color;
+		} else if (currentOpacity == 255) {
+			state = currentColor;
 		} else {
 			const uint8_t old = acc;
-			acc = static_cast<uint8_t>(acc + opacity);
-			state = acc < old ? color : 0;
+			acc = static_cast<uint8_t>(old + currentOpacity);
+			state = acc < old ? currentColor : 0;
 		}
 
 		if (state != previousState) {
@@ -1805,6 +1814,19 @@ private:
 		}
 
 		return pattern;
+	}
+
+	__attribute__((always_inline))
+	static inline uint8_t pdmState(
+		uint8_t value,
+		uint8_t level,
+		uint8_t& accumulator
+	) {
+		if (level == 0 || value == 0) return 0;
+		if (level == 255) return value;
+		const uint8_t old = accumulator;
+		accumulator = static_cast<uint8_t>(old + level);
+		return accumulator < old ? value : 0;
 	}
 
 public:
@@ -1999,25 +2021,17 @@ public:
 	}
 
 private:
-	void serviceTick() {
-		uint8_t out[3];
-		for (uint8_t i = 0; i < 3; ++i) {
-			if (opacity[i] == 0 || pattern[i] == 0) {
-				out[i] = 0;
-			} else if (opacity[i] == 255) {
-				out[i] = pattern[i];
-			} else {
-				const uint8_t old = acc[i];
-				acc[i] = static_cast<uint8_t>(acc[i] + opacity[i]);
-				out[i] = acc[i] < old ? pattern[i] : 0;
-			}
-		}
+	__attribute__((always_inline))
+	inline void serviceTick() {
+		const uint8_t a = pdmState(pattern[0], opacity[0], acc[0]);
+		const uint8_t b = pdmState(pattern[1], opacity[1], acc[1]);
+		const uint8_t c = pdmState(pattern[2], opacity[2], acc[2]);
 
-		if (out[0] != previous[0] || out[1] != previous[1] || out[2] != previous[2]) {
-			board_detail::writeDisplay3(out[0], out[1], out[2]);
-			previous[0] = out[0];
-			previous[1] = out[1];
-			previous[2] = out[2];
+		if (a != previous[0] || b != previous[1] || c != previous[2]) {
+			board_detail::writeDisplay3(a, b, c);
+			previous[0] = a;
+			previous[1] = b;
+			previous[2] = c;
 		}
 	}
 };
@@ -2063,6 +2077,7 @@ private:
 		timedCommandValid = true;
 	}
 
+	__attribute__((always_inline))
 	inline void stopFromIsr() {
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
 		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
@@ -2176,6 +2191,7 @@ public:
 	}
 
 private:
+	__attribute__((always_inline))
 	inline void isrTick() {
 		if (!timedActive) return;
 		if (remainingMs > 0 && --remainingMs == 0) {
@@ -2467,6 +2483,7 @@ private:
 		}
 	}
 
+	__attribute__((always_inline))
 	inline void stopFromIsr() {
 		TCCR3B = _BV(WGM32);
 		TCCR3A &= static_cast<uint8_t>(~_BV(COM3A0));
@@ -2601,6 +2618,7 @@ private:
 		}
 	}
 
+	__attribute__((always_inline))
 	inline void isrTick() {
 		if (!timedActive) return;
 		if (remainingMs > 0 && --remainingMs == 0) stopFromIsr();
@@ -3259,11 +3277,14 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 ISR(TIMER2_COMPA_vect) {
-	led.serviceTick();
-	dp.serviceTick();
-
 	static uint8_t divider = 0;
-	if (++divider < MONOCON_TIMER2_TICKS_PER_MS) return;
+	led.serviceTick();
+
+	if ((divider & (board_detail::displayTickDivider - 1U)) == 0) {
+		dp.serviceTick();
+	}
+
+	if (++divider < board_detail::timer2TicksPerMs) return;
 	divider = 0;
 
 	++tms;
@@ -3347,7 +3368,7 @@ void board_detail::begin() {
 	TCCR2A = 0;
 	TCCR2B = 0;
 	TCNT2 = 0;
-	OCR2A = static_cast<uint8_t>((F_CPU / 8UL / MONOCON_TIMER2_HZ) - 1UL);
+	OCR2A = static_cast<uint8_t>((F_CPU / 8UL / board_detail::timer2Hz) - 1UL);
 	TCCR2A = _BV(WGM21);
 	TCCR2B = _BV(CS21);
 	TIMSK2 = _BV(OCIE2A);
