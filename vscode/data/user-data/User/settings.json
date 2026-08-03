@@ -6,6 +6,7 @@
 	"editor.fontLigatures": true,
 	"editor.tabSize": 4,
 	"editor.insertSpaces": false,
+	"editor.detectIndentation": false,
 	"editor.autoIndentOnPaste": true,
 	"editor.wrappingIndent": "indent",
 	"editor.smoothScrolling": true,
@@ -21,7 +22,6 @@
 	"editor.snippetSuggestions": "top",
 	"editor.wordBasedSuggestionsMode": "matchingDocuments",
 	"editor.formatOnPaste": true,
-	"editor.defaultFormatter": "ms-vscode.cpptools",
 	"editor.wordWrap": "on", // 行の折り返し
 	"editor.quickSuggestions": {
 		"comments": "on",
@@ -36,8 +36,7 @@
 		"editor.defaultFormatter": "ms-vscode.cpptools"
 	},
 	"[cpp]": {
-		"editor.defaultFormatter": "ms-vscode.cpptools",
-		"editor.snippetSuggestions": "top"
+		"editor.defaultFormatter": "ms-vscode.cpptools"
 	},
 
 	// =========================================================
@@ -53,12 +52,13 @@
 	"C_Cpp.vcFormat.newLine.beforeCatch": false,
 	"C_Cpp.vcFormat.newLine.closeBraceSameLine.emptyFunction": true,
 	"C_Cpp.vcFormat.space.beforeFunctionOpenParenthesis": "remove",
-	"C_Cpp.vcFormat.indent.multiLineRelativeTo": "outermostParenthesis",
-	// "C_Cpp.default.compilerPath": "C:/Program Files (x86)/mingw64/bin/gcc.exe",
+	"C_Cpp.vcFormat.indent.multiLineRelativeTo": "statementBegin",
+	"C_Cpp.vcFormat.indent.withinParentheses": "indent",
+	"C_Cpp.vcFormat.indent.accessSpecifiers": false,
+	"C_Cpp.vcFormat.indent.namespaceContents": true,
+	"C_Cpp.vcFormat.newLine.scopeBracesOnSeparateLines": true,
+	"C_Cpp.vcFormat.wrap.preserveBlocks": "oneLiners",
 	"C_Cpp.intelliSenseEngine": "default",
-	"clang-format.style": "{ BasedOnStyle: LLVM, IndentWidth: 4, UseTab: Always, TabWidth: 4 }",
-	"clang-format.fallbackStyle": "LLVM",
-
 	"C_Cpp.default.browse.path": [
 		"${fileDirname}",
 		"${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.7/cores/arduino",
