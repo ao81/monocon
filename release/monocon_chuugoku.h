@@ -31,14 +31,26 @@ constexpr uint8_t d2 = 11;
 constexpr uint8_t d3 = 12;
 constexpr uint8_t d4 = 13;
 constexpr uint8_t D_INPUT_MASK = _BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7);
+constexpr uint32_t MONOCON_TIMER2_HZ = 20000UL;
+constexpr uint8_t MONOCON_TIMER2_TICKS_PER_MS = 20;
 
-void monoconEarlyDigitalInputInit()
-__attribute__((naked, used, section(".init3")));
+#if defined(__AVR__)
+namespace board_detail {
+	static void earlyDigitalInputInit()
+	__attribute__((naked, used, section(".init3")));
 
-void monoconEarlyDigitalInputInit() {
-	PORTB &= 0x0F;
-	DDRB &= 0x0F;
+	static void earlyDigitalInputInit() {
+		asm volatile(
+			"in r24, 0x05" "\n\t"
+			"andi r24, 0x0f" "\n\t"
+			"out 0x05, r24" "\n\t"
+			"in r24, 0x04" "\n\t"
+			"andi r24, 0x0f" "\n\t"
+			"out 0x04, r24"
+		);
+	}
 }
+#endif
 
 constexpr uint8_t SCK_BIT = _BV(PH3);
 constexpr uint8_t SDI_BIT = _BV(PH4);
@@ -90,20 +102,22 @@ inline T wrap(T value, U low, V high) {
 
 extern volatile uint32_t tms;
 
-inline uint32_t atomicMillis() {
-	uint32_t v;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = tms; }
-	return v;
-}
+namespace board_detail {
+	inline uint32_t atomicMillis() {
+		uint32_t v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = tms; }
+		return v;
+	}
 
-inline int atomicReadInt(volatile const int* p) {
-	int v;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = *p; }
-	return v;
-}
+	inline int atomicReadInt(volatile const int* p) {
+		int v;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { v = *p; }
+		return v;
+	}
 
-bool adcReg(uint8_t pin, volatile int* dst);
-bool adcUnreg(volatile int* dst);
+	bool adcReg(uint8_t pin, volatile int* dst);
+	bool adcUnreg(volatile int* dst);
+}
 
 int ar(uint8_t pin);
 
@@ -127,9 +141,10 @@ inline void dw(uint8_t pin, uint8_t val) {
 namespace board_detail {
 	extern uint32_t loopEpoch;
 	bool adcReady(volatile const int* dst);
-	bool arReady(uint8_t pin);
 	void service();
 	void serviceEvents(uint32_t epoch);
+	void commitOutputs();
+	void begin();
 
 	inline void lockDigitalInputs() {
 		TCCR0A &= static_cast<uint8_t>(~(_BV(COM0A1) | _BV(COM0A0)));
@@ -358,6 +373,8 @@ public:
 	}
 
 	bool held(uint16_t ms, bool lv, bool release = false) {
+		if (first) return false;
+
 		const uint8_t target = lv ? HIGH : LOW;
 
 		if (release) {
@@ -369,7 +386,7 @@ public:
 			return heldReleaseDuration >= ms;
 		}
 
-		const uint32_t now = atomicMillis();
+		const uint32_t now = board_detail::atomicMillis();
 
 		if (st.stable == target &&
 			!st.fired &&
@@ -553,7 +570,7 @@ private:
 	}
 
 	bool same(T a, T b) const {
-		return nearValue<T>(a, b, tolerance_);
+		return nearValue(a, b, tolerance_);
 	}
 
 	void initialize(T value, uint32_t now) {
@@ -604,7 +621,7 @@ public:
 	}
 
 	T set(T value) {
-		const uint32_t now = atomicMillis();
+		const uint32_t now = board_detail::atomicMillis();
 
 		if (!initialized_) {
 			initialize(value, now);
@@ -640,7 +657,7 @@ public:
 	}
 
 	void reset(T value = T()) {
-		initialize(value, atomicMillis());
+		initialize(value, board_detail::atomicMillis());
 	}
 
 	bool initialized() const {
@@ -688,11 +705,11 @@ public:
 	}
 
 	bool ltoh() {
-		return takeChange(previous_ == T() && stable_ != T());
+		return takeChange(same(previous_, T()) && !same(stable_, T()));
 	}
 
 	bool htol() {
-		return takeChange(previous_ != T() && stable_ == T());
+		return takeChange(!same(previous_, T()) && same(stable_, T()));
 	}
 
 	bool held(uint16_t ms, T value, bool release = false) {
@@ -710,7 +727,7 @@ public:
 			return false;
 		}
 
-		if (static_cast<uint32_t>(atomicMillis() - stableSince_) < ms) {
+		if (static_cast<uint32_t>(board_detail::atomicMillis() - stableSince_) < ms) {
 			return false;
 		}
 
@@ -720,7 +737,7 @@ public:
 
 	uint32_t elapsed() const {
 		if (!initialized_) return 0;
-		return static_cast<uint32_t>(atomicMillis() - stableSince_);
+		return static_cast<uint32_t>(board_detail::atomicMillis() - stableSince_);
 	}
 };
 
@@ -746,10 +763,6 @@ private:
 	bool registered;
 	static Di* list[8];
 	static uint8_t nList;
-
-	bool valid() const {
-		return registered;
-	}
 
 public:
 	explicit Di(uint8_t pin, uint16_t lock = 10)
@@ -815,25 +828,17 @@ private:
 	static Pr* list[8];
 	static uint8_t nList;
 
-	bool ready() const {
-		return registered && (converted || board_detail::adcReady(&_raw));
-	}
-
-	bool valid() const {
-		return registered;
-	}
-
 public:
 	explicit Pr(uint8_t pin, int threshold = 950, uint16_t lock = 10)
 		: InEdge(lock), th(threshold), _raw(0), registered(false), converted(false) {
-		if (!adcReg(pin, &_raw)) return;
+		if (!board_detail::adcReg(pin, &_raw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			if (nList < 8) {
 				list[nList++] = this;
 				registered = true;
 			}
 		}
-		if (!registered) adcUnreg(&_raw);
+		if (!registered) board_detail::adcUnreg(&_raw);
 	}
 
 	~Pr() {
@@ -849,14 +854,14 @@ public:
 			}
 			registered = false;
 		}
-		adcUnreg(&_raw);
+		board_detail::adcUnreg(&_raw);
 	}
 
 	Pr(const Pr&) = delete;
 	Pr& operator=(const Pr&) = delete;
 
 	int raw() const {
-		return atomicReadInt(&_raw);
+		return board_detail::atomicReadInt(&_raw);
 	}
 
 private:
@@ -868,7 +873,7 @@ private:
 				if (!board_detail::adcReady(&p->_raw)) continue;
 				p->converted = true;
 			}
-			const int value = atomicReadInt(&p->_raw);
+			const int value = board_detail::atomicReadInt(&p->_raw);
 			p->pollWith(value > p->th ? HIGH : LOW, now);
 		}
 	}
@@ -906,21 +911,14 @@ private:
 	static Sok* list[2];
 	static uint8_t nList;
 
-	bool ready() const {
-		return registered && sampleReady;
-	}
-
-	bool valid() const {
-		return registered;
-	}
-
+private:
 	void serviceOne(uint32_t now) {
 		if (!adcConverted) {
 			if (!board_detail::adcReady(&adcRaw)) return;
 			adcConverted = true;
 		}
 
-		const int sample = atomicReadInt(&adcRaw);
+		const int sample = board_detail::atomicReadInt(&adcRaw);
 		ring[ri] = sample;
 		if (++ri == 5) ri = 0;
 		if (sampleCount < 5) ++sampleCount;
@@ -962,14 +960,14 @@ public:
 		distanceCm(0.0f),
 		pollLock(lock) {
 		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
-		if (!adcReg(pin, &adcRaw)) return;
+		if (!board_detail::adcReg(pin, &adcRaw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			if (nList < 2) {
 				list[nList++] = this;
 				registered = true;
 			}
 		}
-		if (!registered) adcUnreg(&adcRaw);
+		if (!registered) board_detail::adcUnreg(&adcRaw);
 	}
 
 	~Sok() {
@@ -985,7 +983,7 @@ public:
 			}
 			registered = false;
 		}
-		adcUnreg(&adcRaw);
+		board_detail::adcUnreg(&adcRaw);
 	}
 
 	Sok(const Sok&) = delete;
@@ -1019,23 +1017,14 @@ private:
 	volatile int adcRaw;
 	int rawValue;
 	bool registered;
-	bool sampleReady;
 	PollLock pollLock;
 	static Vr* list[8];
 	static uint8_t nList;
 
-	bool ready() const {
-		return registered && sampleReady;
-	}
-
-	bool valid() const {
-		return registered;
-	}
-
+private:
 	void serviceOne(uint32_t now) {
 		if (!board_detail::adcReady(&adcRaw) || !pollLock.due(now)) return;
-		rawValue = atomicReadInt(&adcRaw);
-		sampleReady = true;
+		rawValue = board_detail::atomicReadInt(&adcRaw);
 	}
 
 public:
@@ -1050,16 +1039,15 @@ public:
 		adcRaw(0),
 		rawValue(0),
 		registered(false),
-		sampleReady(false),
 		pollLock(lock) {
-		if (!adcReg(pin, &adcRaw)) return;
+		if (!board_detail::adcReg(pin, &adcRaw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			if (nList < 8) {
 				list[nList++] = this;
 				registered = true;
 			}
 		}
-		if (!registered) adcUnreg(&adcRaw);
+		if (!registered) board_detail::adcUnreg(&adcRaw);
 	}
 
 	~Vr() {
@@ -1075,7 +1063,7 @@ public:
 			}
 			registered = false;
 		}
-		adcUnreg(&adcRaw);
+		board_detail::adcUnreg(&adcRaw);
 	}
 
 	Vr(const Vr&) = delete;
@@ -1120,19 +1108,11 @@ private:
 	int xValue;
 	int yValue;
 	bool registered;
-	bool sampleReady;
 	PollLock pollLock;
 	static Js* list[4];
 	static uint8_t nList;
 
-	bool ready() const {
-		return registered && sampleReady;
-	}
-
-	bool valid() const {
-		return registered;
-	}
-
+private:
 	void serviceOne(uint32_t now) {
 		if (!board_detail::adcReady(&adcX) ||
 			!board_detail::adcReady(&adcY) ||
@@ -1144,7 +1124,6 @@ private:
 			xValue = adcX;
 			yValue = adcY;
 		}
-		sampleReady = true;
 	}
 
 public:
@@ -1154,11 +1133,10 @@ public:
 		xValue(0),
 		yValue(0),
 		registered(false),
-		sampleReady(false),
 		pollLock(lock) {
-		if (!adcReg(px, &adcX)) return;
-		if (!adcReg(py, &adcY)) {
-			adcUnreg(&adcX);
+		if (!board_detail::adcReg(px, &adcX)) return;
+		if (!board_detail::adcReg(py, &adcY)) {
+			board_detail::adcUnreg(&adcX);
 			return;
 		}
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -1168,8 +1146,8 @@ public:
 			}
 		}
 		if (!registered) {
-			adcUnreg(&adcX);
-			adcUnreg(&adcY);
+			board_detail::adcUnreg(&adcX);
+			board_detail::adcUnreg(&adcY);
 		}
 	}
 
@@ -1186,8 +1164,8 @@ public:
 			}
 			registered = false;
 		}
-		adcUnreg(&adcX);
-		adcUnreg(&adcY);
+		board_detail::adcUnreg(&adcX);
+		board_detail::adcUnreg(&adcY);
 	}
 
 	Js(const Js&) = delete;
@@ -1260,6 +1238,7 @@ private:
 };
 
 extern "C" {
+	void ADC_vect(void);
 	void PCINT0_vect(void);
 	void PCINT1_vect(void);
 	void PCINT2_vect(void);
@@ -1268,7 +1247,7 @@ extern "C" {
 }
 
 class Enc {
-	friend void begin();
+	friend void board_detail::begin();
 	friend void ::PCINT0_vect(void);
 	friend void ::PCINT1_vect(void);
 	friend void ::PCINT2_vect(void);
@@ -1300,6 +1279,12 @@ private:
 	static uint8_t pcPrevious[3];
 	static bool pollingStarted;
 	static bool timerForced;
+	static bool timerOwned;
+	static uint8_t savedTccr1a;
+	static uint8_t savedTccr1b;
+	static uint8_t savedTimsk1;
+	static uint16_t savedTcnt1;
+	static uint16_t savedOcr1a;
 
 	inline bool acceptEvent() {
 		const uint16_t lock = lockMs;
@@ -1371,10 +1356,6 @@ private:
 		return v;
 	}
 
-	bool valid() const {
-		return registered;
-	}
-
 public:
 	Enc(uint8_t pa, uint8_t pb, bool d = true, uint16_t lock = 10)
 		: pinA(pa),
@@ -1439,14 +1420,39 @@ public:
 	Enc& operator=(const Enc&) = delete;
 
 private:
+	static void acquireTimer() {
+		if (!timerOwned) {
+			savedTccr1a = TCCR1A;
+			savedTccr1b = TCCR1B;
+			savedTimsk1 = TIMSK1;
+			savedTcnt1 = TCNT1;
+			savedOcr1a = OCR1A;
+			timerOwned = true;
+		}
+
+		TCCR1A = 0;
+		TCCR1B = 0;
+		TCNT1 = 0;
+		OCR1A = static_cast<uint16_t>((F_CPU / 8UL / 10000UL) - 1UL);
+		TIFR1 = _BV(OCF1A);
+		TIMSK1 = _BV(OCIE1A);
+		TCCR1B = _BV(WGM12) | _BV(CS11);
+	}
+
+	static void releaseTimer() {
+		if (!timerOwned) return;
+		TCCR1B = 0;
+		TIMSK1 = savedTimsk1;
+		TCCR1A = savedTccr1a;
+		TCNT1 = savedTcnt1;
+		OCR1A = savedOcr1a;
+		TCCR1B = savedTccr1b;
+		timerOwned = false;
+	}
+
 	static void beginPolling(bool forceTimer = false) {
 		pollingStarted = true;
 		timerForced = forceTimer;
-		uint8_t oldGroups = 0;
-		for (uint8_t g = 0; g < 3; ++g) {
-			if (pcWatched[g]) oldGroups |= _BV(g);
-		}
-		PCICR &= static_cast<uint8_t>(~oldGroups);
 		PCMSK0 &= static_cast<uint8_t>(~pcWatched[0]);
 		PCMSK1 &= static_cast<uint8_t>(~pcWatched[1]);
 		PCMSK2 &= static_cast<uint8_t>(~pcWatched[2]);
@@ -1515,15 +1521,14 @@ private:
 			PCIFR = enabledGroups;
 		}
 
-		TCCR1A = 0;
-		TCCR1B = 0;
-		TCNT1 = 0;
-		OCR1A = static_cast<uint16_t>((F_CPU / 8UL / 10000UL) - 1UL);
-		TIFR1 = _BV(OCF1A);
-		TIMSK1 = (nFallback || forceTimer) ? _BV(OCIE1A) : 0;
-		if (nFallback || forceTimer) {
-			TCCR1B = _BV(WGM12) | _BV(CS11);
-		}
+		uint8_t activeGroups = 0;
+		if (PCMSK0) activeGroups |= _BV(0);
+		if (PCMSK1) activeGroups |= _BV(1);
+		if (PCMSK2) activeGroups |= _BV(2);
+		PCICR = static_cast<uint8_t>((PCICR & 0xF8) | activeGroups);
+
+		if (nFallback || forceTimer) acquireTimer();
+		else releaseTimer();
 	}
 
 	static inline void isrPollFallback() {
@@ -1617,17 +1622,22 @@ public:
 class Led {
 private:
 	friend void ::TIMER2_COMPA_vect(void);
+	friend void board_detail::commitOutputs();
 
 	volatile uint8_t color;
 	volatile uint8_t opacity;
 	uint8_t acc;
 	uint8_t previousState;
-	uint32_t perEpoch;
-	bool perActive;
+	uint8_t draftColor;
+	uint8_t draftOpacity;
+	bool draftDirty;
 
-	bool perHolds() const {
-		return perActive &&
-			static_cast<uint32_t>(board_detail::loopEpoch - perEpoch) <= 1U;
+	void prepareDraft() {
+		if (draftDirty) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			draftColor = color;
+			draftOpacity = opacity;
+		}
 	}
 
 	void writeState(uint8_t state) {
@@ -1650,16 +1660,21 @@ private:
 	}
 
 	Led& set(uint8_t newColor, uint8_t newOpacity) {
-		newColor &= 0x07;
-
-		const bool hold = newOpacity == 255 && perHolds();
-
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			color = newColor;
-			if (!hold) opacity = newOpacity;
-		}
+		prepareDraft();
+		draftColor = newColor & 0x07;
+		draftOpacity = newOpacity;
+		draftDirty = true;
 
 		return *this;
+	}
+
+	void commit() {
+		if (!draftDirty) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			color = draftColor;
+			opacity = draftOpacity;
+		}
+		draftDirty = false;
 	}
 
 public:
@@ -1668,8 +1683,9 @@ public:
 		opacity(255),
 		acc(0),
 		previousState(0xFF),
-		perEpoch(0),
-		perActive(false) {
+		draftColor(0),
+		draftOpacity(255),
+		draftDirty(false) {
 	}
 
 	Led& operator()(uint8_t newColor = 0) {
@@ -1686,15 +1702,9 @@ public:
 	}
 
 	Led& per(int opacityPercent) {
-		const uint8_t newOpacity =
-			board_detail::percentToByte(opacityPercent);
-
-		perEpoch = board_detail::loopEpoch;
-		perActive = true;
-
-		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			opacity = newOpacity;
-		}
+		prepareDraft();
+		draftOpacity = board_detail::percentToByte(opacityPercent);
+		draftDirty = true;
 
 		return *this;
 	}
@@ -1736,11 +1746,36 @@ constexpr uint8_t SEG_NONE = 0x00;
 class Disp {
 private:
 	friend void ::TIMER2_COMPA_vect(void);
+	friend void board_detail::commitOutputs();
 
-	uint8_t pattern[3];
-	uint8_t opacity[3];
+	volatile uint8_t pattern[3];
+	volatile uint8_t opacity[3];
 	uint8_t acc[3];
 	uint8_t previous[3];
+	uint8_t draftPattern[3];
+	uint8_t draftOpacity[3];
+	bool draftDirty;
+
+	void prepareDraft() {
+		if (draftDirty) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < 3; ++i) {
+				draftPattern[i] = pattern[i];
+				draftOpacity[i] = opacity[i];
+			}
+		}
+	}
+
+	void commit() {
+		if (!draftDirty) return;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			for (uint8_t i = 0; i < 3; ++i) {
+				pattern[i] = draftPattern[i];
+				opacity[i] = draftOpacity[i];
+			}
+		}
+		draftDirty = false;
+	}
 
 	static uint8_t toPattern(char c) {
 		if (c >= '0' && c <= '9') return seg[c - '0'];
@@ -1773,20 +1808,27 @@ private:
 	}
 
 public:
-	Disp() {
+	Disp()
+		: draftDirty(false) {
 		for (uint8_t i = 0; i < 3; ++i) {
 			pattern[i] = 0;
 			opacity[i] = 255;
 			acc[i] = 0;
 			previous[i] = 0xFF;
+			draftPattern[i] = 0;
+			draftOpacity[i] = 255;
 		}
 	}
 
 	Disp& operator()(uint8_t a, uint8_t b, uint8_t c) {
-		if (pattern[0] == a && pattern[1] == b && pattern[2] == c) return *this;
-		pattern[0] = a;
-		pattern[1] = b;
-		pattern[2] = c;
+		prepareDraft();
+		draftPattern[0] = a;
+		draftPattern[1] = b;
+		draftPattern[2] = c;
+		draftOpacity[0] = 255;
+		draftOpacity[1] = 255;
+		draftOpacity[2] = 255;
+		draftDirty = true;
 		return *this;
 	}
 
@@ -1875,10 +1917,12 @@ public:
 	}
 
 	Disp& per(int oa, int ob, int oc) {
+		prepareDraft();
 		const int values[3] = { oa, ob, oc };
 		for (uint8_t i = 0; i < 3; ++i) {
-			opacity[i] = board_detail::percentToByte(values[i]);
+			draftOpacity[i] = board_detail::percentToByte(values[i]);
 		}
+		draftDirty = true;
 		return *this;
 	}
 
@@ -1986,6 +2030,38 @@ private:
 	volatile bool timedActive;
 	volatile bool donePending;
 	volatile int8_t now;
+	int8_t timedCommandDir;
+	uint8_t timedCommandPwm;
+	uint32_t timedCommandDuration;
+	uint32_t timedCommandEpoch;
+	bool timedCommandValid;
+
+	bool repeatsTimedCommand(
+		int8_t direction,
+		uint8_t pwm,
+		uint32_t durationMs
+	) {
+		const uint32_t epoch = board_detail::loopEpoch;
+		const bool repeats = timedCommandValid &&
+			timedCommandDir == direction &&
+			timedCommandPwm == pwm &&
+			timedCommandDuration == durationMs &&
+			static_cast<uint32_t>(epoch - timedCommandEpoch) <= 1U;
+		if (repeats) timedCommandEpoch = epoch;
+		return repeats;
+	}
+
+	void rememberTimedCommand(
+		int8_t direction,
+		uint8_t pwm,
+		uint32_t durationMs
+	) {
+		timedCommandDir = direction;
+		timedCommandPwm = pwm;
+		timedCommandDuration = durationMs;
+		timedCommandEpoch = board_detail::loopEpoch;
+		timedCommandValid = true;
+	}
 
 	inline void stopFromIsr() {
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
@@ -1997,7 +2073,9 @@ private:
 
 public:
 	Dcm()
-		: remainingMs(0), timedActive(false), donePending(false), now(0) {
+		: remainingMs(0), timedActive(false), donePending(false), now(0),
+		timedCommandDir(0), timedCommandPwm(0), timedCommandDuration(0),
+		timedCommandEpoch(0), timedCommandValid(false) {
 	}
 
 	int8_t dir() const {
@@ -2005,6 +2083,7 @@ public:
 	}
 
 	void cw(int spd) {
+		timedCommandValid = false;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			timedActive = false;
 			remainingMs = 0;
@@ -2020,6 +2099,9 @@ public:
 	}
 
 	void cw(int spd, uint32_t durationMs) {
+		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
+		if (durationMs != 0 && pwm != 0 &&
+			repeatsTimedCommand(1, pwm, durationMs)) return;
 		cw(spd);
 		if (now == 0 || durationMs == 0) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -2027,9 +2109,11 @@ public:
 			timedActive = true;
 			donePending = false;
 		}
+		rememberTimedCommand(1, pwm, durationMs);
 	}
 
 	void ccw(int spd) {
+		timedCommandValid = false;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			timedActive = false;
 			remainingMs = 0;
@@ -2045,6 +2129,9 @@ public:
 	}
 
 	void ccw(int spd, uint32_t durationMs) {
+		const uint8_t pwm = static_cast<uint8_t>(clamp<int, int, int>(spd, 0, 255));
+		if (durationMs != 0 && pwm != 0 &&
+			repeatsTimedCommand(-1, pwm, durationMs)) return;
 		ccw(spd);
 		if (now == 0 || durationMs == 0) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -2052,9 +2139,11 @@ public:
 			timedActive = true;
 			donePending = false;
 		}
+		rememberTimedCommand(-1, pwm, durationMs);
 	}
 
 	void br() {
+		timedCommandValid = false;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			timedActive = false;
 			remainingMs = 0;
@@ -2066,6 +2155,7 @@ public:
 	}
 
 	void fr() {
+		timedCommandValid = false;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			stopFromIsr();
 			donePending = false;
@@ -2316,17 +2406,32 @@ class Bz {
 private:
 	friend void board_detail::service();
 	friend void ::TIMER2_COMPA_vect(void);
+	static constexpr uint8_t MAX_MELODY = 32;
 
 	int continuousFrequency;
 	volatile uint32_t remainingMs;
 	volatile bool timedActive;
-	const int* melodyNotes;
-	const int* melodyDurations;
+	int melodyNotes[MAX_MELODY];
+	int melodyDurations[MAX_MELODY];
 	int melodyLength;
 	int melodyIndex;
 	uint32_t melodyNext;
 	bool melodyRunning;
 	bool melodyRepeat;
+	int timedCommandFrequency;
+	uint32_t timedCommandDuration;
+	uint32_t timedCommandEpoch;
+	bool timedCommandValid;
+
+	bool repeatsTimedCommand(int frequency, uint32_t durationMs) {
+		const uint32_t epoch = board_detail::loopEpoch;
+		const bool repeats = timedCommandValid &&
+			timedCommandFrequency == frequency &&
+			timedCommandDuration == durationMs &&
+			static_cast<uint32_t>(epoch - timedCommandEpoch) <= 1U;
+		if (repeats) timedCommandEpoch = epoch;
+		return repeats;
+	}
 
 	static uint16_t topForFrequency(int f) {
 		if (f < 1) f = 1;
@@ -2373,12 +2478,14 @@ private:
 public:
 	Bz()
 		: continuousFrequency(-1), remainingMs(0), timedActive(false),
-		melodyNotes(nullptr), melodyDurations(nullptr), melodyLength(0),
-		melodyIndex(0), melodyNext(0), melodyRunning(false),
-		melodyRepeat(false) {
+		melodyLength(0), melodyIndex(0), melodyNext(0), melodyRunning(false),
+		melodyRepeat(false), timedCommandFrequency(0),
+		timedCommandDuration(0), timedCommandEpoch(0),
+		timedCommandValid(false) {
 	}
 
 	void operator()(int frequency) {
+		timedCommandValid = false;
 		melodyRunning = false;
 
 		if (frequency <= 0) {
@@ -2420,9 +2527,16 @@ public:
 			(*this)(f);
 			return;
 		}
+		if (f > 0 && repeatsTimedCommand(f, durationMs)) return;
 		melodyRunning = false;
 		continuousFrequency = -1;
 		start(f, durationMs, true);
+		if (f > 0) {
+			timedCommandFrequency = f;
+			timedCommandDuration = durationMs;
+			timedCommandEpoch = board_detail::loopEpoch;
+			timedCommandValid = true;
+		}
 	}
 
 	void play(const int* notes, const int* durations, int length,
@@ -2432,17 +2546,21 @@ public:
 			return;
 		}
 		stop();
-		melodyNotes = notes;
-		melodyDurations = durations;
+		if (length > MAX_MELODY) length = MAX_MELODY;
+		for (int i = 0; i < length; ++i) {
+			melodyNotes[i] = notes[i];
+			melodyDurations[i] = durations[i];
+		}
 		melodyLength = length;
 		melodyIndex = 0;
-		melodyNext = atomicMillis();
+		melodyNext = board_detail::atomicMillis();
 		melodyRepeat = repeat;
 		melodyRunning = true;
 		update();
 	}
 
 	void stop() {
+		timedCommandValid = false;
 		melodyRunning = false;
 		continuousFrequency = -1;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -2457,7 +2575,7 @@ public:
 private:
 	void update() {
 		if (!melodyRunning) return;
-		const uint32_t now = atomicMillis();
+		const uint32_t now = board_detail::atomicMillis();
 		if (static_cast<int32_t>(now - melodyNext) < 0) return;
 
 		if (melodyIndex >= melodyLength) {
@@ -2535,7 +2653,14 @@ private:
 			count_ = position_;
 		}
 
-		if (exitPending_ && exitEpoch_ != epoch) {
+		if (count_ > 0 && current_ >= count_) {
+			current_ = 0;
+			enteredAt_ = millis();
+			entryPending_ = true;
+		}
+
+		if (exitPending_ &&
+			static_cast<uint32_t>(epoch - exitEpoch_) > 1U) {
 			exitPending_ = false;
 			exitState_ = -1;
 		}
@@ -2673,9 +2798,7 @@ public:
 	bool out() {
 		syncLoop();
 
-		if (!exitPending_ || active_ != exitState_) {
-			return false;
-		}
+		if (!exitPending_ || active_ != exitState_) return false;
 
 		exitPending_ = false;
 		exitState_ = -1;
@@ -2723,7 +2846,9 @@ public:
 	}
 
 	void reset(bool immediate = true) {
-		previous_ = millis();
+		const uint32_t now = millis();
+		previous_ = now;
+		if (paused_) pausedAt_ = now;
 		immediate_ = immediate;
 	}
 
@@ -2884,7 +3009,9 @@ namespace board_detail {
 	volatile uint8_t adcCount = 0;
 	volatile uint8_t adcIndex = 0;
 	volatile bool adcRunning = false;
+	volatile bool adcDiscard = true;
 	bool adcHardwareReady = false;
+	uint16_t adcDidrOwned = 0;
 	volatile int adcFallback[16] = { 0 };
 	volatile bool servicePending = false;
 	uint32_t loopEpoch = 0;
@@ -2903,6 +3030,7 @@ namespace board_detail {
 		if (!adcHardwareReady || adcRunning || adcCount == 0) return;
 		adcIndex = 0;
 		selectAdcSlot(0);
+		adcDiscard = true;
 		ADCSRA |= _BV(ADIF);
 		ADCSRA |= _BV(ADSC);
 		adcRunning = true;
@@ -2915,6 +3043,12 @@ namespace board_detail {
 		}
 
 		const uint8_t current = adcIndex;
+		if (adcDiscard) {
+			adcDiscard = false;
+			ADCSRA |= _BV(ADSC);
+			return;
+		}
+
 		*adcSlots[current].dst = ADC;
 		adcSlots[current].ready = true;
 
@@ -2924,6 +3058,7 @@ namespace board_detail {
 
 		if (next != current) {
 			selectAdcSlot(next);
+			adcDiscard = true;
 		}
 		ADCSRA |= _BV(ADSC);
 	}
@@ -2952,6 +3087,12 @@ uint8_t Enc::pcWatched[3] = {};
 uint8_t Enc::pcPrevious[3] = {};
 bool Enc::pollingStarted = false;
 bool Enc::timerForced = false;
+bool Enc::timerOwned = false;
+uint8_t Enc::savedTccr1a = 0;
+uint8_t Enc::savedTccr1b = 0;
+uint8_t Enc::savedTimsk1 = 0;
+uint16_t Enc::savedTcnt1 = 0;
+uint16_t Enc::savedOcr1a = 0;
 
 Led led;
 Disp dp;
@@ -2959,22 +3100,31 @@ Dcm dm;
 Spm sm;
 Bz bz;
 
-bool adcReg(uint8_t pin, volatile int* dst) {
+inline void board_detail::commitOutputs() {
+	led.commit();
+	dp.commit();
+}
+
+bool board_detail::adcReg(uint8_t pin, volatile int* dst) {
 	if (!dst) return false;
 	const uint8_t channel = board_detail::analogChannel(pin);
 	if (channel > 15) return false;
 
 	bool added = false;
+	bool found = false;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		for (uint8_t i = 0; i < board_detail::adcCount; ++i) {
 			if (board_detail::adcSlots[i].dst == dst) {
-				added = true;
+				found = true;
+				added = board_detail::adcSlots[i].channel == channel;
 				break;
 			}
 		}
 
-		if (!added && board_detail::adcCount < 16) {
+		if (!found && board_detail::adcCount < 16) {
 			const uint8_t index = board_detail::adcCount;
+			const uint16_t channelMask =
+				static_cast<uint16_t>(1U) << channel;
 			board_detail::adcSlots[index].admux =
 				static_cast<uint8_t>(_BV(REFS0) | (channel & 0x07));
 			board_detail::adcSlots[index].mux5 =
@@ -2984,8 +3134,15 @@ bool adcReg(uint8_t pin, volatile int* dst) {
 			board_detail::adcSlots[index].ready = false;
 
 			board_detail::adcCount = static_cast<uint8_t>(index + 1);
-			if (channel < 8) DIDR0 |= _BV(channel);
-			else             DIDR2 |= _BV(channel - 8);
+			if (channel < 8) {
+				const uint8_t mask = _BV(channel);
+				if (!(DIDR0 & mask)) board_detail::adcDidrOwned |= channelMask;
+				DIDR0 |= mask;
+			} else {
+				const uint8_t mask = _BV(channel - 8);
+				if (!(DIDR2 & mask)) board_detail::adcDidrOwned |= channelMask;
+				DIDR2 |= mask;
+			}
 			board_detail::startAdcLocked();
 			added = true;
 		}
@@ -2993,7 +3150,7 @@ bool adcReg(uint8_t pin, volatile int* dst) {
 	return added;
 }
 
-bool adcUnreg(volatile int* dst) {
+bool board_detail::adcUnreg(volatile int* dst) {
 	if (!dst) return false;
 	bool removed = false;
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
@@ -3005,6 +3162,9 @@ bool adcUnreg(volatile int* dst) {
 			}
 		}
 		if (index < board_detail::adcCount) {
+			const uint8_t channel = board_detail::adcSlots[index].channel;
+			const uint16_t channelMask =
+				static_cast<uint16_t>(1U) << channel;
 			const bool restart = board_detail::adcHardwareReady;
 			if (restart) {
 				ADCSRA &= static_cast<uint8_t>(~(_BV(ADIE) | _BV(ADEN)));
@@ -3016,6 +3176,18 @@ bool adcUnreg(volatile int* dst) {
 			}
 			--board_detail::adcCount;
 			board_detail::adcIndex = 0;
+			bool channelUsed = false;
+			for (uint8_t i = 0; i < board_detail::adcCount; ++i) {
+				if (board_detail::adcSlots[i].channel == channel) {
+					channelUsed = true;
+					break;
+				}
+			}
+			if (!channelUsed && (board_detail::adcDidrOwned & channelMask)) {
+				if (channel < 8) DIDR0 &= static_cast<uint8_t>(~_BV(channel));
+				else DIDR2 &= static_cast<uint8_t>(~_BV(channel - 8));
+				board_detail::adcDidrOwned &= static_cast<uint16_t>(~channelMask);
+			}
 			if (restart) {
 				ADCSRA = _BV(ADEN) | _BV(ADIE) |
 					_BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
@@ -3058,24 +3230,9 @@ int ar(uint8_t pin) {
 
 	if (!source) {
 		source = &board_detail::adcFallback[channel];
-		if (!adcReg(pin, source)) return 0;
+		if (!board_detail::adcReg(pin, source)) return 0;
 	}
-	return atomicReadInt(source);
-}
-
-bool board_detail::arReady(uint8_t pin) {
-	const uint8_t channel = board_detail::analogChannel(pin);
-	if (channel > 15) return false;
-	bool ready = false;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-		for (uint8_t i = 0; i < board_detail::adcCount; ++i) {
-			if (board_detail::adcSlots[i].channel == channel) {
-				ready = board_detail::adcSlots[i].ready;
-				if (ready) break;
-			}
-		}
-	}
-	return ready;
+	return board_detail::atomicReadInt(source);
 }
 
 ISR(ADC_vect) {
@@ -3106,7 +3263,7 @@ ISR(TIMER2_COMPA_vect) {
 	dp.serviceTick();
 
 	static uint8_t divider = 0;
-	if (++divider < 10) return;
+	if (++divider < MONOCON_TIMER2_TICKS_PER_MS) return;
 	divider = 0;
 
 	++tms;
@@ -3141,10 +3298,11 @@ inline void board_detail::serviceEvents(uint32_t epoch) {
 }
 
 void yield() {
+	board_detail::commitOutputs();
 	board_detail::service();
 }
 
-void begin() {
+void board_detail::begin() {
 	cli();
 
 	DDRF &= static_cast<uint8_t>(~(_BV(PF0) | _BV(PF1) | _BV(PF2) | _BV(PF3)));
@@ -3189,7 +3347,7 @@ void begin() {
 	TCCR2A = 0;
 	TCCR2B = 0;
 	TCNT2 = 0;
-	OCR2A = static_cast<uint8_t>((F_CPU / 8UL / 10000UL) - 1UL);
+	OCR2A = static_cast<uint8_t>((F_CPU / 8UL / MONOCON_TIMER2_HZ) - 1UL);
 	TCCR2A = _BV(WGM21);
 	TCCR2B = _BV(CS21);
 	TIMSK2 = _BV(OCIE2A);
@@ -3214,6 +3372,7 @@ void begin() {
 	dm.fr();
 	sm.fr();
 	bz.off();
+	board_detail::commitOutputs();
 	board_detail::service();
 
 	randomSeed(static_cast<unsigned long>(micros()) ^
@@ -3229,11 +3388,13 @@ void setup() {
 	Serial.begin(115200);
 #endif
 
-	begin();
+	board_detail::begin();
 
 	if (userSetup) {
 		userSetup();
 	}
+
+	board_detail::commitOutputs();
 }
 
 void loop() {
@@ -3241,6 +3402,7 @@ void loop() {
 		userLoop();
 	}
 
+	board_detail::commitOutputs();
 	board_detail::service();
 
 	const uint32_t epoch = ++board_detail::loopEpoch;
