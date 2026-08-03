@@ -30,29 +30,17 @@ constexpr uint8_t d1 = 10;
 constexpr uint8_t d2 = 11;
 constexpr uint8_t d3 = 12;
 constexpr uint8_t d4 = 13;
+
+constexpr uint8_t maxDi = 8;
+constexpr uint8_t maxPr = 8;
+constexpr uint8_t maxSok = 2;
+constexpr uint8_t maxVr = 8;
+constexpr uint8_t maxJs = 4;
+constexpr uint8_t maxEnc = 4;
+constexpr uint8_t maxAdc = 16;
+constexpr uint8_t maxMelody = 32;
+
 constexpr uint8_t D_INPUT_MASK = _BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7);
-
-#if defined(__AVR__)
-namespace board_detail {
-	constexpr uint32_t timer2Hz = 20000UL;
-	constexpr uint8_t timer2TicksPerMs = 20;
-	constexpr uint8_t displayTickDivider = 4;
-
-	static void earlyDigitalInputInit()
-	__attribute__((naked, used, section(".init3")));
-
-	static void earlyDigitalInputInit() {
-		asm volatile(
-			"in r24, 0x05" "\n\t"
-			"andi r24, 0x0f" "\n\t"
-			"out 0x05, r24" "\n\t"
-			"in r24, 0x04" "\n\t"
-			"andi r24, 0x0f" "\n\t"
-			"out 0x04, r24"
-		);
-	}
-}
-#endif
 
 constexpr uint8_t SCK_BIT = _BV(PH3);
 constexpr uint8_t SDI_BIT = _BV(PH4);
@@ -70,6 +58,22 @@ constexpr uint8_t M = 0b011;
 constexpr uint8_t GBR = 0b111;
 constexpr uint8_t W = 0b111;
 
+constexpr uint8_t seg[16] = {
+	0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x27,
+	0x7F, 0x6F, 0x77, 0x7C, 0x58, 0x5E, 0x79, 0x71
+};
+
+constexpr uint8_t alp[26] = {
+	0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71, 0x3D,
+	0x76, 0x06, 0x0E, 0x76, 0x38, 0x37, 0x54,
+	0x5C, 0x73, 0x67, 0x50, 0x6D, 0x78, 0x3E,
+	0x1C, 0x7E, 0x76, 0x6E, 0x5B
+};
+
+constexpr uint8_t SEG_DOT = 0x80;
+constexpr uint8_t SEG_MINUS = 0x40;
+constexpr uint8_t SEG_NONE = 0x00;
+
 constexpr uint16_t DO = 262;
 constexpr uint16_t RE = 294;
 constexpr uint16_t MI = 330;
@@ -80,6 +84,66 @@ constexpr uint16_t SI = 494;
 
 constexpr uint8_t L = LOW;
 constexpr uint8_t H = HIGH;
+
+constexpr int SOK_N = 4;
+constexpr int sokAd[SOK_N] = { 450, 380, 260, 60 };
+constexpr int sokMm[SOK_N] = { 40, 150, 300, 500 };
+constexpr int32_t slopeQ8[3] = {
+	(static_cast<int32_t>(sokMm[1] - sokMm[0]) << 8) / (sokAd[0] - sokAd[1]),
+	(static_cast<int32_t>(sokMm[2] - sokMm[1]) << 8) / (sokAd[1] - sokAd[2]),
+	(static_cast<int32_t>(sokMm[3] - sokMm[2]) << 8) / (sokAd[2] - sokAd[3])
+};
+
+constexpr uint8_t encTable[7][4] = {
+	{0x00, 0x01, 0x04, 0x00},
+	{0x02, 0x01, 0x00, 0x00},
+	{0x02, 0x01, 0x03, 0x00},
+	{0x02, 0x00, 0x03, 0x10},
+	{0x05, 0x00, 0x04, 0x00},
+	{0x05, 0x06, 0x04, 0x00},
+	{0x05, 0x06, 0x00, 0x20}
+};
+
+constexpr uint8_t spmPhaseMask1[4] = {
+	_BV(PA0),
+	_BV(PA6),
+	_BV(PA4),
+	_BV(PA2)
+};
+
+constexpr uint8_t spmPhaseMask2[4] = {
+	static_cast<uint8_t>(_BV(PA6) | _BV(PA0)),
+	static_cast<uint8_t>(_BV(PA6) | _BV(PA4)),
+	static_cast<uint8_t>(_BV(PA4) | _BV(PA2)),
+	static_cast<uint8_t>(_BV(PA2) | _BV(PA0))
+};
+
+constexpr uint8_t SPM_MASK =
+_BV(PA6) | _BV(PA4) | _BV(PA2) | _BV(PA0);
+
+constexpr int32_t spmSteps = 2048;
+
+#if defined(__AVR__)
+namespace board_detail {
+	constexpr uint32_t timer2Hz = 20000UL;
+	constexpr uint8_t timer2TicksPerMs = 20;
+	constexpr uint8_t displayTickDivider = 4;
+
+	static void earlyDigitalInputInit()
+		__attribute__((naked, used, section(".init3")));
+
+	static void earlyDigitalInputInit() {
+		asm volatile(
+			"in r24, 0x05" "\n\t"
+			"andi r24, 0x0f" "\n\t"
+			"out 0x05, r24" "\n\t"
+			"in r24, 0x04" "\n\t"
+			"andi r24, 0x0f" "\n\t"
+			"out 0x04, r24"
+			);
+	}
+}
+#endif
 
 template <typename T, typename U, typename V>
 inline T clamp(T v, U lo, V hi) {
@@ -186,7 +250,7 @@ namespace board_detail {
 	}
 
 	__attribute__((always_inline))
-	inline void writeDisplay3(uint8_t a, uint8_t b, uint8_t c) {
+		inline void writeDisplay3(uint8_t a, uint8_t b, uint8_t c) {
 		const uint8_t port = static_cast<uint8_t>(
 			PORTH & static_cast<uint8_t>(~(SCK_BIT | SDI_BIT | LAT_BIT)));
 		shiftByte(a, port);
@@ -768,7 +832,7 @@ private:
 	volatile uint8_t* reg;
 	uint8_t mask;
 	bool registered;
-	static Di* list[8];
+	static Di* list[maxDi];
 	static uint8_t nList;
 
 public:
@@ -783,7 +847,7 @@ public:
 		mask = digitalPinToBitMask(pin);
 		if (!reg || !mask) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 8) {
+			if (nList < maxDi) {
 				list[nList++] = this;
 				registered = true;
 			}
@@ -832,7 +896,7 @@ private:
 	volatile int _raw;
 	bool registered;
 	bool converted;
-	static Pr* list[8];
+	static Pr* list[maxPr];
 	static uint8_t nList;
 
 public:
@@ -840,7 +904,7 @@ public:
 		: InEdge(lock), th(threshold), _raw(0), registered(false), converted(false) {
 		if (!board_detail::adcReg(pin, &_raw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 8) {
+			if (nList < maxPr) {
 				list[nList++] = this;
 				registered = true;
 			}
@@ -891,15 +955,6 @@ private:
 	}
 };
 
-constexpr int SOK_N = 4;
-constexpr int sokAd[SOK_N] = { 450, 380, 260, 60 };
-constexpr int sokMm[SOK_N] = { 40, 150, 300, 500 };
-constexpr int32_t slopeQ8[3] = {
-	(static_cast<int32_t>(sokMm[1] - sokMm[0]) << 8) / (sokAd[0] - sokAd[1]),
-	(static_cast<int32_t>(sokMm[2] - sokMm[1]) << 8) / (sokAd[1] - sokAd[2]),
-	(static_cast<int32_t>(sokMm[3] - sokMm[2]) << 8) / (sokAd[2] - sokAd[3])
-};
-
 class Sok {
 private:
 	friend void board_detail::service();
@@ -915,7 +970,7 @@ private:
 	int distanceMm;
 	float distanceCm;
 	PollLock pollLock;
-	static Sok* list[2];
+	static Sok* list[maxSok];
 	static uint8_t nList;
 
 private:
@@ -969,7 +1024,7 @@ public:
 		for (uint8_t i = 0; i < 5; ++i) ring[i] = 0;
 		if (!board_detail::adcReg(pin, &adcRaw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 2) {
+			if (nList < maxSok) {
 				list[nList++] = this;
 				registered = true;
 			}
@@ -1025,7 +1080,7 @@ private:
 	int rawValue;
 	bool registered;
 	PollLock pollLock;
-	static Vr* list[8];
+	static Vr* list[maxVr];
 	static uint8_t nList;
 
 private:
@@ -1049,7 +1104,7 @@ public:
 		pollLock(lock) {
 		if (!board_detail::adcReg(pin, &adcRaw)) return;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 8) {
+			if (nList < maxVr) {
 				list[nList++] = this;
 				registered = true;
 			}
@@ -1116,7 +1171,7 @@ private:
 	int yValue;
 	bool registered;
 	PollLock pollLock;
-	static Js* list[4];
+	static Js* list[maxJs];
 	static uint8_t nList;
 
 private:
@@ -1147,7 +1202,7 @@ public:
 			return;
 		}
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 4) {
+			if (nList < maxJs) {
 				list[nList++] = this;
 				registered = true;
 			}
@@ -1276,9 +1331,9 @@ private:
 	volatile uint32_t acceptedAt;
 	volatile bool accepted;
 
-	static Enc* list[4];
+	static Enc* list[maxEnc];
 	static uint8_t nList;
-	static Enc* fallback[4];
+	static Enc* fallback[maxEnc];
 	static uint8_t nFallback;
 	static Enc* pcOwner[3][8];
 	static volatile uint8_t* pcPort[3];
@@ -1308,16 +1363,6 @@ private:
 	}
 
 	inline void poll() {
-		static const uint8_t table[7][4] = {
-			{0x00, 0x01, 0x04, 0x00},
-			{0x02, 0x01, 0x00, 0x00},
-			{0x02, 0x01, 0x03, 0x00},
-			{0x02, 0x00, 0x03, 0x10},
-			{0x05, 0x00, 0x04, 0x00},
-			{0x05, 0x06, 0x04, 0x00},
-			{0x05, 0x06, 0x00, 0x20}
-		};
-
 		uint8_t a;
 		uint8_t b;
 
@@ -1331,7 +1376,7 @@ private:
 		}
 
 		const uint8_t next =
-			table[est & 0x0F][(a << 1) | b];
+			encTable[est & 0x0F][(a << 1) | b];
 
 		est = next;
 
@@ -1389,7 +1434,7 @@ public:
 		if (!ra || !rb || !ma || !mb) return;
 		samePort = ra == rb;
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-			if (nList < 4) {
+			if (nList < maxEnc) {
 				list[nList++] = this;
 				registered = true;
 			}
@@ -1513,7 +1558,7 @@ private:
 			}
 #endif
 
-			if (!attached && nFallback < 4) {
+			if (!attached && nFallback < maxEnc) {
 				fallback[nFallback++] = p;
 			}
 		}
@@ -1648,7 +1693,7 @@ private:
 	}
 
 	__attribute__((always_inline))
-	inline void writeState(uint8_t state) {
+		inline void writeState(uint8_t state) {
 		uint8_t pe =
 			PORTE &
 			static_cast<uint8_t>(~(_BV(PE4) | _BV(PE5)));
@@ -1717,7 +1762,7 @@ public:
 
 private:
 	__attribute__((always_inline))
-	inline void serviceTick() {
+		inline void serviceTick() {
 		const uint8_t currentColor = color;
 		const uint8_t currentOpacity = opacity;
 		uint8_t state;
@@ -1738,19 +1783,6 @@ private:
 		}
 	}
 };
-
-constexpr uint8_t seg[16] = {
-	0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x27,
-	0x7F, 0x6F, 0x77, 0x7C, 0x58, 0x5E, 0x79, 0x71
-};
-constexpr uint8_t alp[26] = {
-	0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71, 0x3D, 0x76, 0x06, 0x0E,
-	0x76, 0x38, 0x37, 0x54, 0x5C, 0x73, 0x67, 0x50, 0x6D, 0x78,
-	0x3E, 0x1C, 0x7E, 0x76, 0x6E, 0x5B
-};
-constexpr uint8_t SEG_DOT = 0x80;
-constexpr uint8_t SEG_MINUS = 0x40;
-constexpr uint8_t SEG_NONE = 0x00;
 
 class Disp {
 private:
@@ -1817,11 +1849,11 @@ private:
 	}
 
 	__attribute__((always_inline))
-	static inline uint8_t pdmState(
-		uint8_t value,
-		uint8_t level,
-		uint8_t& accumulator
-	) {
+		static inline uint8_t pdmState(
+			uint8_t value,
+			uint8_t level,
+			uint8_t& accumulator
+		) {
 		if (level == 0 || value == 0) return 0;
 		if (level == 255) return value;
 		const uint8_t old = accumulator;
@@ -2022,7 +2054,7 @@ public:
 
 private:
 	__attribute__((always_inline))
-	inline void serviceTick() {
+		inline void serviceTick() {
 		const uint8_t a = pdmState(pattern[0], opacity[0], acc[0]);
 		const uint8_t b = pdmState(pattern[1], opacity[1], acc[1]);
 		const uint8_t c = pdmState(pattern[2], opacity[2], acc[2]);
@@ -2078,7 +2110,7 @@ private:
 	}
 
 	__attribute__((always_inline))
-	inline void stopFromIsr() {
+		inline void stopFromIsr() {
 		TCCR5A &= static_cast<uint8_t>(~(_BV(COM5A1) | _BV(COM5C1)));
 		PORTL &= static_cast<uint8_t>(~(_BV(PL5) | _BV(PL3)));
 		now = 0;
@@ -2192,7 +2224,7 @@ public:
 
 private:
 	__attribute__((always_inline))
-	inline void isrTick() {
+		inline void isrTick() {
 		if (!timedActive) return;
 		if (remainingMs > 0 && --remainingMs == 0) {
 			stopFromIsr();
@@ -2200,23 +2232,6 @@ private:
 		}
 	}
 };
-
-constexpr uint8_t spmPhaseMask1[4] = {
-	_BV(PA0),
-	_BV(PA6),
-	_BV(PA4),
-	_BV(PA2)
-};
-
-constexpr uint8_t spmPhaseMask2[4] = {
-	static_cast<uint8_t>(_BV(PA6) | _BV(PA0)),
-	static_cast<uint8_t>(_BV(PA6) | _BV(PA4)),
-	static_cast<uint8_t>(_BV(PA4) | _BV(PA2)),
-	static_cast<uint8_t>(_BV(PA2) | _BV(PA0))
-};
-
-constexpr uint8_t SPM_MASK =
-_BV(PA6) | _BV(PA4) | _BV(PA2) | _BV(PA0);
 
 enum Dir : uint8_t {
 	CW,
@@ -2230,8 +2245,6 @@ private:
 		ONE_PHASE,
 		TWO_PHASE
 	};
-
-	static constexpr int32_t STEPS = 2048;
 
 	uint8_t ix;
 	Excitation excitation;
@@ -2260,7 +2273,7 @@ private:
 	}
 
 	int32_t degreeToStep(float degree) const {
-		const float value = degree * static_cast<float>(STEPS) / 360.0f;
+		const float value = degree * static_cast<float>(spmSteps) / 360.0f;
 
 		return value >= 0.0f
 			? static_cast<int32_t>(value + 0.5f)
@@ -2335,33 +2348,33 @@ public:
 
 		const int32_t destination = degreeToStep(degree);
 
-		int32_t current = currentStep % STEPS;
+		int32_t current = currentStep % spmSteps;
 
 		if (current < 0) {
-			current += STEPS;
+			current += spmSteps;
 		}
 
 		int32_t diff = destination - current;
-		const int32_t half = STEPS / 2;
+		const int32_t half = spmSteps / 2;
 
 		switch (dir) {
 		case CW:
 			if (diff < 0) {
-				diff += STEPS;
+				diff += spmSteps;
 			}
 			break;
 
 		case CCW:
 			if (diff > 0) {
-				diff -= STEPS;
+				diff -= spmSteps;
 			}
 			break;
 
 		case SHORT:
 			if (diff > half) {
-				diff -= STEPS;
+				diff -= spmSteps;
 			} else if (diff < -half) {
-				diff += STEPS;
+				diff += spmSteps;
 			} else if (diff == half || diff == -half) {
 				diff = halfDir == CW ? half : -half;
 			}
@@ -2410,7 +2423,7 @@ public:
 
 	float pos() const {
 		return static_cast<float>(currentStep) * 360.0f /
-			static_cast<float>(STEPS);
+			static_cast<float>(spmSteps);
 	}
 
 	int32_t stepPos() const {
@@ -2422,13 +2435,11 @@ class Bz {
 private:
 	friend void board_detail::service();
 	friend void ::TIMER2_COMPA_vect(void);
-	static constexpr uint8_t MAX_MELODY = 32;
-
 	int continuousFrequency;
 	volatile uint32_t remainingMs;
 	volatile bool timedActive;
-	int melodyNotes[MAX_MELODY];
-	int melodyDurations[MAX_MELODY];
+	int melodyNotes[maxMelody];
+	int melodyDurations[maxMelody];
 	int melodyLength;
 	int melodyIndex;
 	uint32_t melodyNext;
@@ -2484,7 +2495,7 @@ private:
 	}
 
 	__attribute__((always_inline))
-	inline void stopFromIsr() {
+		inline void stopFromIsr() {
 		TCCR3B = _BV(WGM32);
 		TCCR3A &= static_cast<uint8_t>(~_BV(COM3A0));
 		PORTE &= static_cast<uint8_t>(~_BV(PE3));
@@ -2563,7 +2574,7 @@ public:
 			return;
 		}
 		stop();
-		if (length > MAX_MELODY) length = MAX_MELODY;
+		if (length > maxMelody) length = maxMelody;
 		for (int i = 0; i < length; ++i) {
 			melodyNotes[i] = notes[i];
 			melodyDurations[i] = durations[i];
@@ -2619,7 +2630,7 @@ private:
 	}
 
 	__attribute__((always_inline))
-	inline void isrTick() {
+		inline void isrTick() {
 		if (!timedActive) return;
 		if (remainingMs > 0 && --remainingMs == 0) stopFromIsr();
 	}
@@ -3023,14 +3034,14 @@ namespace board_detail {
 		volatile bool ready;
 	};
 
-	AdcSlot adcSlots[16];
+	AdcSlot adcSlots[maxAdc];
 	volatile uint8_t adcCount = 0;
 	volatile uint8_t adcIndex = 0;
 	volatile bool adcRunning = false;
 	volatile bool adcDiscard = true;
 	bool adcHardwareReady = false;
 	uint16_t adcDidrOwned = 0;
-	volatile int adcFallback[16] = { 0 };
+	volatile int adcFallback[maxAdc] = { 0 };
 	volatile bool servicePending = false;
 	uint32_t loopEpoch = 0;
 
@@ -3085,19 +3096,19 @@ namespace board_detail {
 volatile uint32_t tms = 0;
 
 SigBase* SigBase::head_ = nullptr;
-Di* Di::list[8] = {};
+Di* Di::list[maxDi] = {};
 uint8_t Di::nList = 0;
-Pr* Pr::list[8] = {};
+Pr* Pr::list[maxPr] = {};
 uint8_t Pr::nList = 0;
-Sok* Sok::list[2] = {};
+Sok* Sok::list[maxSok] = {};
 uint8_t Sok::nList = 0;
-Vr* Vr::list[8] = {};
+Vr* Vr::list[maxVr] = {};
 uint8_t Vr::nList = 0;
-Js* Js::list[4] = {};
+Js* Js::list[maxJs] = {};
 uint8_t Js::nList = 0;
-Enc* Enc::list[4] = {};
+Enc* Enc::list[maxEnc] = {};
 uint8_t Enc::nList = 0;
-Enc* Enc::fallback[4] = {};
+Enc* Enc::fallback[maxEnc] = {};
 uint8_t Enc::nFallback = 0;
 Enc* Enc::pcOwner[3][8] = {};
 volatile uint8_t* Enc::pcPort[3] = {};
@@ -3139,7 +3150,7 @@ bool board_detail::adcReg(uint8_t pin, volatile int* dst) {
 			}
 		}
 
-		if (!found && board_detail::adcCount < 16) {
+		if (!found && board_detail::adcCount < maxAdc) {
 			const uint8_t index = board_detail::adcCount;
 			const uint16_t channelMask =
 				static_cast<uint16_t>(1U) << channel;
