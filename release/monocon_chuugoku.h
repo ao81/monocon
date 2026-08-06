@@ -4,7 +4,7 @@
 // 地区名: 中国地区
 // 学校名: 岡山県立岡山工業高等学校
 // 氏名: 青山 晃大
-// 作成年月日: 2026/08/04
+// 作成年月日: 2026/08/06
 /**********************************************/
 
 #ifndef MONOCON_CHUUGOKU_H
@@ -832,7 +832,7 @@ public:
 
 using Sig = SigValue<int32_t>;
 
-#define sig(value, ...) \
+#define SIG(value, ...) \
 	([](typename board_detail::SignalValueType<decltype(value)>::type value_) \
 		-> SigValue<typename board_detail::SignalValueType<decltype(value)>::type>& { \
 		using SigType = SigValue< \
@@ -3048,7 +3048,7 @@ public:
 	}
 };
 
-#define tog(...) \
+#define TOG(...) \
 	(([]() -> Tog& { \
 		static Tog toggle_; \
 		return toggle_; \
