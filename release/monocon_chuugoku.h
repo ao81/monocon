@@ -58,7 +58,7 @@ constexpr uint8_t M = 0b011;
 constexpr uint8_t GBR = 0b111;
 constexpr uint8_t W = 0b111;
 
-constexpr uint8_t seg[16] = {
+constexpr uint8_t num[16] = {
 	0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x27,
 	0x7F, 0x6F, 0x77, 0x7C, 0x58, 0x5E, 0x79, 0x71
 };
@@ -1837,7 +1837,7 @@ private:
 	}
 
 	static uint8_t toPattern(char c) {
-		if (c >= '0' && c <= '9') return seg[c - '0'];
+		if (c >= '0' && c <= '9') return num[c - '0'];
 		if (c >= 'a' && c <= 'z') return alp[c - 'a'];
 		if (c >= 'A' && c <= 'Z') return alp[c - 'A'];
 		if (c == '-') return SEG_MINUS;
@@ -1847,7 +1847,7 @@ private:
 	}
 
 	static uint8_t digitPattern(uint8_t value) {
-		if (value < 10) return seg[value];
+		if (value < 10) return num[value];
 		if (value < 36) return alp[value - 10];
 		return SEG_NONE;
 	}
@@ -1926,15 +1926,15 @@ public:
 		uint8_t content[4];
 		uint8_t ci = 0;
 		if (neg) content[ci++] = SEG_MINUS;
-		if (nd >= 3) content[ci++] = seg[(value / 100) % 10];
-		if (nd >= 2) content[ci++] = seg[(value / 10) % 10];
-		content[ci++] = seg[value % 10];
+		if (nd >= 3) content[ci++] = num[(value / 100) % 10];
+		if (nd >= 2) content[ci++] = num[(value / 10) % 10];
+		content[ci++] = num[value % 10];
 
 		uint8_t out[3] = { 0, 0, 0 };
 		if (zero && !neg) {
-			out[0] = seg[(value / 100) % 10];
-			out[1] = seg[(value / 10) % 10];
-			out[2] = seg[value % 10];
+			out[0] = num[(value / 100) % 10];
+			out[1] = num[(value / 10) % 10];
+			out[2] = num[value % 10];
 		} else if (left) {
 			for (uint8_t i = 0; i < ci && i < 3; ++i) out[i] = content[i];
 		} else {
@@ -1954,9 +1954,9 @@ public:
 			const double bounded = a > 99.0 ? 99.0 : a;
 			int v = dot ? static_cast<int>(bounded * 10.0 + 0.5)
 				: static_cast<int>(bounded + 0.5);
-			uint8_t p1 = seg[(v / 10) % 10];
+			uint8_t p1 = num[(v / 10) % 10];
 			if (dot) p1 |= SEG_DOT;
-			return (*this)(SEG_MINUS, p1, seg[v % 10]);
+			return (*this)(SEG_MINUS, p1, num[v % 10]);
 		}
 
 		const double bounded = a > 999.0 ? 999.0 : a;
@@ -1977,15 +1977,15 @@ public:
 			dot = 1;
 		}
 		if (dot != 1) {
-			uint8_t p0 = seg[(v / 100) % 10];
-			const uint8_t p1 = seg[(v / 10) % 10];
+			uint8_t p0 = num[(v / 100) % 10];
+			const uint8_t p1 = num[(v / 10) % 10];
 			if (dot == 0) p0 |= SEG_DOT;
-			return (*this)(p0, p1, seg[v % 10]);
+			return (*this)(p0, p1, num[v % 10]);
 		}
 
-		const uint8_t p0 = seg[(v / 10) % 10] | SEG_DOT;
-		const uint8_t p1 = seg[v % 10];
-		if (v >= 100) return (*this)(seg[(v / 100) % 10], p0, p1);
+		const uint8_t p0 = num[(v / 10) % 10] | SEG_DOT;
+		const uint8_t p1 = num[v % 10];
+		if (v >= 100) return (*this)(num[(v / 100) % 10], p0, p1);
 		if (left) return (*this)(p0, p1, 0);
 		return (*this)(0, p0, p1);
 	}
